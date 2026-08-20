@@ -39,7 +39,7 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 | `/dashboard` | KPIs+charts tenant-wide con cascada org → portafolio → programa en la URL (US-201; → se consolida con /pmo en dashboard ejecutivo) |
 | `/pmo` | Panel portafolio del tenant (treemap/trends/heatmap, matriz salud, PDF status) |
 | `/pmo/projects` (+`/new`, `[id]/edit`) | Lista maestra + alta/edición (`project-form.tsx`) |
-| `/pmo/projects/[id]` + tabs | Detalle: `plan|tasks|gantt`, `raid`, `areas` (recursos), `documents`, `minutes|ai-minutes`, `reports|builder|tweak`, `changes`, `lessons`, `charter`, `ai-context` |
+| `/pmo/projects/[id]` + tabs | Detalle: `plan|tasks|gantt`, `raid`, `areas` (tab «Recursos»), `documents` (tab «Artefactos»), `minutes|ai-minutes`, `reports|builder|tweak`, `changes`, `lessons`, `charter`, `ai-context` |
 | `/pmo/organizations/[id]` (+`/reports`) | Panel org (KPIs «Portafolios» y «Programas» desde US-201) |
 | `/pmo/programs/[id]` (+`/reports`) | Panel programa |
 | `/pmo/raid`, `/changes`, `/minutes`, `/reports` | Vistas cross con `TenantCrossFilters` |
@@ -51,19 +51,25 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 
 ## Componentes reutilizables (components/)
 
-- **Shell/nav**: `app-shell.tsx` (sidebar TOP_NAV + OrgTreeNav + admin nav;
-  header 60px sin switchers — el switcher tenant/org nuevo va aquí),
-  `project-tabs-bar.tsx`, `module-shell.tsx` (lista+CRUD genérico por folio;
-  ojo: `max-w-6xl` — soltar para vistas anchas), `org-tree-nav.tsx` (árbol
-  org→portafolio→prog→proy, US-200; se retira del sidebar más adelante en la
-  reestructura),
-  `frontera-de-permiso.tsx`. `org-tree-nav.tsx` es Organización → Portafolio →
-  Programa → Proyecto desde US-200, con cajones «Sin programa» y «Sin
-  clasificar»; cada nivel carga al expandirse.
+- **Shell/nav**: `app-shell.tsx` (sidebar en grupos con rótulo `GRUPOS_NAV`
+  —Organización · Transversal— + admin nav, US-204; header 60px con el switcher
+  de organización, US-205 — el de inquilino es US-214),
+  `project-tabs-bar.tsx` (tabs «Recursos» y «Artefactos» desde US-204, rutas
+  `/areas` y `/documents` sin cambio), `module-shell.tsx` (lista+CRUD genérico
+  por folio), `frontera-de-permiso.tsx`.
+  `org-tree-nav.tsx` **se borró en US-205**: la organización está en el header y
+  el drill-down portafolio ⊃ programa vive en los filtros de cada vista.
+- **Contexto de organización**: `organizacion-activa.tsx` (proveedor montado en
+  `app/(app)/layout.tsx`; `activa` es lo elegido y `efectiva` lo que va a la
+  consulta — ver `navigation.md` §2.0) y `switcher-de-organizacion.tsx`. Las
+  pantallas leen con `useOrgFiltro()`; ninguna carga su propia lista de
+  organizaciones para filtrar. Los formularios sí conservan su `<Select>`: ahí
+  la organización es un campo de lo que se crea.
 - **Datos**: `ui/sortable-th.tsx` + `lib/hooks/use-sortable-rows.ts`,
-  `inline-select-cell.tsx`, `tenant-cross-filters.tsx` (org → portafolio →
-  programa → proyecto desde US-201; cada nivel limpia los de abajo). No hay
-  tabla virtualizada ni column-pinning (la control tower lo necesitará).
+  `inline-select-cell.tsx`, `tenant-cross-filters.tsx` (portafolio → programa →
+  proyecto desde US-201, con la organización heredada del header desde US-205;
+  cada nivel limpia los de abajo). No hay tabla virtualizada ni column-pinning
+  (la control tower lo necesitará).
 - **Gráficos**: `dashboard-charts.tsx` — exporta `Pie, Bars, Gauge,
   TrendLines, RiskMatrix, Heatmap, Treemap, Legend, PALETTE, serieColor`
   (SVG propio). `kpi-card.tsx`.

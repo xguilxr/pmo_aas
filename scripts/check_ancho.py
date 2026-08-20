@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""DIS-05 — una vista de datos usa el ancho de la pantalla.
+"""US-203 — una vista de datos usa el ancho de la pantalla.
 
 ## Qué regla vigila
 
 `reestructura-navegacion.md` §4.1, aprobado con los mockups del 2026-08-19:
 **ancho completo por default en vistas de tabla, heatmap y gantt; `max-w` solo
 en formularios y detalle de texto.**
+
+No lleva identificador `DIS-` a propósito: los del `MCS-CORE.md` están
+asignados —`DIS-05` es «operable con teclado» y `DIS-06`, los patrones
+WAI-ARIA— y esto no es un control de conformidad, es una regla de producto que
+salió de los mockups. Se nombra por la US que la introdujo, como
+`check_moneda.py` se nombra por BUG-092.
 
 La razón es de producto, no estética. Una tabla de dieciséis columnas dentro de
 un `max-w-7xl` en un monitor de 2560 px deja media pantalla vacía y obliga a
@@ -122,7 +128,9 @@ def main() -> int:
             )
 
     if problemas:
-        print("FALLA — DIS-05 (ancho de las vistas de datos):\n", file=sys.stderr)
+        print(
+            "FALLA — US-203 (ancho de las vistas de datos):\n", file=sys.stderr
+        )
         print("\n".join(problemas), file=sys.stderr)
         print(
             "\nLa regla es de `reestructura-navegacion.md` §4.1: ancho completo "

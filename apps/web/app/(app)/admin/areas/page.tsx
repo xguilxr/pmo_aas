@@ -4,31 +4,25 @@
 //  - Áreas y Equipos: reutiliza AreasAndTeamsPanel (ENH-081) sobre catálogos
 //    tenant (áreas, equipos operativos, roles de proyecto).
 //  - Personas: catálogo tenant de actors enriquecidos (US-114).
-// US-170: selector de organización al top — filtra catálogo por org.
+// US-170: el catálogo se filtra por organización.
+// US-205: ese filtro ya no es de esta pantalla — sale del switcher del header,
+//   igual que en el resto de la aplicación. El select local se retira.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AreasAndTeamsPanel } from "@/components/directory/AreasAndTeamsPanel";
 import { TenantActorsPanel } from "@/components/directory/TenantActorsPanel";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { cn } from "@/lib/cn";
-import { listOrganizations, type Organization } from "@/lib/api/organizations";
+import { useOrganizacionActiva } from "@/components/organizacion-activa";
 
 type Tab = "catalog" | "people";
 
 export default function AdminAreasPage() {
   const [tab, setTab] = useState<Tab>("catalog");
-  const [orgs, setOrgs] = useState<Organization[]>([]);
-  const [selectedOrgId, setSelectedOrgId] = useState<string>("");
-
-  useEffect(() => {
-    listOrganizations({ is_active: true })
-      .then((data) => {
-        setOrgs(data);
-        if (data.length > 0) setSelectedOrgId(data[0].id);
-      })
-      .catch(() => {});
-  }, []);
+  // `/admin/areas` no agrega, así que `efectiva` es siempre una organización
+  // concreta: el catálogo nunca se queda sin a qué organización pertenecer.
+  const { efectiva: selectedOrgId, vacio } = useOrganizacionActiva();
 
   return (
     <div className="space-y-4 p-4">
@@ -48,25 +42,23 @@ export default function AdminAreasPage() {
         </p>
       </header>
 
-      {/* US-170: selector de organización */}
-      {orgs.length > 0 && (
-        <div className="flex items-center gap-3">
-          <label htmlFor="org-selector" className="text-sm font-medium text-[var(--color-secondary)]">
-            Organización:
-          </label>
-          <select
-            id="org-selector"
-            value={selectedOrgId}
-            onChange={(e) => setSelectedOrgId(e.target.value)}
-            className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-1.5 text-sm"
+      {/* DIS-03 — sin organizaciones no hay catálogo que administrar, y las
+          áreas y los equipos cuelgan de una. Se dice en vez de pintar los dos
+          paneles vacíos, que se leen como un error de carga. */}
+      {vacio && (
+        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-6 text-center text-sm text-[var(--color-tertiary)]">
+          Este inquilino no tiene organizaciones todavía. Crea la primera en{" "}
+          <a
+            className="underline underline-offset-2 hover:text-[var(--color-primary)]"
+            href="/admin/organizations"
           >
-            {orgs.map((o) => (
-              <option key={o.id} value={o.id}>{o.name}</option>
-            ))}
-          </select>
-        </div>
+            Admin → Organizaciones
+          </a>{" "}
+          y aquí podrás administrar sus áreas, equipos y personas.
+        </p>
       )}
 
+      {!vacio && (
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
         <div className="border-b border-[var(--border-default)] p-4">
           <div
@@ -109,7 +101,8 @@ export default function AdminAreasPage() {
             <TenantActorsPanel />
           )}
         </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }

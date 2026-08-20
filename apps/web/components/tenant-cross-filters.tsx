@@ -4,16 +4,20 @@ import { useEffect, useState } from "react";
 
 import { Select } from "@/components/ui/select";
 import {
-  type Organization,
   type Portfolio,
   type Program,
-  listOrganizations,
   listPortfolios,
   listPrograms,
 } from "@/lib/api/organizations";
+import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import { type Project, listProjects } from "@/lib/api/projects";
 
 export type TenantCrossFilterValue = {
+  /**
+   * US-205 — ya no lo pone este componente: lo inyecta desde el contexto del
+   * header. Se queda en el tipo porque es lo que viaja a la API, y las páginas
+   * lo pasan tal cual a `listTenant*`.
+   */
   organization_id?: string;
   /** US-201 — el nivel nuevo de la cascada, entre organización y programa. */
   portfolio_id?: string;
@@ -57,16 +61,27 @@ export function TenantCrossFilters({
   leading,
   reverse = false,
 }: Props) {
-  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const { efectiva: orgActiva } = useOrganizacionActiva();
+
+  // US-205 — la organización entra por el contexto, no por el `value`. Se
+  // sincroniza hacia arriba en cuanto cambia para que las páginas la manden a
+  // la API sin saber de dónde salió; sin esto, cambiar de organización en el
+  // header dejaría la vista cross consultando la anterior.
+  useEffect(() => {
+    if (value.organization_id === orgActiva) return;
+    onChange({
+      organization_id: orgActiva || undefined,
+      portfolio_id: undefined,
+      program_id: undefined,
+      project_id: undefined,
+    });
+    // `onChange` viene del caller y suele ser un `setState` nuevo en cada
+    // render; incluirlo dispararía el efecto en bucle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgActiva, value.organization_id]);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-
-  useEffect(() => {
-    listOrganizations({ is_active: true })
-      .then(setOrgs)
-      .catch(() => setOrgs([]));
-  }, []);
 
   useEffect(() => {
     if (!value.organization_id) {
@@ -102,29 +117,6 @@ export function TenantCrossFilters({
       .catch(() => setProjects([]));
   }, [value.organization_id, value.portfolio_id, value.program_id]);
 
-  const organizationSelect = (
-    <Select
-      key="organization"
-      aria-label="Organización"
-      className="h-9 w-full min-w-0"
-      value={value.organization_id ?? ""}
-      onChange={(e) =>
-        onChange({
-          organization_id: e.target.value || undefined,
-          portfolio_id: undefined,
-          program_id: undefined,
-          project_id: undefined,
-        })
-      }
-    >
-      <option value="">Todas las organizaciones</option>
-      {orgs.map((o) => (
-        <option key={o.id} value={o.id}>
-          {o.name}
-        </option>
-      ))}
-    </Select>
-  );
   const portfolioSelect = (
     <Select
       key="portfolio"
@@ -212,9 +204,10 @@ export function TenantCrossFilters({
     </Select>
   );
 
+  // US-205 — tres selects, no cuatro: la organización se elige en el header.
   const selects = reverse
-    ? [projectSelect, programSelect, portfolioSelect, organizationSelect]
-    : [organizationSelect, portfolioSelect, programSelect, projectSelect];
+    ? [projectSelect, programSelect, portfolioSelect]
+    : [portfolioSelect, programSelect, projectSelect];
 
   // ENH-025 rework definitivo: mobile stackea verticalmente (cada select
   // en su fila), tablet hace grid 2×2, desktop (lg+) fuerza una sola

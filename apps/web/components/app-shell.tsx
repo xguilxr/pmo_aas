@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 
 import { NotificationBell } from "@/components/notification-bell";
-import { OrgTreeNav } from "@/components/org-tree-nav";
+import { SwitcherDeOrganizacion } from "@/components/switcher-de-organizacion";
 import { useTenantBranding } from "@/components/tenant-branding-provider";
 import { UserMenu } from "@/components/user-menu";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
@@ -168,8 +168,8 @@ const GRUPOS_NAV: GrupoNav[] = [
 // Admin-only. Sidebar con 4 ítems raíz (US-036 / issue #17).
 // "Tenant" fusiona "Mi tenant" + "Panel del Tenant" + "Configuración"
 // con tabs internos (?tab=info|branding|config|stats) en /admin/tenant.
-// El drill-down real (Organizaciones → Programas → Proyectos) vive en el
-// sidebar principal vía <OrgTreeNav />.
+// El drill-down por portafolio y programa vive en los filtros de cada vista
+// desde US-205, no en un árbol del sidebar.
 // Sigue siendo una función y no una constante porque el árbol lleva JSX de
 // iconos: construirlo en el módulo lo evaluaría antes del render.
 // (ENH-190 hacía configurable el label "Organizaciones"; se retiró en DEC-032.)
@@ -513,24 +513,25 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // US-075 (DEC-022): el OrgTreeNav lo ve cualquier usuario del tenant
-  // (no solo admin). El menú ADMIN_NAV se restringe a role_type=admin
-  // (o superadmin actuando como admin del tenant).
   // BUG-056: el superadmin que usó "Unirme como admin" guarda
-  // `active_tenant_id` en localStorage — cuando ese flag está presente
-  // se renderiza como admin del tenant para que el nav y los flujos
-  // (dashboard, /admin/*, OrgTreeNav) le aparezcan.
+  // `active_tenant_id` en localStorage — cuando ese flag está presente se
+  // renderiza como admin del tenant para que el nav y los flujos (dashboard,
+  // /admin/*) le aparezcan.
   const superadminJoinedTenant = Boolean(
     user?.is_superadmin && activeTenantId,
   );
-  const orgTreeVisible = useMemo(
+  // US-075 (DEC-022) lo llamaba `orgTreeVisible` porque decidía si se pintaba
+  // el árbol del sidebar. US-205 retiró ese árbol —el contexto vive en el
+  // header— y la condición sobrevive porque sigue diciendo lo mismo: si esta
+  // persona está actuando dentro de un inquilino.
+  const dentroDeInquilino = useMemo(
     () =>
       Boolean(user && (!user.is_superadmin || superadminJoinedTenant)),
     [user, superadminJoinedTenant],
   );
   const { roleType } = useMyPermissions();
   const adminVisible =
-    superadminJoinedTenant || (orgTreeVisible && roleType === "admin");
+    superadminJoinedTenant || (dentroDeInquilino && roleType === "admin");
 
   const adminNav = useMemo(() => buildAdminNav(), []);
 
@@ -594,6 +595,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               PMO-aaS
             </span>
           </Link>
+          {/* US-205 — el contexto de organización, una vez y aquí. El mockup lo
+              pega a la marca: se lee «esta plataforma, esta organización» de
+              izquierda a derecha, que es el orden en que se decide. */}
+          {userReady && user && !user.is_superadmin ? (
+            <SwitcherDeOrganizacion />
+          ) : null}
         </div>
         <div className="flex items-center gap-1.5">
           <button
@@ -674,11 +681,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </div>
                 ))
               : null}
-            {orgTreeVisible && !collapsed ? (
-              <div className="mt-0.5">
-                <OrgTreeNav onNavigate={close} />
-              </div>
-            ) : null}
             {adminVisible ? (
               <div className="mt-0.5">
                 <RotuloDeGrupo titulo="Admin" oculto={collapsed} />

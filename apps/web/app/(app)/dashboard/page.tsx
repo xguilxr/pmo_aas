@@ -54,13 +54,12 @@ import {
   type TrendsResponse,
 } from "@/lib/api/analytics";
 import {
-  listOrganizations,
   listPortfolios,
   listPrograms,
-  type Organization,
   type Portfolio,
   type Program,
 } from "@/lib/api/organizations";
+import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import {
   PHASE_LABEL,
   PHASE_ORDER,
@@ -143,7 +142,9 @@ function DashboardInner() {
   const user = getStoredUser();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const orgFromUrl = searchParams.get("org_id") ?? "";
+  // US-205 — la organización ya no es estado de esta página: vive en el header.
+  // Lo que queda en la URL son los dos niveles que **sí** son de esta vista.
+  const { efectiva: orgFilter, elegir: elegirOrg } = useOrganizacionActiva();
   // US-201 — los tres niveles viven en la URL, no solo la organización: un
   // tablero filtrado que no se puede enviar por chat obliga a que el otro
   // reproduzca los clics, y ahí es donde se miran números distintos.
@@ -158,8 +159,6 @@ function DashboardInner() {
   const [loadingCharts, setLoadingCharts] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [orgs, setOrgs] = useState<Organization[]>([]);
-  const [orgFilter, setOrgFilter] = useState(orgFromUrl);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [portfolioFilter, setPortfolioFilter] = useState(portfolioFromUrl);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -256,34 +255,24 @@ function DashboardInner() {
     }
   }
 
-  // Sincronizar cambio de filtro con URL (US-014: estado del filtro en URL).
+  // US-201 — la cascada limpia hacia abajo: cambiar de portafolio tira el
+  // programa. No es cosmética — dejar el programa de otro portafolio produce una
+  // consulta que cruza dos filtros que no se tocan y devuelve vacío, que se lee
+  // como «no hay proyectos» y no como «el filtro no tiene sentido».
   //
-  // US-201 — un solo sitio para los tres niveles, y **cada cambio limpia los de
-  // abajo**. No es cosmética: dejar el programa de otro portafolio seleccionado
-  // produce una consulta que cruza dos filtros que no se tocan y devuelve vacío,
-  // que se lee como «no hay proyectos» y no como «el filtro no tiene sentido».
-  function changeJerarquia(next: {
-    org?: string;
-    portfolio?: string;
-    program?: string;
-  }) {
-    const org = next.org ?? orgFilter;
-    // Cambiar de organización tira portafolio y programa; cambiar de portafolio
-    // tira el programa. Lo de abajo solo sobrevive si no se tocó lo de arriba.
-    const portfolio =
-      next.org !== undefined ? "" : (next.portfolio ?? portfolioFilter);
+  // US-205 — la organización salió de aquí: la elige el header. Lo que queda en
+  // la URL son los dos niveles propios de esta vista (US-014: el filtro viaja en
+  // la URL para que un tablero filtrado se pueda enviar por chat).
+  function changeJerarquia(next: { portfolio?: string; program?: string }) {
+    const portfolio = next.portfolio ?? portfolioFilter;
     const program =
-      next.org !== undefined || next.portfolio !== undefined
-        ? ""
-        : (next.program ?? programFilter);
+      next.portfolio !== undefined ? "" : (next.program ?? programFilter);
 
-    setOrgFilter(org);
     setPortfolioFilter(portfolio);
     setProgramFilter(program);
 
     const params = new URLSearchParams(searchParams.toString());
     for (const [clave, valor] of [
-      ["org_id", org],
       ["portfolio_id", portfolio],
       ["program_id", program],
     ] as const) {
@@ -294,23 +283,12 @@ function DashboardInner() {
     router.replace(qs ? `/dashboard?${qs}` : "/dashboard");
   }
 
-  /** El heatmap enlaza a una organización: entra por la cascada como cualquier
-   *  otro cambio de nivel, así que arrastra el reset de los de abajo. */
-  function changeOrgFilter(next: string) {
-    changeJerarquia({ org: next });
+  /** El heatmap enlaza a una organización: cambia el contexto del header y
+   *  arrastra el reset de los niveles de abajo, igual que el switcher. */
+  function irAOrganizacion(id: string) {
+    elegirOrg(id);
+    changeJerarquia({ portfolio: "" });
   }
-
-  useEffect(() => {
-    let cancelled = false;
-    listOrganizations({ is_active: true })
-      .then((r) => {
-        if (!cancelled) setOrgs(r);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // US-201 — los portafolios cuelgan de una organización, así que sin ella no
   // hay lista que pedir: el desplegable queda deshabilitado en vez de ofrecer
@@ -444,12 +422,13 @@ function DashboardInner() {
   }, [charts]);
 
   // US-201 — el rastro de la cascada, para que la cabecera diga qué se está
-  // mirando. Se nombran los tres niveles y no solo el más específico: «Programa
-  // Alfa» a secas no dice de qué cartera es, y hay nombres repetidos entre
-  // organizaciones.
+  // mirando. Se nombran los dos niveles y no solo el más específico: «Programa
+  // Alfa» a secas no dice de qué cartera es, y hay nombres repetidos.
+  //
+  // US-205 — la organización ya no entra en el rastro: la dice el header, y
+  // repetirla aquí la pondría dos veces en la misma pantalla.
   const rastro = useMemo(() => {
     const partes = [
-      orgFilter ? (orgs.find((o) => o.id === orgFilter)?.name ?? "organización") : null,
       portfolioFilter
         ? (portfolios.find((pf) => pf.id === portfolioFilter)?.name ?? "portafolio")
         : null,
@@ -458,7 +437,7 @@ function DashboardInner() {
         : null,
     ].filter(Boolean);
     return partes.join(" › ");
-  }, [orgFilter, orgs, portfolioFilter, portfolios, programFilter, programs]);
+  }, [portfolioFilter, portfolios, programFilter, programs]);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
   const csvHref = planVsActualCsvUrl(apiBase, {
@@ -480,37 +459,11 @@ function DashboardInner() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* US-201 — la cascada organización → portafolio → programa. Los dos
-              de abajo se deshabilitan sin el de arriba: un desplegable con
-              opciones de todas las organizaciones a la vez no dice de quién es
-              cada portafolio, y hay clientes con un «Portafolio General» cada
-              uno. */}
-          <label
-            htmlFor="org-filter"
-            className="text-xs font-medium text-[var(--color-tertiary)]"
-          >
-            Organización
-          </label>
-          <Select
-            id="org-filter"
-            value={orgFilter}
-            onChange={(e) => changeJerarquia({ org: e.target.value })}
-            aria-label="Filtrar por organización"
-            className="min-w-[180px]"
-          >
-            {/* DIS-03: un inquilino recién creado no tiene organizaciones. */}
-            {orgs.length === 0 ? (
-              <option value="" disabled>
-                (aún no hay organizaciones)
-              </option>
-            ) : null}
-            <option value="">Todas las organizaciones</option>
-            {orgs.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </Select>
+          {/* US-205 — la organización se elige en el header. Aquí quedan los
+              dos niveles propios de esta vista, y siguen deshabilitados sin
+              organización: un desplegable con los portafolios de todas a la vez
+              no dice de quién es cada uno, y hay clientes con un «Portafolio
+              General» cada uno. */}
           <label
             htmlFor="portfolio-filter"
             className="text-xs font-medium text-[var(--color-tertiary)]"
@@ -575,12 +528,14 @@ function DashboardInner() {
               </option>
             ))}
           </Select>
-          {orgFilter || portfolioFilter || programFilter ? (
+          {/* «Limpiar» solo vacía lo de esta vista. La organización no se
+              limpia desde aquí: se cambia en el header, que es donde vive. */}
+          {portfolioFilter || programFilter ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => changeJerarquia({ org: "" })}
+              onClick={() => changeJerarquia({ portfolio: "" })}
             >
               Limpiar
             </Button>
@@ -723,7 +678,7 @@ function DashboardInner() {
             <Heatmap
               rows={heatmap?.rows ?? []}
               ariaLabel="Mapa de calor de salud por organización"
-              onCellClick={(orgId) => changeOrgFilter(orgId)}
+              onCellClick={(orgId) => irAOrganizacion(orgId)}
             />
           </ChartCard>
         ) : null}

@@ -152,7 +152,8 @@ Un panel único centraliza la gestión de usuarios, roles, organizaciones y proy
 > `components/app-shell.tsx`). El árbol "Organizaciones → Solicitudes /
 > Programas / Proyectos → Módulos" se reemplazó por:
 >
-> - `OrgTreeNav` (drill-down vivo orgs → programas → proyectos).
+> - `OrgTreeNav` (drill-down vivo orgs → programas → proyectos), a su vez
+>   retirado en US-205: la organización vive en el header.
 > - Tabs dentro de `/pmo/projects/[id]/*` (US-035) para los módulos.
 > - Items planos en TOP_NAV para Requests, Projects, RAID, Cambios, etc.
 > - Las rutas `/admin/projects`, `/admin/programs`, `/admin/raid`, etc.

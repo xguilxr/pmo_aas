@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
-import { listOrganizations, type Organization } from "@/lib/api/organizations";
+import { useOrgFiltro } from "@/components/organizacion-activa";
 import {
   listRequests,
   REQUEST_STATUS_LABEL,
@@ -59,25 +59,11 @@ export default function RequestsListPage() {
   const debouncedSearch = useDebounced(search, 300);
 
   const [rows, setRows] = useState<ProjectRequest[]>([]);
-  const [orgs, setOrgs] = useState<Record<string, Organization>>({});
   const { sortedRows: sortedReqRows, ctrl: reqCtrl } = useSortableRows<ProjectRequest>(rows);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    listOrganizations()
-      .then((list) => {
-        if (cancelled) return;
-        const map: Record<string, Organization> = {};
-        for (const o of list) map[o.id] = o;
-        setOrgs(map);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // US-205 — la organización la elige el header.
+  const orgId = useOrgFiltro();
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +71,9 @@ export default function RequestsListPage() {
     setError(null);
     listRequests({
       status: tab,
+      // US-205 — la solicitud pertenece a una organización, y la vista opera
+      // dentro de la activa como todas las demás.
+      organization_id: orgId,
       q: debouncedSearch.trim() || undefined,
       limit: 50,
     })
@@ -178,7 +167,6 @@ export default function RequestsListPage() {
               <tr>
                 <SortableTh<ProjectRequest> sortKey="folio" getter={(r) => r.folio} ctrl={reqCtrl} className="px-4 py-3">Folio</SortableTh>
                 <SortableTh<ProjectRequest> sortKey="title" getter={(r) => r.title} ctrl={reqCtrl} className="px-4 py-3">Título</SortableTh>
-                <SortableTh<ProjectRequest> sortKey="org" getter={(r) => orgs[r.organization_id]?.name ?? ""} ctrl={reqCtrl} className="px-4 py-3">Organización</SortableTh>
                 <SortableTh<ProjectRequest> sortKey="date" getter={(r) => r.requested_at ?? (r as any).created_at ?? ""} ctrl={reqCtrl} className="px-4 py-3">Fecha</SortableTh>
                 <SortableTh<ProjectRequest> sortKey="budget" getter={(r) => (r as any).budget ?? 0} ctrl={reqCtrl} className="px-4 py-3">Presupuesto</SortableTh>
                 <SortableTh<ProjectRequest> sortKey="status" getter={(r) => r.status} ctrl={reqCtrl} className="px-4 py-3">Estado</SortableTh>
@@ -213,9 +201,6 @@ export default function RequestsListPage() {
                       <div className="truncate text-xs text-[var(--color-tertiary)]">{r.sponsor}</div>
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)]">
-                      {orgs[r.organization_id]?.name ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-secondary)]">
                       {formatDate(r.requested_at)}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-secondary)]">
@@ -229,7 +214,7 @@ export default function RequestsListPage() {
               ) : null}
               {empty ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-sm text-[var(--color-tertiary)]">
+                  <td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--color-tertiary)]">
                     No hay solicitudes en este estado.
                   </td>
                 </tr>

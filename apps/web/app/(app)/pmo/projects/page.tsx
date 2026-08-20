@@ -12,10 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
+import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import {
-  listOrganizations,
   listPrograms,
   type Organization,
   type Program,
@@ -85,7 +85,8 @@ export default function ProjectsListPage() {
   const [phases, setPhases] = useState<ProjectPhase[]>(initialPhases);
   const [types, setTypes] = useState<ProjectType[]>(initialTypes);
   const [health, setHealth] = useState<ProjectHealth[]>(initialHealth);
-  const [orgId, setOrgId] = useState(search.get("organization_id") ?? "");
+  // US-205 — la organización viene del header, no de esta página.
+  const { efectiva: orgId } = useOrganizacionActiva();
   // ENH-185: cascada de programa (depende de organización) + prioridad mínima.
   const [programId, setProgramId] = useState(search.get("program_id") ?? "");
   const [noProgram, setNoProgram] = useState(search.get("no_program") === "true");
@@ -98,17 +99,10 @@ export default function ProjectsListPage() {
 
   const debouncedQ = useDebounced(q, 300);
 
-  const [orgs, setOrgs] = useState<Organization[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [rows, setRows] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    listOrganizations({ is_active: true })
-      .then(setOrgs)
-      .catch(() => {});
-  }, []);
 
   // ENH-185: programas en cascada — dependen de la organización elegida.
   useEffect(() => {
@@ -134,7 +128,6 @@ export default function ProjectsListPage() {
     for (const p of phases) usp.append("phase", p);
     for (const t of types) usp.append("type", t);
     for (const h of health) usp.append("health", h);
-    if (orgId) usp.set("organization_id", orgId);
     if (noProgram) {
       usp.set("no_program", "true");
     } else if (programId) {
@@ -267,30 +260,6 @@ export default function ProjectsListPage() {
             />
           </div>
           <Select
-            value={orgId}
-            onChange={(e) => {
-              setOrgId(e.target.value);
-              // ENH-185: al cambiar de organización, el programa elegido
-              // (si lo había) deja de ser válido — resetea la cascada.
-              setProgramId("");
-              setNoProgram(false);
-            }}
-            aria-label="Organización"
-          >
-            <option value="">Todas las organizaciones</option>
-            {/* DIS-03: un inquilino recién creado no tiene organizaciones. */}
-            {orgs.length === 0 ? (
-              <option value="" disabled>
-                (aún no hay organizaciones)
-              </option>
-            ) : null}
-            {orgs.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </Select>
-          <Select
             value={noProgram ? "__no_program__" : programId}
             onChange={(e) => {
               const v = e.target.value;
@@ -391,7 +360,7 @@ export default function ProjectsListPage() {
         ) : null}
 
         {view === "list" ? (
-          <ListView rows={rows} loading={loading} orgs={orgs} />
+          <ListView rows={rows} loading={loading} />
         ) : (
           <BoardView rows={rows} loading={loading} />
         )}
@@ -450,13 +419,10 @@ function Chip({
 function ListView({
   rows,
   loading,
-  orgs,
 }: {
   rows: Project[];
   loading: boolean;
-  orgs: Organization[];
 }) {
-  const orgsMap = useMemo(() => Object.fromEntries(orgs.map((o) => [o.id, o])), [orgs]);
   const { sortedRows, ctrl: sortCtrl } = useSortableRows<Project>(rows);
   // ENH-190: label configurable por tenant para "Organización(es)".
   // US-192: evaluar la salud 5+1 desde el portafolio (click en el dot),
@@ -471,7 +437,6 @@ function ListView({
         <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
           <tr>
             <SortableTh<Project> sortKey="name" getter={(p) => p.name} ctrl={sortCtrl} className="h-10 px-4">Proyecto</SortableTh>
-            <SortableTh<Project> sortKey="org" getter={(p) => orgsMap[p.organization_id]?.name ?? ""} ctrl={sortCtrl} className="h-10 px-4">Organización</SortableTh>
             <SortableTh<Project> sortKey="phase" getter={(p) => p.phase ?? ""} ctrl={sortCtrl} className="h-10 px-4">Fase</SortableTh>
             <SortableTh<Project> sortKey="priority" getter={(p) => (p as any).priority ?? ""} ctrl={sortCtrl} className="h-10 px-4">Prioridad</SortableTh>
             <SortableTh<Project> sortKey="progress" getter={(p) => (p as any).progress_pct ?? 0} ctrl={sortCtrl} className="h-10 px-4">Avance</SortableTh>
@@ -505,9 +470,6 @@ function ListView({
                   </Link>
                   <div className="font-mono text-[11px] text-[var(--text-tertiary)]">{p.folio}</div>
                 </td>
-                <td className="px-4 text-[var(--text-secondary)]">
-                  {orgsMap[p.organization_id]?.name ?? "—"}
-                </td>
                 <td className="px-4">
                   <PhasePill phase={p.phase} />
                 </td>
@@ -539,7 +501,7 @@ function ListView({
             ))
           ) : (
             <tr>
-              <td colSpan={7} className="px-4 py-16 text-center text-[var(--text-tertiary)]">
+              <td colSpan={6} className="px-4 py-16 text-center text-[var(--text-tertiary)]">
                 No hay proyectos que coincidan con los filtros.
               </td>
             </tr>

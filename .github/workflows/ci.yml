@@ -177,13 +177,20 @@ jobs:
       - name: La moneda no se escribe a mano (BUG-092)
         run: python scripts/check_moneda.py
 
-      # DIS-05 — una vista de datos usa el ancho de la pantalla
+      # US-203 — una vista de datos usa el ancho de la pantalla
       # (`reestructura-navegacion.md` §4.1, aprobado con los mockups). Va en
       # este job por el mismo criterio que los cinco de arriba: barre
       # `apps/web` leyendo ficheros, tarda milisegundos, y un check requerido
       # más cuesta una acción del owner sin añadir cobertura.
-      - name: Ancho de las vistas de datos (DIS-05)
+      - name: Ancho de las vistas de datos (US-203)
         run: python scripts/check_ancho.py
+
+      # US-205 — la organización activa se elige una vez, en el header
+      # (`reestructura-navegacion.md` §1). Antes de US-205 el filtro estaba
+      # copiado en siete pantallas y no viajaba entre ellas. Mismo job por el
+      # mismo criterio: lee ficheros de `apps/web` y tarda milisegundos.
+      - name: La organización activa, en un solo sitio (US-205)
+        run: python scripts/check_org_activa.py
 
   # Auditoría MCS 2026-08-03 — cierra CFG-02 (el repositorio NO DEBE contener
   # secretos, y la ausencia DEBE verificarse automáticamente sobre el HISTORIAL

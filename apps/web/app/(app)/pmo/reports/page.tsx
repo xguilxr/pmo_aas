@@ -25,12 +25,11 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
+import { listPrograms, type Program } from "@/lib/api/organizations";
 import {
-  listOrganizations,
-  listPrograms,
-  type Organization,
-  type Program,
-} from "@/lib/api/organizations";
+  useOrgFiltro,
+  useOrganizacionActiva,
+} from "@/components/organizacion-activa";
 import {
   exportBuilderPdf,
   listBuilderTemplates,
@@ -244,21 +243,19 @@ function PmoScopePlaceholder() {
 
 // US-145 — Tab Organizaciones con filtro org + generación.
 function OrgScopePlaceholder() {
-  const [orgs, setOrgs] = useState<Organization[]>([]);
   const [templates, setTemplates] = useState<ReportBuilderTemplate[]>([]);
-  const [orgId, setOrgId] = useState<string>("");
+  // US-205 — la organización la elige el header.
+  const orgId = useOrgFiltro() ?? "";
+  const { activaObj: orgActiva } = useOrganizacionActiva();
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([listOrganizations({}), listBuilderTemplates({ level: 2 })])
-      .then(([os, tpls]) => {
-        if (!cancelled) {
-          setOrgs(os);
-          setTemplates(tpls);
-        }
+    listBuilderTemplates({ level: 2 })
+      .then((tpls) => {
+        if (!cancelled) setTemplates(tpls);
       })
       .catch((err) => {
         if (!cancelled)
@@ -288,7 +285,7 @@ function OrgScopePlaceholder() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const orgName = orgs.find((o) => o.id === orgId)?.name?.replace(/[^a-z0-9]+/gi, "-") ?? "org";
+      const orgName = orgActiva?.name?.replace(/[^a-z0-9]+/gi, "-") ?? "org";
       a.download = `org-${orgName}-${tpl.code}-${new Date().toISOString().slice(0, 10)}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
@@ -317,23 +314,6 @@ function OrgScopePlaceholder() {
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-[2fr_3fr]">
-          <label className="block">
-            <span className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]">
-              Organización
-            </span>
-            <Select
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
-              disabled={loading || orgs.length === 0}
-            >
-              <option value="">— Selecciona —</option>
-              {orgs.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </Select>
-          </label>
         </div>
 
         {loading ? (
@@ -391,10 +371,10 @@ function OrgScopePlaceholder() {
 
 // US-146 — Tab Programas con filtros org + programa.
 function ProgramScopePlaceholder() {
-  const [orgs, setOrgs] = useState<Organization[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [templates, setTemplates] = useState<ReportBuilderTemplate[]>([]);
-  const [orgId, setOrgId] = useState<string>("");
+  // US-205 — la organización la elige el header.
+  const orgId = useOrgFiltro() ?? "";
   const [programId, setProgramId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [loadingPrograms, setLoadingPrograms] = useState(false);
@@ -403,12 +383,9 @@ function ProgramScopePlaceholder() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([listOrganizations({}), listBuilderTemplates({ level: 2 })])
-      .then(([os, tpls]) => {
-        if (!cancelled) {
-          setOrgs(os);
-          setTemplates(tpls);
-        }
+    listBuilderTemplates({ level: 2 })
+      .then((tpls) => {
+        if (!cancelled) setTemplates(tpls);
       })
       .catch((err) => {
         if (!cancelled)
@@ -497,23 +474,6 @@ function ProgramScopePlaceholder() {
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]">
-              Organización
-            </span>
-            <Select
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
-              disabled={loading || orgs.length === 0}
-            >
-              <option value="">— Selecciona —</option>
-              {orgs.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </Select>
-          </label>
           <label className="block">
             <span className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]">
               Programa

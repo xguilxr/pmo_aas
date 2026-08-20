@@ -502,7 +502,9 @@ cuando muchos usuarios solo necesitan vista informativa.
 - Rutas viejas `/admin/projects/*`, `/admin/requests/*`, `/admin/raid/*`,
   etc. quedan como redirects 301 → `/pmo/...` por compat.
 - `OrgTreeNav` pasa a ser visible para todos los usuarios del tenant
-  (antes solo admin).
+  (antes solo admin). *(El árbol se retiró en US-205; la organización se
+  elige en el header. La frontera `/pmo` vs `/admin` que decide esta DEC
+  sigue vigente.)*
 - Permisos backend: endpoints GET de `organizations`, `programs`,
   `projects` aceptan lectura de cualquier user del tenant.
 
