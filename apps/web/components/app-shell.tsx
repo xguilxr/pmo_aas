@@ -8,11 +8,12 @@ import {
   Boxes,
   Building2,
   ChevronRight,
+  Bell,
   ClipboardCheck,
+  ClipboardList,
   FolderKanban,
   Gauge,
   GitBranch,
-  Inbox,
   KeyRound,
   LayoutDashboard,
   Menu,
@@ -56,43 +57,80 @@ type NavItem = {
   adminOnly?: boolean;
 };
 
-// US-052: sidebar top-nav extendido con vistas cross-tenant. El orden
-// refleja el flujo del PMO: de resumen (Tablero) a ingreso (Solicitudes)
-// a ejecución (Proyectos) a gobernanza (Módulos con RAID/Cambios/Minutas/Reportes).
-// ENH-012 / ENH-116: RAID, Cambios, Minutas y Reportes agrupados bajo "Módulos" (colapsable).
-const TOP_NAV: NavItem[] = [
+// US-204 — el sidebar baja de «todo al mismo nivel» a grupos estables, según
+// el mockup aprobado (`reestructura-navegacion.md` §2). Dos cambios de fondo:
+//
+// 1. Se disuelve el grupo colapsable «Módulos». Agrupaba por *implementación*
+//    («son los módulos del producto») y no por lo que la persona va a hacer:
+//    metía RAID junto a Recursos y Reportes, que no se parecen en nada. Un
+//    nivel de plegado que hay que abrir para llegar a lo de todos los días es
+//    un clic de peaje.
+// 2. Los grupos son rótulos, no acordeones. Se ven los diez destinos a la vez;
+//    con siete entradas por grupo no hace falta plegar nada.
+//
+// «Portafolio» apunta a `/pmo` mientras US-207 construya la vista maestra
+// (control tower) que el mockup pide en ese lugar.
+type GrupoNav = {
+  id: string;
+  titulo: string;
+  items: NavItem[];
+};
+
+const GRUPOS_NAV: GrupoNav[] = [
   {
-    id: "dashboard",
-    label: "Tablero",
-    icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
-    href: "/dashboard",
-    match: (p) => p === "/dashboard",
+    id: "organizacion",
+    titulo: "Organización",
+    items: [
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
+        href: "/dashboard",
+        match: (p) => p === "/dashboard",
+      },
+      {
+        id: "portfolio",
+        label: "Portafolio",
+        icon: <Boxes className="h-4 w-4" aria-hidden />,
+        href: "/pmo",
+        match: (p) => p === "/pmo",
+      },
+      {
+        id: "projects",
+        label: "Proyectos",
+        icon: <FolderKanban className="h-4 w-4" aria-hidden />,
+        href: "/pmo/projects",
+        match: (p) => p.startsWith("/pmo/projects"),
+      },
+      {
+        id: "requests",
+        label: "Solicitudes",
+        icon: <ClipboardList className="h-4 w-4" aria-hidden />,
+        href: "/pmo/requests",
+        match: (p) => p.startsWith("/pmo/requests"),
+      },
+      {
+        // US-183: capacidad y saturación. El mockup lo sube al primer grupo:
+        // es una pregunta de la organización, no un módulo del proyecto.
+        id: "resources",
+        label: "Recursos",
+        icon: <Gauge className="h-4 w-4" aria-hidden />,
+        href: "/pmo/resources",
+        match: (p) => p.startsWith("/pmo/resources"),
+      },
+      {
+        id: "reports",
+        label: "Reportes",
+        icon: <BarChart3 className="h-4 w-4" aria-hidden />,
+        href: "/pmo/reports",
+        match: (p) => p === "/pmo/reports" || p.startsWith("/pmo/reports/"),
+      },
+    ],
   },
   {
-    id: "requests",
-    label: "Solicitudes",
-    icon: <Inbox className="h-4 w-4" aria-hidden />,
-    href: "/pmo/requests",
-    match: (p) => p.startsWith("/pmo/requests"),
-  },
-  {
-    id: "projects",
-    label: "Proyectos",
-    icon: <FolderKanban className="h-4 w-4" aria-hidden />,
-    href: "/pmo/projects",
-    match: (p) => p.startsWith("/pmo/projects"),
-  },
-  {
-    id: "project-modules",
-    label: "Módulos",
-    icon: <Boxes className="h-4 w-4" aria-hidden />,
-    match: (p) =>
-      p.startsWith("/pmo/raid") ||
-      p.startsWith("/pmo/changes") ||
-      p.startsWith("/pmo/minutes") ||
-      p.startsWith("/pmo/reports") ||
-      p.startsWith("/pmo/resources"),
-    children: [
+    id: "transversal",
+    titulo: "Transversal",
+    items: [
       {
         id: "raid",
         label: "RAID",
@@ -115,31 +153,16 @@ const TOP_NAV: NavItem[] = [
         match: (p) => p === "/pmo/minutes" || p.startsWith("/pmo/minutes/"),
       },
       {
-        // ENH-116: Reportes ahora apunta directo a /pmo/reports (sin
-        // dropdown). Builder Portafolio vive como TAB dentro de esa
-        // página (US-144). Esto aplana la jerarquía del sidebar.
-        id: "reports",
-        label: "Reportes",
-        icon: <BarChart3 className="h-4 w-4" aria-hidden />,
-        href: "/pmo/reports",
-        match: (p) => p === "/pmo/reports" || p.startsWith("/pmo/reports/"),
-      },
-      {
-        // US-183: vista ejecutiva de capacidad/saturación de recursos
-        // (individual + rol/área/equipo + conflictos).
-        id: "resources",
-        label: "Recursos",
-        icon: <Gauge className="h-4 w-4" aria-hidden />,
-        href: "/pmo/resources",
-        match: (p) => p.startsWith("/pmo/resources"),
+        // El mockup lo pone en este grupo, y encaja: una notificación no es de
+        // una organización ni de un proyecto — es de quien la recibe.
+        id: "notifications",
+        label: "Notificaciones",
+        icon: <Bell className="h-4 w-4" aria-hidden />,
+        href: "/notifications",
+        match: (p) => p.startsWith("/notifications"),
       },
     ],
   },
-  // US-068: vista informativa del portafolio (separada del CRUD en /admin).
-  // US-075 (DEC-022): retirado del TOP_NAV — el portafolio se accede por
-  // el header del OrgTreeNav (entrada `PMO`). Mantener el item aquí
-  // duplicaba la entrada en el sidebar (un "PMO" en TOP_NAV + otro en
-  // OrgTreeNav).
 ];
 
 // Admin-only. Sidebar con 4 ítems raíz (US-036 / issue #17).
@@ -272,6 +295,28 @@ function collectExpandedIds(items: NavItem[], pathname: string, acc: Set<string>
     if (selfActive || childActive) anyActive = true;
   }
   return anyActive;
+}
+
+/**
+ * Rótulo de grupo del sidebar. Con el sidebar colapsado desaparece en vez de
+ * truncarse: «Organización» recortado a «Org…» sobre una columna de iconos no
+ * informa de nada y roba las dos líneas que necesitan los destinos.
+ *
+ * Es `aria-hidden` y no un encabezado real porque los grupos son ayuda visual:
+ * cada destino ya se anuncia por su propio texto, y un `<h3>` por grupo mete
+ * tres niveles de encabezado en el árbol de accesibilidad que no corresponden
+ * a la estructura del documento.
+ */
+function RotuloDeGrupo({ titulo, oculto }: { titulo: string; oculto: boolean }) {
+  if (oculto) return null;
+  return (
+    <p
+      aria-hidden
+      className="px-3 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--chrome-text-muted)]"
+    >
+      {titulo}
+    </p>
+  );
 }
 
 function NavTree({
@@ -487,13 +532,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const adminVisible =
     superadminJoinedTenant || (orgTreeVisible && roleType === "admin");
 
-  // ENH-190: label configurable por tenant para "Organización(es)".
   const adminNav = useMemo(() => buildAdminNav(), []);
 
   useEffect(() => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      collectExpandedIds(TOP_NAV, pathname, next);
+      // Los grupos ya no se plegan, pero sus items sí pueden tener hijos, así
+      // que el recorrido sigue: se hace por grupo en vez de sobre una lista.
+      for (const grupo of GRUPOS_NAV) collectExpandedIds(grupo.items, pathname, next);
       if (adminVisible) collectExpandedIds([adminNav], pathname, next);
       collectExpandedIds(SUPERADMIN_NAV, pathname, next);
       return next;
@@ -611,18 +657,23 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </div>
           <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3">
-            {userReady && (!user?.is_superadmin || superadminJoinedTenant) ? (
-              <NavTree
-                items={TOP_NAV}
-                pathname={pathname}
-                onNavigate={close}
-                expanded={expanded}
-                toggle={toggle}
-                adminVisible={adminVisible}
-                collapsed={collapsed}
-                onExpandSidebar={() => setCollapsedPersisted(false)}
-              />
-            ) : null}
+            {userReady && (!user?.is_superadmin || superadminJoinedTenant)
+              ? GRUPOS_NAV.map((grupo) => (
+                  <div key={grupo.id} className="mb-1.5">
+                    <RotuloDeGrupo titulo={grupo.titulo} oculto={collapsed} />
+                    <NavTree
+                      items={grupo.items}
+                      pathname={pathname}
+                      onNavigate={close}
+                      expanded={expanded}
+                      toggle={toggle}
+                      adminVisible={adminVisible}
+                      collapsed={collapsed}
+                      onExpandSidebar={() => setCollapsedPersisted(false)}
+                    />
+                  </div>
+                ))
+              : null}
             {orgTreeVisible && !collapsed ? (
               <div className="mt-0.5">
                 <OrgTreeNav onNavigate={close} />
@@ -630,6 +681,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ) : null}
             {adminVisible ? (
               <div className="mt-0.5">
+                <RotuloDeGrupo titulo="Admin" oculto={collapsed} />
                 <NavTree
                   items={[adminNav]}
                   pathname={pathname}
@@ -642,15 +694,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             ) : null}
             {userReady && user?.is_superadmin ? (
-              <NavTree
-                items={SUPERADMIN_NAV}
-                pathname={pathname}
-                onNavigate={close}
-                expanded={expanded}
-                toggle={toggle}
-                collapsed={collapsed}
-                onExpandSidebar={() => setCollapsedPersisted(false)}
-              />
+              <div className="mt-0.5">
+                <RotuloDeGrupo titulo="Plataforma" oculto={collapsed} />
+                <NavTree
+                  items={SUPERADMIN_NAV}
+                  pathname={pathname}
+                  onNavigate={close}
+                  expanded={expanded}
+                  toggle={toggle}
+                  collapsed={collapsed}
+                  onExpandSidebar={() => setCollapsedPersisted(false)}
+                />
+              </div>
             ) : null}
           </nav>
         </aside>

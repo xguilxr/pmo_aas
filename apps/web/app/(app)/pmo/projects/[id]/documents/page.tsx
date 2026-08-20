@@ -1,12 +1,18 @@
 "use client";
 
 /**
- * Módulo Documentos por proyecto (US-106 / EP018) — 4 tabs fijos:
+ * Módulo **Artefactos** por proyecto (US-106 / EP018) — 4 tabs fijos:
  * Project Charter, Plan, RAIDs, Organigrama.
  *
- * Este es el único módulo Documentos visible en la nav del proyecto.
+ * Se llamaba «Documentos» hasta US-204, y el nombre viejo describía el
+ * contenedor en vez del contenido: lo que vive aquí son las **salidas** del
+ * proyecto —el acta con sus versiones, el plan exportado, el RAID en Excel, el
+ * organigrama derivado de las participaciones—, no una carpeta de archivos que
+ * alguien subió. La ruta sigue siendo `/documents`: renombrar una URL rompe los
+ * enlaces guardados y no le aporta nada a quien lee.
+ *
  * Los archivos sueltos del MVP previo viven en /documents/legacy (mismo
- * endpoint backend, fuera del whitelist de Artefactos).
+ * endpoint backend, fuera del whitelist de artefactos).
  */
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -162,7 +168,7 @@ export default function DocumentosPage() {
         <div>
           <h1 className="flex items-center gap-2 text-xl font-semibold">
             <Layers className="h-5 w-5" aria-hidden />
-            Documentos
+            Artefactos
           </h1>
           <p className="text-sm text-[var(--color-secondary)]">
             Catálogo curado de artefactos vivos del proyecto.

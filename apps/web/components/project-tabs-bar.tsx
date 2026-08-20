@@ -51,14 +51,23 @@ const TABS: ProjectTab[] = [
   },
   {
     id: "areas",
-    label: "Áreas/Recursos",
+    // US-204 — el mockup lo llama «Recursos», sin la barra. «Áreas/Recursos»
+    // era el rastro de la migración de ENH-078 (la feature se movió al catálogo
+    // del inquilino) y decía dos cosas para no equivocarse en ninguna. La ruta
+    // sigue siendo `/areas`: renombrar una URL rompe los enlaces guardados y no
+    // aporta nada al lector.
+    label: "Recursos",
     icon: <Users className="h-4 w-4" aria-hidden />,
     href: (id) => `/pmo/projects/${id}/areas`,
     match: (p) => /^\/admin\/projects\/[^/]+\/areas/.test(p),
   },
   {
     id: "documents",
-    label: "Documentos",
+    // US-204 — «Artefactos»: lo que vive ahí son las salidas del proyecto
+    // (acta, plan, RAID exportado, organigrama derivado), no una carpeta de
+    // archivos sueltos. La ruta se queda en `/documents` por lo mismo que
+    // arriba.
+    label: "Artefactos",
     icon: <FileText className="h-4 w-4" aria-hidden />,
     href: (id) => `/pmo/projects/${id}/documents`,
     match: (p) => /^\/admin\/projects\/[^/]+\/documents/.test(p),
