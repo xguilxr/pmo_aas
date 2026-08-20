@@ -58,7 +58,6 @@ flowchart TB
             CHG_X["/pmo/changes (cross-project)"]:::app
             MIN_X["/pmo/minutes (cross-project)"]:::app
             REP["/pmo/reports"]:::app
-            REP_PF["/pmo/reports/portfolio<br/>(admin only)"]:::app
             RES_X["/pmo/resources (cross-project)"]:::app
         end
 
@@ -301,7 +300,6 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/pmo/changes` | Cambios cross-project. |
 | `/pmo/minutes` | Minutas cross-project. |
 | `/pmo/reports` | Reportes operativos. |
-| `/pmo/reports/portfolio` | Constructor de reporte portfolio (admin). |
 | `/pmo/resources` | US-183: capacidad/saturación de recursos — vista Personas, Roles, Áreas y Equipos, Conflictos (sobreasignación con recomendación). Filtro de ventana (Hoy/Semana/3 semanas/Mes). |
 
 **Subrutas del proyecto** (montadas con `ProjectTabsBar`)

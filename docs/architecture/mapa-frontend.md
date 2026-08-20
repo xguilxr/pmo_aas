@@ -42,8 +42,9 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 | `/pmo/projects/[id]` + tabs | Detalle: `plan|tasks|gantt`, `raid`, `areas` (tab «Recursos»), `documents` (tab «Artefactos»), `minutes|ai-minutes`, `reports|builder|tweak`, `changes`, `lessons`, `charter`, `ai-context` |
 | `/pmo/organizations/[id]` (+`/reports`) | Panel org (KPIs «Portafolios» y «Programas» desde US-201) |
 | `/pmo/programs/[id]` (+`/reports`) | Panel programa |
-| `/pmo/raid`, `/changes`, `/minutes`, `/reports` | Vistas cross con `TenantCrossFilters` |
-| `/pmo/resources` | Capacidad/saturación (tabs personas/roles/áreas/conflictos) |
+| `/pmo/raid`, `/changes`, `/minutes` | Vistas cross con `TenantCrossFilters` |
+| `/pmo/reports` | Cinco pestañas por nivel: PMO · Organizaciones · **Portafolios** (US-209) · Programas · Proyectos |
+| `/pmo/resources` | Dos pestañas (US-208): **Catálogo** (las cuatro secciones de US-183: personas/roles/áreas/conflictos, con su ventana de tiempo) y **Capacidad** (heatmap persona×semana en % FTE, capacidad vs demanda, críticos compartidos, sugerencias) |
 | `/pmo/requests` (+`/new`, `[id]`) | Solicitudes (`request-form.tsx` pide «Área que solicita» y «Equipo o sub-área»: texto libre, las palabras del solicitante — no la jerarquía) |
 | `/admin/*` | tenant, ai, users, permissions, audit-logs, organizations (`org-hierarchy-section.tsx`: **Portafolio ⊃ Programa** desde US-200), areas |
 | `/superadmin/*` | Pantallas de plataforma (listado en `navigation.md` §3.5) |
@@ -70,6 +71,9 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   proyecto desde US-201, con la organización heredada del header desde US-205;
   cada nivel limpia los de abajo). No hay tabla virtualizada ni column-pinning
   (la control tower lo necesitará).
+- **Capacidad**: `capacidad-semanal.tsx` — el heatmap persona×semana con su
+  escala de cinco tramos, el desglose de celda (resuelto en cliente sobre las
+  asignaciones que trae la fila) y los tres paneles de lectura.
 - **Vista maestra**: `vista-maestra.tsx` — la tabla del control tower.
   Columnas declaradas como datos (`clave`/`etiqueta`/`orden`/`celda`/`texto`),
   así que el XLSX exporta exactamente las visibles. Header y primera columna
