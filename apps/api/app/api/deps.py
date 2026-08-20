@@ -196,6 +196,39 @@ async def get_current_user(
     active_raw = payload.get("active_tenant_id")
     active_tenant_id = UUID(active_raw) if active_raw else None
 
+    # US-214 / AM-16 — el inquilino activo se comprueba contra la **tabla** de
+    # membresías, no contra el claim del token.
+    #
+    # Sin esto, revocar una membresía no surtiría efecto hasta que el token
+    # caduque: una hora (`ACCESS_TOKEN_TTL_SEC`). El caso concreto es un
+    # consultor externo que trabaja para dos clientes, termina con uno, y sigue
+    # viendo su cartera hasta sesenta minutos después de que le quiten el acceso.
+    #
+    # El precio es una consulta por petición autenticada, por el índice compuesto
+    # `(user_id, tenant_id)`. Es el precio de que revocar signifique revocar; el
+    # claim solo sirve para pintar el desplegable.
+    #
+    # El superadministrador queda fuera: su acceso viene de `join-as-admin`
+    # (FC-4, AM-06) y no de una membresía, y exigírsela le impediría dar soporte.
+    # Un usuario **sin** inquilino activo tampoco se comprueba: es el estado de
+    # quien todavía no eligió, y no hay nada contra qué comprobar.
+    if active_tenant_id is not None and not user.is_superadmin:
+        from app.services.membresia import tiene_membresia
+
+        if not await tiene_membresia(
+            db, user_id=user.id, tenant_id=active_tenant_id
+        ):
+            raise forbidden(
+                code="TENANT_MEMBERSHIP_REVOKED",
+                detail=mensaje(
+                    que="Ya no tienes acceso a esta organización",
+                    porque="Tu membresía en ella se retiró mientras tu sesión "
+                    "seguía abierta.",
+                    accion="Cambia de organización en el selector, o vuelve a "
+                    "iniciar sesión.",
+                )
+            )
+
     # US-073 + DEC-021 + DEC-024: precargar overrides de capabilities
     # del tenant activo. La tabla `tenant_role_permission_overrides`
     # se reinterpreta: `module` guarda la capability completa

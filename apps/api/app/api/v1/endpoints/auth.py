@@ -1,11 +1,11 @@
 import secrets
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
@@ -31,6 +31,7 @@ from app.core.security import (
 )
 from app.db.session import get_db
 from app.models.auth import RefreshToken
+from app.models.organization import Organization
 from app.models.role import Role, UserRole
 from app.models.user import User
 from app.schemas.auth import (
@@ -46,6 +47,7 @@ from app.schemas.auth import (
 from app.services.audit import write_audit
 from app.services.aviso_privacidad import VERSION as VERSION_AVISO
 from app.services.aviso_privacidad import acepto_lo_vigente, como_json
+from app.services.membresia import inquilinos_de, tiene_membresia
 from app.services.notifications import (
     PASSWORD_RESET_REQUESTED,
     avisa_cambio_de_credencial,
@@ -299,10 +301,17 @@ async def _emite_sesion(
     y el que pasa por el segundo factor— y tener dos copias de la emisión de
     sesión es cómo se acaba con una cookie puesta en un camino y no en el otro.
     """
-    tenant_ids: list = []
-    if user.tenant_id:
-        tenant_ids.append(user.tenant_id)
-    active_tenant = user.tenant_id
+    # US-214 — los inquilinos de la sesión salen de la tabla de membresías, no
+    # de `users.tenant_id`: una persona puede pertenecer a varios. El de origen
+    # sigue siendo el activo por defecto —es donde se creó su cuenta y donde
+    # espera aterrizar—, y si su membresía se revocó, el primero de los vivos.
+    vivos = [UUID(t) for t, _, _ in await inquilinos_de(db, user_id=user.id)]
+    tenant_ids: list = vivos or ([user.tenant_id] if user.tenant_id else [])
+    active_tenant = (
+        user.tenant_id
+        if user.tenant_id and user.tenant_id in tenant_ids
+        else (tenant_ids[0] if tenant_ids else None)
+    )
 
     access = create_access_token(
         subject=user.id,
@@ -561,24 +570,99 @@ async def my_permissions(cu: CurrentUser = Depends(get_current_user)):
     }
 
 
+@router.get("/my-tenants")
+async def my_tenants(
+    cu: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """US-214 — los inquilinos a los que pertenece quien pregunta.
+
+    Alimenta el selector del encabezado, que el artboard describe como «visible
+    solo con más de una membresía». Sale de la **tabla** y no del claim
+    `tenant_ids` del token: el claim puede llevar una membresía ya revocada, y
+    aunque seleccionarla fallaría, ofrecerla en el desplegable es prometer algo
+    que no se va a poder hacer.
+
+    Trae el conteo de organizaciones porque el artboard lo pinta en cada fila —es
+    lo que distingue «Grupo Andrade PMO, 3 organizaciones» de otro inquilino con
+    nombre parecido—. La etiqueta de plan que el mockup muestra al lado es de
+    US-221 y no se inventa aquí.
+    """
+    filas = await inquilinos_de(db, user_id=cu.id)
+    conteos: dict[str, int] = {}
+    if filas:
+        por_inquilino = (
+            await db.execute(
+                select(Organization.tenant_id, func.count())
+                .where(
+                    Organization.tenant_id.in_([i for i, _, _ in filas]),
+                    # `organizations` no tiene borrado blando, solo `is_active`.
+                    # Se cuentan las activas porque el número contesta «¿cuántas
+                    # voy a ver si entro aquí?», y una desactivada no aparece en
+                    # el selector de organización.
+                    Organization.is_active.is_(True),
+                )
+                .group_by(Organization.tenant_id)
+            )
+        ).all()
+        conteos = {str(t): int(c) for t, c in por_inquilino}
+    return {
+        "active_tenant_id": (
+            str(cu.effective_tenant_id) if cu.effective_tenant_id else None
+        ),
+        "tenants": [
+            {
+                "id": i,
+                "name": n,
+                "slug": s,
+                "organizations": conteos.get(i, 0),
+            }
+            for i, n, s in filas
+        ],
+    }
+
+
 @router.post("/switch-tenant", response_model=LoginResponse)
 async def switch_tenant(
     body: SwitchTenantRequest,
     cu: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not cu.is_superadmin and body.tenant_id not in cu.tenant_ids:
+    """US-214 / AM-16 — cambia el inquilino activo de la sesión.
+
+    La autorización va contra la **tabla** de membresías y no contra el claim
+    `tenant_ids` del token, que es lo que hacía antes. Con un inquilino por
+    usuario la lista era de un elemento y el defecto no tenía consecuencia; con
+    membresía multi-inquilino, un claim heredado de una membresía ya revocada
+    autorizaría el cambio hasta que el token caduque.
+
+    El superadministrador queda fuera: su acceso a cualquier inquilino viene de
+    `join-as-admin` (FC-4, AM-06) y no de una membresía.
+    """
+    if not cu.is_superadmin and not await tiene_membresia(
+        db, user_id=cu.id, tenant_id=body.tenant_id
+    ):
         raise forbidden()
+    # Los claims se rearman desde la tabla, no se copian del token viejo: si una
+    # membresía se retiró desde que se emitió, el token nuevo no la arrastra.
+    vivos = (
+        [t for t, _, _ in await inquilinos_de(db, user_id=cu.id)]
+        if not cu.is_superadmin
+        else [str(t) for t in cu.tenant_ids]
+    )
     access = create_access_token(
         subject=cu.id,
-        tenant_ids=[str(t) for t in cu.tenant_ids],
+        tenant_ids=vivos,
         active_tenant_id=str(body.tenant_id),
         is_superadmin=cu.is_superadmin,
         roles=cu.roles,
     )
     user_out = await _build_user_out(db, cu.user)
     cuerpo = LoginResponse(
-        access_token=access, user=user_out, tenants=cu.tenant_ids, active_tenant_id=body.tenant_id
+        access_token=access,
+        user=user_out,
+        tenants=[UUID(t) for t in vivos],
+        active_tenant_id=body.tenant_id,
     )
     # El token cambia de inquilino activo, así que la cookie tiene que cambiar
     # con él. Sin esto, el navegador seguiría mandando el token del inquilino

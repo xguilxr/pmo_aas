@@ -1246,3 +1246,45 @@ información nueva sin sitio en el esquema anterior. `actors.fte_cost_rate` no s
 toca: existía antes. Verificada en los dos sentidos sobre SQLite en memoria, con
 filas previas, antes de pushear: sobreviven intactas y las columnas nuevas nacen
 nulas.
+
+---
+
+## 0115 — `user_tenant_memberships` (US-214 / AM-16)
+
+Una tabla y un índice. Es un cambio de **seguridad** antes que de modelo, y el
+análisis de amenazas se escribió antes de la migración (CLAUDE.md §0.3): está en
+`modelo-amenazas.md` como **AM-16**.
+
+| Columna | Por qué |
+|---|---|
+| `user_id`, `tenant_id` | La pareja, con unicidad `(user_id, tenant_id)` **sin importar el estado** |
+| `granted_by_user_id` | Quién la concedió. Sin clave ajena: borrar a quien la concedió no debe borrar la traza |
+| `revoked_at`, `revoked_by_user_id` | Se **marca** en vez de borrar la fila |
+
+Índice `ix_membership_user_tenant` sobre `(user_id, tenant_id)`: es la consulta de
+**cada petición autenticada**.
+
+**Por qué la unicidad ignora el estado.** Dos filas para la misma pareja —una
+revocada y otra viva— obligarían a decidir cuál manda cada vez que se lee, y esa
+es una decisión que no hace falta tomar. Conceder sobre una revocada la reactiva.
+
+**Por qué se marca y no se borra.** «¿Quién tuvo acceso a este cliente y cuándo se
+le quitó?» no se contesta con una fila borrada, y es exactamente la pregunta de
+una auditoría.
+
+**Sí hay relleno, al contrario que en la 0114.** La migración siembra una
+membresía por cada usuario con `tenant_id`. No es inventar un dato: el inquilino
+de origen **es** la membresía, y sin la siembra la tabla diría que nadie pertenece
+a nada — con la comprobación por petición puesta, eso deja a todo el mundo fuera.
+La diferencia con la 0114 es qué se sabe: allí la tarifa del catálogo no era la
+del momento de asignar, así que copiarla fechaba hoy una cifra de hace un año.
+Aquí no hay nada que suponer.
+
+**`users.tenant_id` no se toca.** Sigue siendo el inquilino de origen. La
+membresía añade inquilinos; no reemplaza el de origen.
+
+**La bajada** suelta el índice antes que la tabla y pierde las membresías
+**adicionales**; las de origen siguen en `users.tenant_id`. Verificada en los dos
+sentidos sobre SQLite con usuarios previos: la siembra da dos membresías, el
+usuario sin inquilino no gana ninguna, y al bajar `users.tenant_id` queda intacto.
+

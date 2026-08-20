@@ -57,3 +57,4 @@ from app.models.tenant import Tenant  # noqa: F401
 from app.models.tenant_permission import TenantRolePermissionOverride  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.user_scope_assignment import UserScopeAssignment  # noqa: F401
+from app.models.user_tenant_membership import UserTenantMembership  # noqa: F401

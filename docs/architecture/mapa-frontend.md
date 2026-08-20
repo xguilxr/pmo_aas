@@ -65,7 +65,11 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   `app/(app)/layout.tsx`; `activa` es lo elegido y `efectiva` lo que va a la
   consulta — ver `navigation.md` §2.0) y `switcher-de-organizacion.tsx`. Las
   pantallas leen con `useOrgFiltro()`; ninguna carga su propia lista de
-  organizaciones para filtrar. Los formularios sí conservan su `<Select>`: ahí
+  organizaciones para filtrar. Delante va `switcher-de-inquilino.tsx` (US-214),
+  que se pinta solo con más de una membresía y **recarga la aplicación** al
+  cambiar: cambiar de inquilino cambia organizaciones, proyectos, personas,
+  marca, moneda y permisos, y re-consultar pantalla por pantalla dejaría media
+  interfaz con datos del anterior. Los formularios sí conservan su `<Select>`: ahí
   la organización es un campo de lo que se crea.
 - **Datos**: `ui/sortable-th.tsx` + `lib/hooks/use-sortable-rows.ts`,
   `inline-select-cell.tsx`, `tenant-cross-filters.tsx` (portafolio → programa →

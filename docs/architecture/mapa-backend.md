@@ -36,6 +36,7 @@ apps/api/app/
 | `user_scope_assignment.py` | user_scope_assignments (scope_type org/program/project, sin FK real) | base de visibilidad PM |
 | `auth.py` | refresh_tokens, password_reset_tokens, admin_otp_codes, dispositivos_confiables | JWT: claims tenant_ids, active_tenant_id (falta active_organization_id, W2) |
 | `tenant_permission.py` | tenant_role_permission_overrides | overrides capability×tenant (DEC-021) |
+| `user_tenant_membership.py` | user_tenant_memberships (US-214/AM-16) | la fuente de verdad de a qué inquilinos pertenece alguien; se consulta en el cambio **y en cada petición**, nunca el claim del token |
 | `project.py` | projects (**portfolio_id nullable** US-198, sin business_unit_id/department_id desde 0109; **phase/type en español** US-202, default `preparacion`; health_status/source/reason US-180; manually_edited_fields US-084), project_health_evaluations (US-191: 5+1 dimensiones, histórico) | |
 | `project_request.py` / `project_charter.py` | project_requests (+**portfolio_id/program_id** 0109; `business_unit`/`department` siguen como texto libre del solicitante), project_charters (+portfolio_id/program_id) | folios SOL- via folio_sequences |
 | `task.py` | tasks (wbs_code, parent_id, is_milestone, position US-176, predecessors JSON), task_dependencies (FS/SS/FF/SF + lag) | hito clave: W6 |

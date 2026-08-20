@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 
 import { NotificationBell } from "@/components/notification-bell";
+import { SwitcherDeInquilino } from "@/components/switcher-de-inquilino";
 import { SwitcherDeOrganizacion } from "@/components/switcher-de-organizacion";
 import { useTenantBranding } from "@/components/tenant-branding-provider";
 import { UserMenu } from "@/components/user-menu";
@@ -618,8 +619,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* US-205 — el contexto de organización, una vez y aquí. El mockup lo
               pega a la marca: se lee «esta plataforma, esta organización» de
               izquierda a derecha, que es el orden en que se decide. */}
+          {/* US-214 — el inquilino va **antes** de la organización, porque la
+              contiene: leídos de izquierda a derecha dicen «este cliente, esta
+              organización suya». Al revés se leen como dos filtros
+              independientes, que es lo que no son. El de inquilino se pinta solo
+              con más de una membresía; él mismo lo decide. */}
           {userReady && user && !user.is_superadmin ? (
-            <SwitcherDeOrganizacion />
+            <>
+              <SwitcherDeInquilino />
+              <SwitcherDeOrganizacion />
+            </>
           ) : null}
         </div>
         <div className="flex items-center gap-1.5">
