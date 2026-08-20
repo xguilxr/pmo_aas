@@ -28,6 +28,8 @@ from app.services.analytics.snapshots import (
     aggregate_project_trends,
     snapshot_tenant,
 )
+from app.services.completitud import a_json as completitud_a_json
+from app.services.completitud import completitud_de
 from app.services.indicadores import avance_de_cartera
 from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.pdf_renderer import render_pdf
@@ -630,9 +632,9 @@ async def plan_vs_actual(
     porque el CSV de exportación se comparte por enlace y renombrarla rompería
     los que ya están guardados, a cambio de nada que el usuario note.
 
-    Trece de las dieciséis columnas del mockup salen de aquí. Las otras tres
-    —«Próximo hito», «Reporte» y «Completitud»— no existen como dato todavía:
-    son US-210 y US-211.
+    Catorce de las dieciséis columnas del mockup salen de aquí; «Completitud»
+    entró con US-210. Las dos que faltan —«Próximo hito» y «Reporte»— son
+    US-211.
     """
     tenant_id = _tenant(cu)
     stmt = _filtro_jerarquia(
@@ -758,6 +760,11 @@ async def plan_vs_actual(
     # calendario (_plan_progress_for), que es otra cosa.
     eff = await effective_progress_map(db, list(projects))
     preferida_pva = await moneda_preferida(db, tenant_id)
+    # US-210 — la columna «Compl.». Se **deriva**: un porcentaje guardado se
+    # queda viejo el día que alguien edita el proyecto por un camino que se
+    # olvidó de recalcularlo, y entonces la columna dice 96 % de un proyecto al
+    # que le faltan tres campos.
+    completitudes = await completitud_de(db, list(projects))
 
     out = []
     for p in projects:
@@ -804,6 +811,15 @@ async def plan_vs_actual(
                 # cuándo alguien reportó: la distinción importa y la columna la
                 # dice así. El estatus de reporte es US-211.
                 "updated_at": p.updated_at.isoformat() if p.updated_at else None,
+                # US-210 — el porcentaje y **qué falta**. El detalle viaja con
+                # la fila porque el checklist se pinta al abrir la celda, y una
+                # ida al servidor por proyecto para saberlo es la razón por la
+                # que nadie lo abriría.
+                "completeness": (
+                    completitud_a_json(completitudes[str(p.id)])
+                    if str(p.id) in completitudes
+                    else None
+                ),
             }
         )
     return out

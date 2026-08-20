@@ -30,11 +30,11 @@
  *
  * ## Las tres columnas que faltan
  *
- * «Próximo hito», «Reporte» y «Completitud» no están: no existen como dato.
- * Son US-211 y US-210. Se declaran en `COLUMNAS_PENDIENTES` y la barra de
- * configuración las nombra como lo que son —pendientes—, en vez de callarlas:
- * quien conoce el mockup va a buscarlas, y no encontrarlas sin explicación se
- * lee como que se perdieron.
+ * «Próximo hito» y «Reporte» no están: no existen como dato, y son US-211.
+ * («Completitud» sí está desde US-210.) Se declaran en `COLUMNAS_PENDIENTES` y
+ * la barra de configuración las nombra como lo que son —pendientes—, en vez de
+ * callarlas: quien conoce el mockup va a buscarlas, y no encontrarlas sin
+ * explicación se lee como que se perdieron.
  */
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -62,11 +62,10 @@ import { useSortableRows, type SortableCtrl } from "@/lib/hooks/use-sortable-row
 
 const CLAVE_COLUMNAS = "pmoaas:vista-maestra:columnas";
 
-/** Las tres columnas del mockup que todavía no tienen dato detrás. */
+/** Las columnas del mockup que todavía no tienen dato detrás. */
 export const COLUMNAS_PENDIENTES: { etiqueta: string; us: string }[] = [
   { etiqueta: "Próximo hito", us: "US-211" },
   { etiqueta: "Reporte", us: "US-211" },
-  { etiqueta: "Completitud", us: "US-210" },
 ];
 
 type Columna = {
@@ -91,6 +90,8 @@ type Contexto = {
   onPrioridad?: (projectId: string, prioridad: number) => void;
   /** Abrir el desglose del cálculo de salud. */
   onDesglose?: (projectId: string, nombre: string) => void;
+  /** US-210 — abrir el checklist de lo que le falta al proyecto. */
+  onCompletitud?: (fila: PlanVsActualRow) => void;
   /** `true` si la persona puede editar proyectos. */
   puedeEditar: boolean;
 };
@@ -131,6 +132,22 @@ function par(plan: number, real: number): string {
 }
 
 const PRIORIDADES = [1, 2, 3, 4, 5];
+
+/**
+ * El color de la completitud. Tres tramos y no un degradado: la pregunta es
+ * «¿este proyecto se puede leer?», y eso tiene tres respuestas —sí, con
+ * reservas, no—. Un degradado obliga a comparar tonos entre filas lejanas para
+ * contestar algo que es categórico.
+ *
+ * Los cortes son 100 y 80. El 100 es el único que significa «no falta nada», y
+ * por eso tiene su propio color: 99 % es un proyecto al que le falta algo, y
+ * pintarlo igual que el completo es lo que hace que nadie lo termine.
+ */
+function colorDeCompletitud(pct: number): string {
+  if (pct >= 100) return "var(--color-success-fg)";
+  if (pct >= 80) return "var(--color-warning-fg)";
+  return "var(--color-danger-fg)";
+}
 
 function columnas(): Columna[] {
   const cols: Columna[] = [
@@ -370,6 +387,36 @@ function columnas(): Columna[] {
         ),
     },
     {
+      clave: "completeness",
+      etiqueta: "Compl.",
+      align: "right",
+      ancho: 10,
+      // Los proyectos sin dato ordenan al final, no como 0 %: `undefined` es
+      // «no se calculó» y el hook de orden ya manda los vacíos al fondo.
+      orden: (r) => r.completeness?.pct,
+      texto: (r) => (r.completeness ? `${r.completeness.pct}%` : "—"),
+      celda: (r, ctx) => {
+        const c = r.completeness;
+        if (!c) return <span className="text-[var(--color-tertiary)]">—</span>;
+        return (
+          <button
+            type="button"
+            onClick={() => ctx.onCompletitud?.(r)}
+            disabled={!ctx.onCompletitud}
+            className="tabular-nums underline decoration-dotted hover:text-[var(--color-accent)] disabled:no-underline"
+            style={{ color: colorDeCompletitud(c.pct) }}
+            title={
+              c.faltantes.length === 0
+                ? "Todos los datos mínimos capturados"
+                : `Faltan ${c.faltantes.length}: ${c.faltantes.map((f) => f.etiqueta).join(", ")}`
+            }
+          >
+            {c.pct}%
+          </button>
+        );
+      },
+    },
+    {
       clave: "updated_at",
       etiqueta: "Últ. act.",
       ancho: 12,
@@ -407,6 +454,7 @@ const VISIBLES_POR_DEFECTO = new Set([
   "end_date",
   "risks",
   "issues",
+  "completeness",
 ]);
 
 export function VistaMaestra({
@@ -496,7 +544,14 @@ export function VistaMaestra({
     [todas, visibles],
   );
 
-  const contexto: Contexto = { onSalud, onPrioridad, onDesglose, puedeEditar };
+  const [checklist, setChecklist] = useState<PlanVsActualRow | null>(null);
+  const contexto: Contexto = {
+    onSalud,
+    onPrioridad,
+    onDesglose,
+    onCompletitud: setChecklist,
+    puedeEditar,
+  };
 
   async function exportar() {
     if (exportando) return;
@@ -610,6 +665,55 @@ export function VistaMaestra({
             {COLUMNAS_PENDIENTES.map((c) => `${c.etiqueta} (${c.us})`).join(" · ")}
             . Necesitan datos que todavía no existen.
           </p>
+        </div>
+      ) : null}
+
+      {/* US-210 — el checklist de lo que falta. Va aquí y no en un modal: la
+          persona está recorriendo la tabla, y un modal la saca de la fila que
+          estaba mirando para decirle algo que cabe en cuatro líneas. */}
+      {checklist?.completeness ? (
+        <div className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="text-sm font-semibold text-[var(--color-primary)]">
+              {checklist.name}
+              <span className="ml-2 font-normal text-[var(--color-tertiary)]">
+                {checklist.completeness.presentes} de{" "}
+                {checklist.completeness.total} datos mínimos
+              </span>
+            </h3>
+            <button
+              type="button"
+              onClick={() => setChecklist(null)}
+              className="text-[11px] text-[var(--color-tertiary)] underline hover:text-[var(--color-accent)]"
+            >
+              Cerrar
+            </button>
+          </div>
+          {checklist.completeness.faltantes.length === 0 ? (
+            <p className="mt-2 text-[13px] text-[var(--color-success-fg)]">
+              No le falta nada. Todos los datos mínimos están capturados.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1.5">
+              {checklist.completeness.faltantes.map((f) => (
+                <li key={f.clave} className="text-[13px]">
+                  <span className="font-medium text-[var(--color-primary)]">
+                    {f.etiqueta}
+                  </span>
+                  {/* El porqué, no solo el qué: una casilla sin consecuencia
+                      se ignora, y la consecuencia es lo que hace que alguien
+                      capture el dato. */}
+                  <span className="text-[var(--color-tertiary)]"> — {f.porque}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            href={`/pmo/projects/${checklist.project_id}/edit`}
+            className="mt-2.5 inline-block text-[13px] text-[var(--color-accent)] underline"
+          >
+            Completar los datos del proyecto
+          </Link>
         </div>
       ) : null}
 

@@ -77,6 +77,27 @@ export type DashboardTops = {
   by_delay: TopPorAtraso[];
 };
 
+/** US-210 — un requisito mínimo que al proyecto le falta. */
+export type RequisitoFaltante = {
+  clave: string;
+  etiqueta: string;
+  grupo: "identidad" | "responsables" | "calendario" | "dinero" | "gobierno";
+  /**
+   * Qué se pierde sin el dato. Viene de la API y no se escribe en la pantalla:
+   * el checklist se pinta en tres superficies, y traducir once claves a español
+   * en cada una son tres copias del mismo diccionario.
+   */
+  porque: string;
+};
+
+export type Completitud = {
+  /** 0-100, entero, redondeado hacia abajo. */
+  pct: number;
+  presentes: number;
+  total: number;
+  faltantes: RequisitoFaltante[];
+};
+
 /**
  * Una fila de la **vista maestra** (US-207).
  *
@@ -124,6 +145,11 @@ export type PlanVsActualRow = {
    * fuera del sistema. El estatus de reporte es US-211.
    */
   updated_at: string | null;
+  /**
+   * US-210 — cuánto del proyecto está capturado. Se **deriva** en el servidor;
+   * no hay columna que se pueda quedar vieja.
+   */
+  completeness: Completitud | null;
 };
 
 export type PlanVsActualParams = {

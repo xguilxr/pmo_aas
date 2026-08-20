@@ -68,7 +68,7 @@ MPP/XML/XLSX/CSV** con preview/IA — base de importación masiva) · areas
 (áreas→equipos→actores, sync-users) · project_directory (project_roles +
 participations + eligible-actors) · capacity (/summary /conflicts
 **/weekly-load** /resource-load) + organigrama · dashboard (kpis, charts, **tops**, trends,
-heatmap, risk/health-matrix, treemap, plan-vs-actual (+CSV),
+heatmap, risk/health-matrix, treemap, plan-vs-actual (+CSV; la fila de la vista maestra, con completitud derivada US-210),
 **snapshots/capture**, reports/portfolio) ·
 tenant_cross (RAID/cambios/minutas/reportes cross con filtros) · reports +
 report_templates/sections + report_builder (+ai-chat) + scheduled_* ·

@@ -60,12 +60,17 @@ organización y deja el de tenant declarado como US-214.
 
 ## Oleada 2C — necesitan modelo de datos nuevo
 
-Cada una lleva su migración y, cuando toca contrato, su ADR. Ordenadas por lo
+La mayoría lleva su migración y, cuando toca contrato, su ADR. Ordenadas por lo
 que desbloquean.
+
+**Corrección sobre US-210.** No lleva migración: la completitud se **deriva** de
+campos que ya existen. Un porcentaje guardado se queda viejo el día que alguien
+edita el proyecto por un camino que se olvidó de recalcularlo. La suposición de
+que las doce necesitaban esquema nuevo era del desglose, no del mockup.
 
 | US | Qué | Desbloquea |
 |---|---|---|
-| **US-210** | Completitud de datos por proyecto (campos mínimos + checklist de onboarding) | Columna del control tower · WProyectoResumen · WImportacion |
+| **US-210** ✅ | Completitud de datos por proyecto (campos mínimos + checklist de onboarding). **Derivada, sin migración** | Columna del control tower · WProyectoResumen · WImportacion |
 | **US-211** | Próximo hito e estatus de reporte como datos consultables | Dos columnas del control tower · Portfolio Board |
 | **US-212** | Línea base del plan (D-6) + comparación plan/base/real | WPlan · «desviación» deja de no tener referente |
 | **US-213** | Cadencia bi-semanal de snapshots + historial de cortes | Tendencias del dashboard · WReportesOrg · boards |

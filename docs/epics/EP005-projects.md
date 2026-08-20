@@ -326,6 +326,77 @@ o el que entra por importación masiva.
 
 ---
 
+### US-210 — Completitud de datos por proyecto ✅ (2026-08-20)
+
+**Como** PMO
+**Quiero** saber de qué proyectos se puede hablar
+**Para** no leer un tablero donde seis proyectos sin capturar bajan el promedio
+sin que nada lo diga.
+
+De los mockups aprobados: la columna «Compl.» del artboard «Portafolio — Vista
+maestra» y el «checklist de onboarding» de «Onboarding masivo». Son la misma
+cosa: el porcentaje resume y el checklist detalla.
+
+**Para qué sirve.** Un proyecto sin fechas no tiene desviación de calendario;
+uno sin presupuesto no tiene consumo; uno sin PM no tiene a quién preguntarle.
+En un tablero esos proyectos no salen mal: salen **vacíos**, y un hueco se lee
+como un cero. Es también la única lista de tareas honesta después de una
+importación masiva (US-216).
+
+**Criterios de aceptación:**
+- [x] **Se deriva, no se guarda.** Un porcentaje persistido habría que
+  recalcularlo en cada edición del proyecto, en cada tarea, en cada
+  participación y en cada acta; el día que se olvide un camino, la columna dice
+  96 % de un proyecto al que le faltan tres campos. Mismo criterio que el avance
+  del plan (ENH-109). **Sin migración**: el desglose de la Fase 2 asumía una
+  para cada US de la oleada 2C y esta no la necesita.
+- [x] Once requisitos, **todos con el mismo peso**. Ponderarlos exige defender
+  por qué el sponsor vale el doble que el presupuesto, y esa discusión no tiene
+  respuesta: los dos son obligatorios o no lo son. Un porcentaje con pesos
+  secretos es peor que uno plano porque nadie puede reproducirlo.
+- [x] **No se piden `name`, `folio` ni `phase`**: son NOT NULL, y una casilla que
+  nunca puede fallar infla el porcentaje sin decir nada. La completitud mide lo
+  que **puede** faltar.
+- [x] Un presupuesto declarado de **cero cuenta como capturado** — es un
+  proyecto sin costo, no un dato ausente. Es DAT-12 del lado del que evalúa. Un
+  sponsor de espacios en blanco, en cambio, no cuenta: «capturado con nada» no
+  es capturado.
+- [x] Una clave que nadie averiguó cuenta como **faltante**: colapsar «no lo
+  tiene» y «no lo miré» hacia el lado optimista es cómo un porcentaje acaba
+  diciendo 100 % de un proyecto vacío.
+- [x] El porcentaje redondea **hacia abajo**: con diez de once, «90 %» es más
+  honesto que «91 %» — al proyecto le falta algo y el redondeo no puede
+  insinuar que casi no.
+- [x] Cada faltante viaja con su **etiqueta y su porqué**, no solo con la clave.
+  Una casilla sin consecuencia se ignora, y la consecuencia es lo que hace que
+  alguien capture el dato. Además evita traducir once claves a español en las
+  tres superficies que lo pintan.
+- [x] La regla vive en `app/dominio/completitud.py` y **no importa SQLAlchemy**
+  (MCS DEV-02): recibe hechos y devuelve el veredicto, así que se prueba sin
+  base de datos. Los hechos los averigua `app/services/completitud.py` en **tres
+  consultas agrupadas** para todos los proyectos a la vez, no tres por fila.
+- [x] `GET /projects/{id}/completeness` y el campo `completeness` en la fila de
+  la vista maestra. El detalle viaja con la fila: una ida al servidor por
+  proyecto para abrir el checklist es la razón por la que nadie lo abriría.
+- [x] La columna usa **tres tramos de color** (100 · ≥80 · resto) y no un
+  degradado: la pregunta es «¿este proyecto se puede leer?» y tiene tres
+  respuestas. El 100 tiene su propio color porque es el único que significa «no
+  falta nada» — pintar el 99 % igual que el completo es lo que hace que nadie lo
+  termine.
+
+**Test Cases:** `test_us210_completitud.py`
+- `TC-210.1` (unit, sin base) — Todo/nada; una clave ausente cuenta como
+  faltante; el redondeo va hacia abajo; el total se deriva de la lista; ningún
+  faltante se explica con una frase hueca; no se piden los NOT NULL.
+- `TC-210.2` — Presupuesto cero cuenta y `NULL` no; un sponsor de espacios no
+  cuenta; los ocho del registro y los tres de gobierno; el acta de un proyecto
+  no cuenta para otro; con la lista vacía no se consulta nada.
+- `TC-210.3` — La vista maestra trae el porcentaje y el detalle; el endpoint del
+  proyecto devuelve el checklist con sus cinco grupos; un proyecto de otro
+  inquilino no se consulta.
+
+**Estado de integración:** DONE (US-210).
+
 ## Notas técnicas
 
 - Folios por tenant+año (Postgres sequences o función).
@@ -337,6 +408,7 @@ o el que entra por importación masiva.
 GET    /api/v1/projects
 POST   /api/v1/projects
 GET    /api/v1/projects/{id}
+GET    /api/v1/projects/{id}/completeness   # US-210 (derivado, no persistido)
 PATCH  /api/v1/projects/{id}
 DELETE /api/v1/projects/{id}                 (soft)
 POST   /api/v1/projects/{id}/phase/change

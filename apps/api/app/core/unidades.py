@@ -99,6 +99,24 @@ def razon_a_pct(numerador: float, denominador: float, *, decimales: int = 1) -> 
     return round(numerador * 100 / denominador, decimales)
 
 
+def razon_a_pct_piso(numerador: int, denominador: int) -> int:
+    """`numerador/denominador` en porcentaje entero, **truncando hacia abajo**.
+
+    Existe aparte de `razon_a_pct` porque el redondeo no es un detalle de
+    formato: es la diferencia entre decir «91 %» y «90 %» de un proyecto al que
+    le falta un dato de once. Redondear hacia arriba insinúa que casi no le
+    falta nada, y quien lea la columna no va a abrirla.
+
+    Con `denominador` cero devuelve 100: la razón es que la única fuente de un
+    cero ahí es «no hay requisitos que cumplir», y no cumplir ninguno de cero
+    requisitos es estar completo. La otra opción —cero por ciento— diría que
+    falta todo cuando no falta nada.
+    """
+    if not denominador:
+        return 100
+    return numerador * 100 // denominador
+
+
 def razon_a_pct_decimal(numerador: Decimal, denominador: Decimal) -> Decimal:
     """La misma razón, en `Decimal`, para las cifras que van a informes.
 
