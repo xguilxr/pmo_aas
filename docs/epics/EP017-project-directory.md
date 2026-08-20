@@ -361,6 +361,91 @@ PDF de status).
 
 ---
 
+### US-208 — Recursos en dos pestañas: Catálogo y Capacidad ✅ (2026-08-20)
+
+De los mockups aprobados el 2026-08-19, artboards «Recursos › Capacidad» y
+«Recursos — Catálogo».
+
+**Como** PMO Manager
+**Quiero** ver la carga de cada persona **semana a semana**
+**Para** encontrar el pico que hay que renivelar antes de que ocurra.
+
+**El corte entre las dos pestañas es de tiempo verbal.** El catálogo contesta
+«¿quién hay y cómo está **hoy**?» —una ventana, un número por recurso—. La
+capacidad contesta «¿qué va a pasar?» —doce semanas, un número por recurso y
+semana—. Son la misma tabla leída con dos preguntas, y tenerlas como cuatro
+secciones planas (US-183) era lo que hacía que ninguna se leyera bien. Las
+cuatro secciones de US-183 pasan a vivir dentro de Catálogo, sin cambios.
+
+**Por qué no bastaba la matriz mensual de US-186.** Alguien al 90 % de media en
+septiembre puede estar al 160 % la semana del corte y al 40 % el resto: el
+promedio mensual esconde exactamente el pico que hay que renivelar. Las
+decisiones de capacidad se toman por semana («lo movemos a la s37»), y por eso
+la etiqueta de columna es el número de semana ISO.
+
+**Criterios de aceptación:**
+- [x] `GET /capacity/weekly-load?weeks=&organization_id=` — una serie semanal de
+  % FTE por recurso, más los otros tres paneles de la pestaña en la **misma**
+  respuesta: capacidad vs demanda por mes, críticos compartidos y sugerencias.
+  Van juntos porque miran las mismas asignaciones: con un endpoint por panel,
+  cuatro consultas leen la misma tabla y pueden leerla en momentos distintos —el
+  heatmap diría 160 % mientras el panel de al lado ya no lista a esa persona.
+- [x] Las semanas empiezan el **lunes de la semana en curso**, no hoy: media
+  semana como primera columna daría un porcentaje incomparable con las de al
+  lado. El horizonte tiene techo de 52 semanas — la respuesta lleva una serie
+  por recurso y el ancho multiplica.
+- [x] Una asignación **sin fechas** cuenta en todas las semanas: `None` es «sin
+  plazo», no «no aplica». Tratarlo al revés hace desaparecer del heatmap a quien
+  está asignado indefinidamente, que es la mitad de los casos reales.
+- [x] Las filas de equipo **promedian** a sus miembros, no los suman: sumar seis
+  daría 720 %, que como «carga del equipo» no significa nada. El contrato lo
+  dice (`kind: "team"`, `members`) y la fila lo rotula. Un equipo de uno no
+  genera fila: repetiría la de su único miembro.
+- [x] La demanda de una persona cuenta **todos** sus proyectos aunque el filtro
+  sea de una organización: quien está saturado lo está por la suma de todo lo
+  que tiene encima. Es la misma regla de `/projects/{id}/resource-load`.
+- [x] **Los asignados sin `%` capturado no entran, y se cuentan.** Una fila en
+  cero para quien sí está asignado se lee como «libre», cuando lo que pasa es
+  que no se sabe cuánto pesa. El caso más común es el PM que la sincronización
+  de membresía (US-118) asigna sola. El panel dice cuántos son y dónde
+  capturarlo, porque es accionable.
+- [x] Clic en una celda: los proyectos que componen esa carga, **sin** ida al
+  servidor — la fila trae sus asignaciones con fechas. El cliente decide qué
+  toca cada semana con la misma regla que el servidor; discrepar ahí haría que
+  el desglose sumara distinto de la celda que lo abrió.
+- [x] Escala de cinco tramos (0 · ≤50 · ≤80 · ≤100 · >100) y no un degradado:
+  un degradado obliga a comparar tonos entre celdas lejanas, y lo que hay que
+  ver de un golpe es dónde se cruza el 100 %. Los tramos son fijos y **no**
+  derivados de los umbrales del inquilino: los umbrales configuran cuándo
+  avisar, y la escala dice cuánto hay asignado, que es un hecho.
+- [x] «Compartido» es **medido**, no declarado: estar en dos o más proyectos a
+  la vez lo es, con `is_shared_resource` puesto o sin él.
+- [x] Las sugerencias son derivadas y nombran recurso y semanas concretas
+  («L. Fuentes pasa de su capacidad en s35 a s36: pico de 160 %»). Sin
+  sobrecarga no se emite ninguna: inventar un consejo cuando no hay nada que
+  hacer entrena a la gente a ignorar el panel.
+- [x] Header y primera columna fijos, como en la vista maestra (US-207).
+- [x] Los escenarios what-if quedan **pendientes** y la pantalla lo dice — el
+  propio mockup los marca «próximamente».
+- [x] Costo por recurso sigue siendo US-215 (W4): no está en esta US.
+
+**Test Cases:** `test_us208_carga_semanal.py`
+- `TC-208.1` — Las semanas: arrancan en lunes, son consecutivas y la etiqueta es
+  la semana ISO.
+- `TC-208.2` — Una asignación pesa en las semanas que toca y solo en esas; dos
+  que solapan se suman; sin fechas cuenta en todas.
+- `TC-208.3` — La fila de equipo promedia; un equipo de uno no genera fila.
+- `TC-208.4` — Sin asignación no hay fila; sin recursos se devuelven las semanas
+  igual (DIS-03 necesita las columnas para decir «no hay nadie»).
+- `TC-208.5` — Capacidad vs demanda en FTE; críticos compartidos desde dos
+  proyectos; la sugerencia nombra recurso y semanas, y sin sobrecarga no hay.
+- `TC-208.6` — El endpoint devuelve el desglose de la celda y rechaza un
+  horizonte absurdo (422).
+
+**Estado de integración:** DONE (US-208).
+
+---
+
 ## Notas
 
 - IDs de DEC-### a asignar al cierre, mirando el último libre en `DECISIONS.md`.

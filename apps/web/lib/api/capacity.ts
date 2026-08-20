@@ -122,6 +122,89 @@ export function getCapacitySummary(
   return apiFetch<CapacitySummaryResponse>(`/api/v1/capacity/summary${qs(params)}`);
 }
 
+// --- US-208: carga semanal (heatmap persona × semana) ----------------------
+
+export type SemanaDeCarga = {
+  /** El número de semana ISO, como lo dibuja el mockup: `s33`. */
+  label: string;
+  start: string;
+  end: string;
+};
+
+export type AsignacionDeCarga = {
+  project_id: string;
+  project_name: string;
+  project_folio: string;
+  /** `null` cuando la participación no tiene FTE capturado. */
+  allocation_pct: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_critical: boolean;
+};
+
+export type FilaDeCarga = {
+  /**
+   * `actor` es una persona; `team`, la fila que agrega a sus miembros. La fila
+   * de equipo es el **promedio** de los suyos, no la suma: sumar seis daría
+   * 720 %, que no significa nada. `members` dice cuántos.
+   */
+  kind: "actor" | "team";
+  id: string;
+  name: string;
+  discipline: string | null;
+  area: string;
+  team_id: string | null;
+  team: string;
+  members?: number;
+  capacity_pct: number;
+  /** Un valor por semana, en el mismo orden que `weeks`. */
+  per_week: number[];
+  peak_pct: number;
+  projects_count: number;
+  is_key_resource: boolean;
+  is_shared_resource: boolean;
+  /** Vacío en las filas de equipo. Es el desglose de la celda al hacer clic. */
+  assignments: AsignacionDeCarga[];
+};
+
+export type CapacidadVsDemanda = {
+  label: string;
+  /** En FTE y no en porcentaje: «38.6 de 35 personas» se entiende sin convertir. */
+  demand_fte: number;
+  capacity_fte: number;
+};
+
+export type CriticoCompartido = {
+  actor_id: string;
+  name: string;
+  discipline: string | null;
+  projects_count: number;
+  projects: string[];
+  peak_pct: number;
+};
+
+export type CargaSemanalResponse = {
+  weeks: SemanaDeCarga[];
+  rows: FilaDeCarga[];
+  capacity_vs_demand: CapacidadVsDemanda[];
+  shared_critical: CriticoCompartido[];
+  /** Derivadas del propio corte: nombran recurso y semanas concretas. */
+  suggested: string[];
+  /**
+   * Recursos con participaciones activas y **sin** `%` capturado. No entran en
+   * el heatmap: una fila en cero para quien sí está asignado se lee como
+   * «libre», cuando lo que pasa es que no se sabe cuánto pesa. Se cuentan
+   * porque es accionable — hay que capturar el FTE.
+   */
+  unquantified_resources: number;
+};
+
+export function getCargaSemanal(
+  params: { weeks?: number; organization_id?: string } = {},
+): Promise<CargaSemanalResponse> {
+  return apiFetch<CargaSemanalResponse>(`/api/v1/capacity/weekly-load${qs(params)}`);
+}
+
 export function getCapacityConflicts(
   params: CapacityParams = {},
 ): Promise<CapacityConflictsResponse> {

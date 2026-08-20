@@ -1,8 +1,21 @@
 "use client";
 
-// US-183 — Vista ejecutiva de capacidad/saturación de recursos.
-// Cross-project: saturación individual + agregados por rol/área/equipo +
-// conflictos de sobreasignación con recomendación de gobernanza.
+/**
+ * Recursos — Catálogo y Capacidad.
+ *
+ * US-183 dejó aquí cuatro secciones planas: personas, roles, áreas/equipos y
+ * conflictos. US-208 las mete todas bajo **Catálogo** y añade **Capacidad**, que
+ * es lo que los mockups aprobados pedían y no existía: el heatmap de carga por
+ * persona y semana, capacidad contra demanda, quién es cuello de botella y qué
+ * hacer con eso.
+ *
+ * El corte entre las dos pestañas es de tiempo verbal. El catálogo contesta
+ * «¿quién hay y cómo está **hoy**?» —una ventana, un número por recurso—. La
+ * capacidad contesta «¿qué va a pasar?» —doce semanas, un número por recurso y
+ * semana—. Son la misma tabla leída con dos preguntas distintas, y mezclarlas
+ * en una lista de secciones planas era lo que hacía que ninguna de las dos se
+ * leyera bien.
+ */
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -17,9 +30,13 @@ import { SortableTh } from "@/components/ui/sortable-th";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { downloadGlobalOrganigrama } from "@/lib/api/analytics";
+import { CapacidadSemanal } from "@/components/capacidad-semanal";
+import { useOrgFiltro } from "@/components/organizacion-activa";
 import {
   getCapacityConflicts,
   getCapacitySummary,
+  getCargaSemanal,
+  type CargaSemanalResponse,
   type CapacityAreaAgg,
   type CapacityColor,
   type CapacityConflict,
@@ -40,6 +57,15 @@ const WINDOW_OPTIONS: { v: CapacityWindow; label: string }[] = [
   { v: "month", label: "Mes" },
 ];
 
+/** Las dos pestañas del mockup. */
+type Pestana = "catalogo" | "capacidad";
+
+const PESTANAS: { v: Pestana; label: string }[] = [
+  { v: "catalogo", label: "Catálogo" },
+  { v: "capacidad", label: "Capacidad" },
+];
+
+/** Las secciones de dentro del catálogo — las cuatro de US-183. */
 type Tab = "people" | "roles" | "areas" | "conflicts";
 
 const TABS: { v: Tab; label: string }[] = [
@@ -73,8 +99,16 @@ function EmptyState() {
 }
 
 export default function ResourcesPage() {
+  // US-205 — la organización sale del header. El catálogo es por organización
+  // (lo dice el mockup: «catálogo por organización»); la carga de una persona
+  // suma todos sus proyectos, y eso lo resuelve el servidor.
+  const orgFiltro = useOrgFiltro();
+  const [pestana, setPestana] = useState<Pestana>("catalogo");
   const [win, setWin] = useState<CapacityWindow>("week");
   const [tab, setTab] = useState<Tab>("people");
+  const [semanas, setSemanas] = useState(12);
+  const [carga, setCarga] = useState<CargaSemanalResponse | null>(null);
+  const [cargandoCarga, setCargandoCarga] = useState(true);
   const [resources, setResources] = useState<CapacityResource[]>([]);
   // DAT-11: cuándo cambió lo que se está mostrando.
   const leido = useLectura(resources);
@@ -107,7 +141,10 @@ export default function ResourcesPage() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([getCapacitySummary({ window: win }), getCapacityConflicts({ window: win })])
+    Promise.all([
+      getCapacitySummary({ window: win, organization_id: orgFiltro }),
+      getCapacityConflicts({ window: win, organization_id: orgFiltro }),
+    ])
       .then(([summary, conflictsRes]) => {
         if (cancelled) return;
         setResources(summary.resources);
@@ -130,7 +167,25 @@ export default function ResourcesPage() {
     return () => {
       cancelled = true;
     };
-  }, [win]);
+  }, [win, orgFiltro]);
+
+  // La carga semanal se pide aparte y solo cuando su pestaña está a la vista:
+  // es la respuesta más pesada de la pantalla —una serie por recurso— y traerla
+  // para el catálogo sería pagarla sin mirarla.
+  useEffect(() => {
+    if (pestana !== "capacidad") return;
+    let cancelled = false;
+    setCargandoCarga(true);
+    getCargaSemanal({ weeks: semanas, organization_id: orgFiltro })
+      .then((r) => !cancelled && setCarga(r))
+      .catch(() => !cancelled && setCarga(null))
+      .finally(() => {
+        if (!cancelled) setCargandoCarga(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pestana, semanas, orgFiltro]);
 
   return (
     <div className="space-y-5">
@@ -143,11 +198,50 @@ export default function ResourcesPage() {
           {leido && <MarcaDeDatos periodo="ventana" detalle={`ventana de ${win}`} actualizado={leido} />}
         </div>
         <p className="text-sm text-[var(--color-tertiary)]">
-          Saturación de capacidad por persona, rol, área y equipo — y los
-          conflictos de sobreasignación a resolver.
+          {pestana === "catalogo"
+            ? "Quién hay y cómo está su carga hoy: por persona, rol, área y equipo, con los conflictos de sobreasignación a resolver."
+            : "Qué va a pasar: carga por persona y semana, capacidad contra demanda y quién es el cuello de botella."}
         </p>
       </header>
 
+      {/* Las dos pestañas del mockup. El corte es de tiempo verbal: el catálogo
+          es «hoy», la capacidad es «las próximas doce semanas». */}
+      <div
+        role="tablist"
+        aria-label="Vistas de recursos"
+        className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+      >
+        {PESTANAS.map((opt) => {
+          const activa = pestana === opt.v;
+          return (
+            <button
+              key={opt.v}
+              type="button"
+              role="tab"
+              aria-selected={activa}
+              onClick={() => setPestana(opt.v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-5 py-1.5 text-sm font-medium transition-colors",
+                activa
+                  ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {pestana === "capacidad" ? (
+        <CapacidadSemanal
+          datos={carga}
+          cargando={cargandoCarga}
+          semanas={semanas}
+          onSemanas={setSemanas}
+        />
+      ) : (
+      <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
           role="tablist"
@@ -253,6 +347,8 @@ export default function ResourcesPage() {
         </div>
       ) : (
         <ConflictsView conflicts={conflicts} />
+      )}
+      </div>
       )}
     </div>
   );

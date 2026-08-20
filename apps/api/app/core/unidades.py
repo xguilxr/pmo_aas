@@ -65,6 +65,23 @@ def pct_a_fraccion(pct: float) -> float:
     return pct / 100
 
 
+def pct_a_fte(pct_acumulado: float, *, decimales: int = 1) -> float:
+    """3860 → 38,6. Porcentajes de asignación sumados, en personas equivalentes.
+
+    Es la misma aritmética que `pct_a_fraccion` y se nombra aparte porque dice
+    otra cosa. Ahí «0,42» es una fracción de uno; aquí «38,6» son treinta y
+    ocho personas y media, y el número se **presenta** con esa unidad
+    («38,6 / 35,0 FTE»).
+
+    Existe porque la alternativa era un `/ 100` suelto en el cálculo de
+    capacidad, y un `/ 100` suelto no dice de qué a qué. En `capacity.py`
+    conviven porcentajes por recurso, porcentajes sumados y FTE: leer cuál es
+    cuál sin el nombre exige reconstruirlo, y equivocarse no da un error, da un
+    número plausible — que es justo lo que DAT-04 existe para impedir.
+    """
+    return round(pct_a_fraccion(pct_acumulado), decimales)
+
+
 def razon_a_pct(numerador: float, denominador: float, *, decimales: int = 1) -> float:
     """`numerador/denominador` en porcentaje, y **0,0 si el denominador es cero**.
 
