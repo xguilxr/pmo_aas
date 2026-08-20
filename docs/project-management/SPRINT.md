@@ -15,13 +15,16 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Sin US activa.** **Fase 2 completa** en `claude/fase2-navegacion-diseno`: 21
-commits, US-203 a US-222, todo el mockup aprobado el 2026-08-19 salvo lo que
-necesita tu decisión. Migraciones `0112`–`0115`. Detalle por US en su epic.
+**Sin US activa.** **Fase 2 completa** en `claude/merge-deuda-tecnica-yamaca`:
+US-203 a US-222, el mockup aprobado el 2026-08-19. Migraciones `0112`–`0115`.
 
-Próximo paso tuyo: **mergear** la branch (21 commits sin merge, contra §8 — se
-acumularon porque pediste no detenerse), **desplegar `0105`–`0115`**, y contestar
-las **cuatro preguntas de EP021**, lo único que bloquea trabajo.
+**Las cuatro preguntas de EP021 están contestadas** (2026-08-20), las cuatro
+acotadas — detalle en la epic y en DEC-033. Desbloquea **US-223 a US-226**.
+
+Próximo paso tuyo: **mergear el PR** —Fase 2 nunca tuvo uno abierto: no esperaba
+revisión, esperaba que alguien lo abriera— y **desplegar `0105`–`0115`** leyendo
+el registro (abajo). Los ~23 commits sin merge y las US de más de 10 archivos son
+deuda de proceso contra §8 y §3: se pidió no detenerse.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).
@@ -33,9 +36,9 @@ las **cuatro preguntas de EP021**, lo único que bloquea trabajo.
 ### Reestructura de plataforma — lo que queda
 
 Planeación en `docs/epics/drafts/reestructura-*.md`; mapas en
-`docs/architecture/mapa-{backend,frontend}.md`. W1 y Fase 2 cerradas. Queda:
-**W3** RLS de Postgres, **W8** el `drop` de `business_units`/`departments` cuando
-el contador de compat lo confirme.
+`docs/architecture/mapa-{backend,frontend}.md`. W1 y Fase 2 cerradas. Queda **W3**
+RLS de Postgres y **W8** el `drop` de `business_units`/`departments` cuando el
+contador de compat lo confirme.
 
 ### Producto — abierto
 
