@@ -15,6 +15,7 @@ from app.core.errors import conflict, mensaje, not_found, validation_error
 from app.db.session import get_db
 from app.dominio.raci import UNICO as PAPEL_UNICO
 from app.models.area import Actor
+from app.models.project import Project
 from app.models.project_participation import ProjectParticipation
 from app.models.project_role import ProjectRole
 from app.schemas.project_directory import (
@@ -26,6 +27,9 @@ from app.schemas.project_directory import (
     ProjectRoleRead,
     ProjectRoleUpdate,
 )
+from app.services.costo_asignacion import congelar as congelar_tarifa
+from app.services.costo_asignacion import costo as costo_de_participacion
+from app.services.costo_asignacion import resumen_de_proyecto
 
 
 def _tenant(cu: CurrentUser) -> UUID:
@@ -158,6 +162,12 @@ participations_router = APIRouter(
 
 def _hydrate(part: ProjectParticipation, actor: Actor | None) -> ParticipationRead:
     data = ParticipationRead.model_validate(part, from_attributes=True)
+    # US-215 — el costo se **deriva** al leer, no se guarda. Un costo almacenado
+    # se queda viejo el día que alguien mueve las fechas o el % de dedicación por
+    # un camino que se olvidó de recalcularlo; es la misma razón por la que la
+    # completitud de US-210 se deriva. Lo que sí está guardado es la tarifa.
+    total = costo_de_participacion(part)
+    data.cost_total = float(total) if total is not None else None
     if actor is not None:
         data.actor = ActorMini(
             id=actor.id,
@@ -321,6 +331,11 @@ async def create_participation(
     )
     db.add(part)
     await db.flush()
+    # US-215 — la tarifa se congela aquí, del catálogo. Que el actor no tenga
+    # tarifa capturada es lo normal y **no** impide asignarlo: `congelar`
+    # devuelve `False` y la participación queda sin costo calculable, que es la
+    # verdad. Se puede congelar después con el endpoint explícito.
+    await congelar_tarifa(db, tenant_id=_tenant(cu), participacion=part)
     await _exigir_una_sola_a(
         db, str(_tenant(cu)), str(project_id), esta=str(part.id), papel=body.raci
     )
@@ -439,7 +454,6 @@ async def list_eligible_actors(
     """
     from datetime import date
 
-    from app.models.project import Project
     from app.services.area_visibility import actors_visible_to_project
 
     tenant_id = _tenant(cu)
@@ -524,3 +538,109 @@ async def delete_participation(
     part.is_active = False
     part.is_primary = False
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# US-215 — costo de recursos: congelar la tarifa y leer el total
+# ---------------------------------------------------------------------------
+
+
+@participations_router.post(
+    "/{participation_id}/freeze-cost-rate", response_model=ParticipationRead
+)
+async def freeze_cost_rate(
+    project_id: UUID,
+    participation_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> ParticipationRead:
+    """US-215 — vuelve a copiar la tarifa del catálogo a esta asignación.
+
+    Existe porque congelar al asignar no alcanza en los dos casos reales:
+    la persona se asignó antes de que alguien capturara su tarifa, y la tarifa
+    de verdad cambió para este proyecto.
+
+    **Recongelar revalúa la asignación entera** al nuevo importe, incluido el
+    trabajo ya hecho. Es una limitación conocida de tener un solo snapshot por
+    participación, y la salida correcta cuando la tarifa cambia a mitad de camino
+    ya existe en el modelo: cerrar la participación en la fecha del cambio y
+    abrir otra con el periodo nuevo. Las participaciones ya llevan
+    `start_date`/`end_date` y ciclo de vida (US-183) justamente para eso; una
+    tabla de historial de tarifas resolvería lo mismo duplicando el mecanismo.
+
+    Falla con 422 —y no en silencio— si el actor no tiene tarifa **y** periodo en
+    el catálogo. Aquí sí es un error: alguien pidió explícitamente congelar, y
+    devolver un 200 sin haber congelado nada dejaría al usuario creyendo que ya
+    está.
+    """
+    part = (
+        await db.execute(
+            select(ProjectParticipation).where(
+                and_(
+                    ProjectParticipation.tenant_id == str(_tenant(cu)),
+                    ProjectParticipation.project_id == str(project_id),
+                    ProjectParticipation.id == str(participation_id),
+                )
+            )
+        )
+    ).scalar_one_or_none()
+    if not part:
+        raise not_found("Participación")
+    if not await congelar_tarifa(db, tenant_id=_tenant(cu), participacion=part):
+        raise validation_error(
+            mensaje(
+                que="Esta persona no tiene tarifa y unidad de tiempo en el catálogo",
+                porque="Sin la tarifa no hay importe, y sin la unidad —por hora, "
+                "por día o por mes— el importe no significa nada: multiplicarlo "
+                "suponiendo una daría un costo creíble y falso.",
+                accion="Captura la tarifa y su unidad en el catálogo de recursos "
+                "y vuelve a congelar.",
+            ),
+            {"cost_rate_snapshot": "sin tarifa en el catálogo"},
+        )
+    await db.commit()
+    await db.refresh(part)
+    actor = (
+        await db.execute(select(Actor).where(Actor.id == str(part.actor_id)))
+    ).scalar_one_or_none()
+    return _hydrate(part, actor)
+
+
+@participations_router.get("/cost-summary")
+async def project_cost_summary(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """US-215 — el costo de recursos del proyecto, **por moneda**.
+
+    Nunca un total único: dos personas facturadas en monedas distintas no tienen
+    un costo total, y sumarlas inventaría un número que no existe en ninguna
+    parte. Convertir exigiría un tipo de cambio con fecha, que es una estimación
+    y no un dato (misma regla que `dominio/moneda.py`).
+
+    Viene con `without_rate` **en la misma respuesta**. Un total sin ese número
+    miente por omisión: «$400.000 en recursos» con doce asignaciones sin tarifa
+    es un presupuesto a medias presentado como completo. En llamadas separadas se
+    puede mostrar uno sin el otro, y eso es lo que hay que impedir.
+
+    Solo cuentan las asignaciones con estado `activa` — una tentativa no es un
+    compromiso de gasto y una cancelada no lo fue nunca—, el mismo criterio que
+    el motor de saturación de US-183.
+    """
+    rows = (
+        (
+            await db.execute(
+                select(ProjectParticipation).where(
+                    and_(
+                        ProjectParticipation.tenant_id == str(_tenant(cu)),
+                        ProjectParticipation.project_id == str(project_id),
+                    )
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return resumen_de_proyecto(list(rows))
+

@@ -66,6 +66,17 @@ export const RACI_DESCRIPCION: Record<RaciPapel, string> = {
 // Para ordenar la columna: la A primero, «sin papel» al final.
 export const RACI_RANGO: Record<string, number> = { A: 0, R: 1, C: 2, I: 3 };
 
+// US-215 — la unidad de tiempo de una tarifa. Sin ella `fte_cost_rate` es un
+// número sin significado: «tarifa de un FTE» puede ser por hora, por día o por
+// mes, y multiplicar suponiendo una da un costo creíble y falso.
+export type PeriodoTarifa = "hora" | "dia" | "mes";
+
+export const PERIODO_TARIFA_LABEL: Record<PeriodoTarifa, string> = {
+  hora: "por hora",
+  dia: "por día laborable",
+  mes: "por mes",
+};
+
 export type Participation = {
   id: string;
   tenant_id: string;
@@ -88,6 +99,15 @@ export type Participation = {
   // US-217.
   raci: RaciPapel | null;
   is_key_stakeholder: boolean;
+  // US-215 — la tarifa congelada al asignar. Los cuatro nulos juntos significan
+  // «sin tarifa congelada», que no es costo cero (DAT-12).
+  cost_rate_snapshot: number | null;
+  cost_currency: string | null;
+  cost_rate_period: string | null;
+  cost_rate_captured_at: string | null;
+  // Derivado al leer, no guardado: un costo almacenado se queda viejo el día que
+  // alguien mueve las fechas. `null` = no calculable, no cero.
+  cost_total: number | null;
   created_at: string;
   actor?: ActorMini | null;
 };
@@ -111,6 +131,9 @@ export type ParticipationCreate = {
   // US-217.
   raci?: RaciPapel | null;
   is_key_stakeholder?: boolean;
+  // US-215: la tarifa **no** se manda. Se congela del catálogo al crear, o con
+  // `freezeCostRate` después. Dictarla desde aquí permitiría registrar un costo
+  // que no corresponde a ninguna tarifa aprobada.
 };
 
 export type ParticipationUpdate = Omit<Partial<ParticipationCreate>, "raci"> & {
@@ -187,6 +210,30 @@ export const deleteParticipation = (projectId: string, participationId: string) 
   apiFetch<void>(`/api/v1/projects/${projectId}/participations/${participationId}`, {
     method: "DELETE",
   });
+
+// US-215 — costo de recursos.
+export type ResumenCosto = {
+  // Un importe por moneda, nunca un total único: dos personas facturadas en
+  // monedas distintas no tienen un costo total.
+  by_currency: Record<string, number>;
+  assignments: number;
+  // Cuántas asignaciones quedaron sin costo calculable. Viene con el total
+  // porque un total sin este número miente por omisión.
+  without_rate: number;
+  // El código si todo está en la misma moneda; `null` si hay varias o ninguna.
+  single_currency: string | null;
+};
+
+export const freezeCostRate = (projectId: string, participationId: string) =>
+  apiFetch<Participation>(
+    `/api/v1/projects/${projectId}/participations/${participationId}/freeze-cost-rate`,
+    { method: "POST" },
+  );
+
+export const getProjectCostSummary = (projectId: string) =>
+  apiFetch<ResumenCosto>(
+    `/api/v1/projects/${projectId}/participations/cost-summary`,
+  );
 
 // US-117 — actores eligibles para dropdowns de assignee/owner.
 export const listEligibleActors = (projectId: string) =>

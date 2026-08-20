@@ -486,8 +486,8 @@ se puede leer en ninguna de las dos escalas.
   `project_participations`. Nulable porque estar en un proyecto sin papel
   declarado es el estado normal de la mayoría de las participaciones, y
   obligarlo llenaría la columna de letras puestas al azar.
-- [x] Una sola A por proyecto, exigida en `POST` y en `PATCH`. El 422 nombra a
-  quien ya la tiene.
+- [x] Una sola A por proyecto, exigida en `POST` y en `PATCH`. El 400
+  (`VALIDATION_ERROR`) nombra a quien ya la tiene.
 - [x] Poner la A a quien ya la tiene es idempotente, no conflicto. Y **quitarla
   se permite**: un proyecto sin A es incompleto, no inválido —así está antes de
   que alguien la asigne—, y rechazarlo impediría corregir una A puesta a la
@@ -511,8 +511,8 @@ se puede leer en ninguna de las dos escalas.
 
 **Tests (`tests/test_us217_raci.py`, 16):**
 - `TC-217.1` — Crear participación con cada una de las cuatro letras.
-- `TC-217.2` — Segunda A en el mismo proyecto → 422 nombrando a la primera.
-- `TC-217.3` — Segunda A vía `PATCH` → 422; la primera queda intacta.
+- `TC-217.2` — Segunda A en el mismo proyecto → 400 nombrando a la primera.
+- `TC-217.3` — Segunda A vía `PATCH` → 400; la primera queda intacta.
 - `TC-217.4` — Reasignar la A a quien ya la tiene → 200 (idempotente).
 - `TC-217.5` — Quitar la A con `""` → 200 y el proyecto queda sin A.
 - `TC-217.6` — Dos proyectos, una A cada uno → los dos 201: el límite es por
@@ -523,6 +523,112 @@ se puede leer en ninguna de las dos escalas.
 - `TC-217.10` — Aislamiento por tenant: la A de otro tenant no cuenta.
 
 **Estado de integración:** DONE (US-217).
+
+---
+
+### US-215 — Costo con la tarifa congelada ✅ (2026-08-20)
+
+Del artboard «Proyecto — Recursos» y del bloque W4 del rediseño de modelo de
+datos: «costo-snapshot en participaciones».
+
+**Como** PMO Manager
+**Quiero** que el costo de una asignación se calcule con la tarifa que estaba
+vigente cuando se asignó
+**Para** que subir una tarifa hoy no reescriba el gasto de hace seis meses.
+
+**El defecto, en una frase.** `actors.fte_cost_rate` guarda la tarifa **de hoy**.
+Si en marzo alguien sube la tarifa de un consultor, el costo del trabajo de enero
+cambia solo y el gasto acumulado del proyecto se reescribe hacia atrás. Es el
+mismo problema que la línea base resuelve para las fechas (US-212): la historia
+no se puede mover.
+
+**El campo existía y no se podía llenar.** `fte_cost_rate` está en la API desde
+US-182 y **ninguna pantalla lo capturaba**. Un campo que nadie puede llenar es un
+campo que no existe (CLAUDE.md §13), así que esta US también trae el formulario.
+
+**Por qué la unidad de tiempo es una columna nueva y no una convención.**
+«Tarifa de un FTE» puede ser por hora, por día o por mes, y las tres son
+ciframientos legítimos según el contrato. Multiplicar por los días de la
+asignación asumiendo una de ellas da un número que **parece** autoritativo y está
+equivocado en un factor de 21 o de 168. Mientras nadie calculaba nada, la
+ambigüedad no costaba —era un número que una persona leía y sabía interpretar—;
+al derivar un costo se vuelve el dato más importante del cálculo.
+
+**Por qué la tarifa no se acepta desde el cliente.** Ni al crear ni al editar.
+Aceptarla permitiría registrar un costo que no corresponde a ninguna tarifa
+aprobada, y el snapshot dejaría de ser una copia verificable de algo. Se congela
+del catálogo, o se pide explícitamente con `freeze-cost-rate`.
+
+**Lo que recongelar cuesta, dicho de frente.** Revalúa la asignación entera al
+nuevo importe, incluido el trabajo ya hecho. Es la limitación de tener un solo
+snapshot por participación. La salida correcta cuando la tarifa cambia a mitad de
+camino ya está en el modelo: cerrar la participación en la fecha del cambio y
+abrir otra con el periodo nuevo — las participaciones llevan
+`start_date`/`end_date` y ciclo de vida (US-183) justamente para eso. Una tabla
+de historial de tarifas resolvería lo mismo duplicando el mecanismo.
+
+**Criterios de aceptación:**
+- [x] `cost_rate_snapshot`, `cost_currency`, `cost_rate_period` y
+  `cost_rate_captured_at` en `project_participations`; `cost_rate_period` en
+  `actors`. Migración `0114`.
+- [x] La tarifa se congela **al crear** la participación. Que el actor no tenga
+  tarifa capturada es lo normal y **no** impide asignarlo: la participación queda
+  sin costo calculable, que es la verdad.
+- [x] Hacen falta las **dos** cosas, tarifa y periodo. Con la tarifa sola el
+  importe no tiene unidad de tiempo, y congelarlo así dejaría un número que
+  parece utilizable y no lo es.
+- [x] `POST .../{id}/freeze-cost-rate` para congelar después. Falla con 400 —y no
+  en silencio— si el catálogo no tiene tarifa y periodo: alguien lo pidió
+  explícitamente, y un 200 sin haber congelado nada lo dejaría creyendo que ya
+  está.
+- [x] La moneda es la **del proyecto** (cascada de `dominio/moneda.resolver`,
+  decisión del owner en BUG-092) y se congela con la tarifa. Si el proyecto cambia
+  de moneda después, los costos ya congelados conservan la suya — cambiarlos
+  convertiría importes sin tipo de cambio.
+- [x] El costo se **deriva al leer**, no se guarda. Un costo almacenado se queda
+  viejo el día que alguien mueve las fechas o el % de dedicación por un camino que
+  se olvidó de recalcularlo — misma razón que la completitud de US-210.
+- [x] Sin cualquiera de los cinco datos —tarifa, periodo, % FTE, y las dos
+  fechas— el costo es `None`, no cero. Un cero se sumaría al total del proyecto
+  haciéndolo parecer completo (MCS DAT-12). **No se supone 100 % de dedicación**:
+  la mayoría de las asignaciones compartidas no lo son, y suponerlo infla el costo
+  de todo el portafolio.
+- [x] `GET .../cost-summary` devuelve **un importe por moneda**, nunca un total
+  único: dos personas facturadas en monedas distintas no tienen un costo total
+  (misma regla que `dominio/moneda.py`).
+- [x] `without_rate` viene en la **misma** respuesta que el total. Un total sin
+  ese número miente por omisión: «$400.000 en recursos» con doce asignaciones sin
+  tarifa es un presupuesto a medias presentado como completo. En llamadas
+  separadas se puede mostrar uno sin el otro, y eso es lo que hay que impedir.
+- [x] Solo cuentan las asignaciones con estado `activa` — una tentativa no es un
+  compromiso de gasto y una cancelada no lo fue nunca—, el mismo criterio que el
+  motor de saturación de US-183.
+- [x] Un mes son **21 días laborables**, la misma convención que
+  `ensure_duration_max_21` ya usa en el plan. Dos convenciones distintas para el
+  mismo mes en el mismo producto es peor que elegir la imperfecta.
+- [x] UI: tarifa + unidad en el catálogo de recursos; columna de costo en el
+  directorio del proyecto, con botón «Congelar tarifa» donde falta y el hueco
+  nombrado —«sin tarifa» y «sin fechas o % FTE» llevan a acciones distintas—; y
+  una franja con el total por moneda y lo que falta.
+
+**Imprecisión conocida y declarada:** `dias_laborables` no conoce los feriados.
+El calendario laboral por país o por inquilino es un frente propio, y descontar
+los feriados de México a un equipo en Polonia sería peor que no descontar ninguno.
+
+**Tests (`tests/test_us215_costo_snapshot.py`, 24):**
+- `TC-215.1` — La regla sin base de datos (MCS DEV-02, 12 casos): días laborables
+  inclusivos y sin fin de semana, rango invertido, la única frontera de conversión
+  de tiempo, periodo desconocido sin default, el costo completo, los cinco datos
+  obligatorios uno por uno, no se supone dedicación completa, dos monedas no se
+  suman, un costo desconocido no cuenta como cero, moneda inválida descartada.
+- `TC-215.2` — Contra la API (12 casos): la tarifa se congela al asignar;
+  **subir la tarifa del catálogo no cambia lo ya asignado** —el defecto entero en
+  un test—; sin tarifa se puede asignar igual; con tarifa y sin unidad no se
+  congela; congelar después; congelar sin tarifa falla y lo dice; la moneda es la
+  del proyecto; el resumen da total y lo que falta; una tentativa no cuenta;
+  sin fechas no hay costo; la tarifa no se puede dictar desde el cliente.
+
+**Estado de integración:** DONE (US-215).
 
 ---
 
@@ -540,3 +646,9 @@ se puede leer en ninguna de las dos escalas.
   único parcial que haría falta no existe en SQLite y los tests corren ahí. UI:
   columna RACI ordenada por rango, franja de resumen que nombra a la A o dice
   que falta, y marca de stakeholder clave en el directorio.
+- **2026-08-20 — US-215:** costo-snapshot en `project_participations`
+  (`cost_rate_snapshot`, `cost_currency`, `cost_rate_period`,
+  `cost_rate_captured_at`) + `actors.cost_rate_period`, migración `0114`. La
+  tarifa se congela del catálogo al asignar y no se recalcula; el costo se deriva
+  al leer. `fte_cost_rate` pasa a capturarse desde la UI —existía en la API desde
+  US-182 sin ninguna pantalla que lo llenara—. Regla en `app/dominio/costo.py`.

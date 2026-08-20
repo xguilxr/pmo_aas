@@ -1201,3 +1201,48 @@ rellena.
 madre. Destruye las capturas: no hay dónde guardarlas, y eso es lo esperable en
 un `downgrade` que retira una entidad. Verificada en los dos sentidos sobre
 SQLite en memoria antes de pushear.
+
+---
+
+## 0114 — costo-snapshot en participaciones + unidad de la tarifa (US-215)
+
+Cuatro columnas en `project_participations` y una en `actors`. Ningún índice.
+
+| Tabla | Columna | Por qué |
+|---|---|---|
+| `project_participations` | `cost_rate_snapshot NUMERIC(12,2)` | La tarifa, copiada del catálogo y nunca recalculada |
+| | `cost_currency VARCHAR(3)` | Un importe sin moneda es una unidad mentida (BUG-092) |
+| | `cost_rate_period VARCHAR(8)` | `hora`/`dia`/`mes`. Sin la unidad de tiempo el número no significa nada |
+| | `cost_rate_captured_at TIMESTAMPTZ` | Distingue la tarifa tomada al asignar de una recongelada después |
+| `actors` | `cost_rate_period VARCHAR(8)` | La unidad de `fte_cost_rate`, que existía sin ella desde US-182 |
+
+**El defecto que arregla.** `actors.fte_cost_rate` guarda la tarifa de hoy. Si
+en marzo alguien la sube, el costo del trabajo de enero cambia solo y el gasto
+acumulado del proyecto se reescribe hacia atrás. Es el mismo problema que la
+0113 resuelve para las fechas: la historia no se mueve.
+
+**Por qué el periodo entra ahora.** Mientras nadie calculaba nada con
+`fte_cost_rate`, su ambigüedad no costaba: era un número que una persona leía y
+sabía interpretar. Al derivar un costo se vuelve el dato más importante del
+cálculo — multiplicar una tarifa mensual por los días de la asignación da un
+número 21 veces mayor que el real, con toda la apariencia de un dato bueno.
+
+**Ninguna columna se rellena, y esa es la decisión.** Sería fácil y sería un
+error en las dos:
+
+- **El periodo con `mes` por defecto** inventaría la unidad de tarifas que
+  alguien capturó pensando en horas.
+- **La tarifa desde el catálogo** —el borrador de W4 lo proponía con la salvedad
+  escrita— fecharía hoy una tarifa que quizá se pactó hace un año, y quedaría
+  registrada como si fuera la del momento de asignar.
+
+Un `NULL` dice «no se congeló», que es la verdad y es accionable: la interfaz
+ofrece congelarla en un clic. Un `NULL` en cualquiera de las cuatro significa
+«no hay costo calculable», no cero (MCS DAT-12), y el total del proyecto viene
+acompañado de cuántas asignaciones quedaron sin tarifa.
+
+**La bajada** suelta las columnas y con ellas las tarifas congeladas. Es
+información nueva sin sitio en el esquema anterior. `actors.fte_cost_rate` no se
+toca: existía antes. Verificada en los dos sentidos sobre SQLite en memoria, con
+filas previas, antes de pushear: sobreviven intactas y las columnas nuevas nacen
+nulas.

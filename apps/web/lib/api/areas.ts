@@ -78,6 +78,9 @@ export type Actor = {
   is_key_resource?: boolean;
   is_shared_resource?: boolean;
   fte_cost_rate?: number | null;
+  // US-215 — la unidad de tiempo de la tarifa (hora | dia | mes). Sin ella la
+  // tarifa no significa nada y no se puede congelar en una asignación.
+  cost_rate_period?: string | null;
   created_at: string;
 };
 
@@ -248,6 +251,8 @@ export type ActorResourceFields = {
   is_key_resource?: boolean | null;
   is_shared_resource?: boolean | null;
   fte_cost_rate?: number | null;
+  // US-215.
+  cost_rate_period?: "hora" | "dia" | "mes" | null;
 };
 
 // ---------- Actors ----------

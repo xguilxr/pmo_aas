@@ -99,6 +99,12 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   `linea-base-plan.tsx` (US-212: capturar/comparar; sin línea base dice «la
   desviación es desconocida», no cero, y muestra las dos derivas — la del plan
   se puede reescribir, la real no).
+- **Directorio del proyecto**: `directory/DirectoryView.tsx` (US-217: columna
+  RACI ordenada por rango y franja que nombra a la A; US-215: columna de costo
+  con la tarifa congelada, botón «Congelar tarifa» donde falta y el hueco
+  nombrado — «sin tarifa» y «sin fechas o % FTE» llevan a acciones distintas),
+  `directory/TenantActorsPanel.tsx` (US-215: tarifa **y su unidad de tiempo**,
+  que la API tenía desde US-182 sin ninguna pantalla que la llenara).
 - **Boards**: `raid-kanban.tsx` (kanban DnD nativo, columnas=estados —
   base de project/portfolio boards).
 - **Directory**: `directory/` (PersonPicker, ProjectAreaPicker,

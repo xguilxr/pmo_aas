@@ -29,6 +29,10 @@ import {
   type ResourceType,
   type ScarcityLevel,
 } from "@/lib/api/areas";
+import {
+  PERIODO_TARIFA_LABEL,
+  type PeriodoTarifa,
+} from "@/lib/api/project-directory";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { confirmarDestructivo } from "@/lib/confirmar";
@@ -384,6 +388,17 @@ function ActorModal({
   const [isSharedResource, setIsSharedResource] = useState(
     actor?.is_shared_resource ?? true,
   );
+  // US-215 — tarifa y su unidad de tiempo. `fte_cost_rate` existía en la API
+  // desde US-182 y no se capturaba desde ninguna pantalla: un campo que nadie
+  // puede llenar es un campo que no existe (CLAUDE.md §13).
+  const [costRate, setCostRate] = useState(
+    actor?.fte_cost_rate !== null && actor?.fte_cost_rate !== undefined
+      ? String(actor.fte_cost_rate)
+      : "",
+  );
+  const [costRatePeriod, setCostRatePeriod] = useState<string>(
+    actor?.cost_rate_period ?? "",
+  );
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -419,6 +434,10 @@ function ActorModal({
           projectCapacityPct.trim() === "" ? 100 : Number(projectCapacityPct),
         is_key_resource: isKeyResource,
         is_shared_resource: isSharedResource,
+        // US-215: la tarifa vacía es `null` y no 0. Una tarifa de cero sería un
+        // recurso gratuito, que es un dato distinto de «no se capturó».
+        fte_cost_rate: costRate.trim() === "" ? null : Number(costRate),
+        cost_rate_period: costRatePeriod || null,
       };
       if (actor) {
         await updateActor(actor.id, payload as any);
@@ -605,6 +624,43 @@ function ActorModal({
               placeholder="ej. sap, scrum, azure"
             />
           </FieldLabel>
+          {/* US-215 — la tarifa y su unidad van juntas y en ese orden, porque
+              una sin la otra no sirve: el importe sin unidad de tiempo no se
+              puede multiplicar por nada, y la unidad sin importe no dice nada. */}
+          <div className="grid grid-cols-2 gap-2">
+            <FieldLabel label="Tarifa">
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={costRate}
+                onChange={(e) => setCostRate(e.target.value)}
+                placeholder="ej. 2100"
+              />
+              <span className="text-[11px] text-[var(--color-tertiary)]">
+                En la moneda del proyecto donde se asigne
+              </span>
+            </FieldLabel>
+            <FieldLabel label="Unidad de la tarifa">
+              <Select
+                value={costRatePeriod}
+                onChange={(e) => setCostRatePeriod(e.target.value)}
+              >
+                <option value="">Sin declarar</option>
+                {(Object.keys(PERIODO_TARIFA_LABEL) as PeriodoTarifa[]).map(
+                  (per) => (
+                    <option key={per} value={per}>
+                      {PERIODO_TARIFA_LABEL[per]}
+                    </option>
+                  ),
+                )}
+              </Select>
+              <span className="text-[11px] text-[var(--color-tertiary)]">
+                Sin declararla no hay costo: 2.100 por hora y 2.100 por mes son
+                dos tarifas distintas
+              </span>
+            </FieldLabel>
+          </div>
           <div className="flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input

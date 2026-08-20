@@ -34,6 +34,11 @@ AssignmentStatus = Literal["tentativa", "activa", "cerrada", "cancelada"]
 # mayoría no tiene papel asignado, y forzar uno obligaría a inventarlo para
 # poder guardar la participación.
 RaciPapel = Literal["A", "R", "C", "I"]
+# US-215: la unidad de tiempo de una tarifa. Se declara aquí y en
+# `dominio/costo.py::PERIODOS`; el trinquete de abajo no existe, así que si una
+# se amplía la otra tiene que seguirla — están a dos líneas de distancia a
+# propósito, y el import cruzado no se hace porque un schema no importa dominio.
+PeriodoTarifa = Literal["hora", "dia", "mes"]
 
 
 class ParticipationCreate(BaseModel):
@@ -55,6 +60,11 @@ class ParticipationCreate(BaseModel):
     # US-217 — RACI y stakeholder clave.
     raci: RaciPapel | None = None
     is_key_stakeholder: bool = False
+    # US-215 — no se aceptan al crear. La tarifa se **congela** del catálogo, no
+    # se dicta desde el cliente: aceptarla aquí permitiría registrar un costo que
+    # no corresponde a ninguna tarifa aprobada, y el snapshot dejaría de ser una
+    # copia verificable de algo. Se congela sola si el actor tiene tarifa y
+    # periodo; si no, se pide después con `POST .../freeze-cost-rate`.
 
 
 class ParticipationUpdate(BaseModel):
@@ -78,6 +88,9 @@ class ParticipationUpdate(BaseModel):
     # opcionales del resto del contrato.
     raci: RaciPapel | Literal[""] | None = None
     is_key_stakeholder: bool | None = None
+    # US-215 — la tarifa congelada tampoco se edita por aquí. Recongelarla es una
+    # acción con intención propia y su propio endpoint, no un campo que se puede
+    # tocar de paso al cambiar el área de alguien.
 
 
 class ActorMini(BaseModel):
@@ -110,6 +123,17 @@ class ParticipationRead(BaseModel):
     # US-217.
     raci: str | None = None
     is_key_stakeholder: bool = False
+    # US-215 — la tarifa congelada, su moneda, su unidad de tiempo y cuándo se
+    # congeló. Los cuatro nulos juntos significan «sin tarifa congelada», que no
+    # es costo cero (MCS DAT-12).
+    cost_rate_snapshot: float | None = None
+    cost_currency: str | None = None
+    cost_rate_period: str | None = None
+    cost_rate_captured_at: datetime | None = None
+    #: Lo que cuesta esta asignación con la tarifa congelada, o `None` si falta
+    #: cualquiera de los cinco datos que hacen falta. Derivado, no guardado: un
+    #: costo almacenado se queda viejo el día que alguien mueve las fechas.
+    cost_total: float | None = None
     created_at: datetime
     # Hidratado opcional (?include=actor).
     actor: ActorMini | None = None

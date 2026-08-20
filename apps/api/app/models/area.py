@@ -256,3 +256,13 @@ class Actor(Base, TimestampMixin):
         Boolean, nullable=False, default=True, server_default="true"
     )
     fte_cost_rate: Mapped[Importe | None] = mapped_column(Numeric(10, 2))
+    # US-215 — la unidad de tiempo de la tarifa: hora | dia | mes. Sin ella,
+    # `fte_cost_rate` es un número sin significado —«tarifa de un FTE» puede ser
+    # por hora, por día o por mes, y las tres son ciframientos legítimos según el
+    # contrato— y cualquier costo derivado de él sería creíble y arbitrario.
+    #
+    # Nace nulable y **sin default**, a propósito. Poner `mes` a las filas
+    # existentes sería inventar la unidad de tarifas que alguien capturó pensando
+    # en otra, y el costo saldría equivocado en un factor de 21 o de 168. Un nulo
+    # significa «no se declaró», y sin él no hay costo (MCS DAT-12).
+    cost_rate_period: Mapped[str | None] = mapped_column(String(8))

@@ -107,6 +107,10 @@ Discipline = Literal[
 ]
 Seniority = Literal["junior", "mid", "senior", "lead"]
 ScarcityLevel = Literal["alta", "media", "baja"]
+# US-215 — la unidad de tiempo de `fte_cost_rate`. Mismo vocabulario que
+# `dominio/costo.py::PERIODOS`: si una se amplía, la otra tiene que seguirla. No
+# se importa porque un schema no importa dominio.
+PeriodoTarifa = Literal["hora", "dia", "mes"]
 
 
 class _ActorResourceFields(BaseModel):
@@ -143,6 +147,10 @@ class _ActorResourceFields(BaseModel):
     is_key_resource: bool | None = None
     is_shared_resource: bool | None = None
     fte_cost_rate: float | None = Field(default=None, ge=0)
+    # US-215 — la unidad de tiempo de la tarifa. Sin ella `fte_cost_rate` es un
+    # número sin significado: «tarifa de un FTE» puede ser por hora, por día o
+    # por mes, y multiplicar suponiendo una da un costo creíble y falso.
+    cost_rate_period: PeriodoTarifa | None = None
 
 
 class ActorCreate(_ActorResourceFields):
@@ -202,6 +210,8 @@ class ActorRead(BaseModel):
     is_key_resource: bool = False
     is_shared_resource: bool = True
     fte_cost_rate: float | None = None
+    # US-215.
+    cost_rate_period: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

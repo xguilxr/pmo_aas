@@ -42,8 +42,8 @@ apps/api/app/
 | `plan_baseline.py` | plan_baselines (captura con autor y nota), plan_baseline_tasks (**sin FK a tasks**: una foto no gobierna el ciclo de vida de lo que retrata, US-212) | derivas en `dominio/linea_base.py`; barras de base en el Gantt SVG: diferido |
 | `modules.py` | risks, issues (type action/issue/decision), change_requests, documents†, lessons, meeting_minutes (raid_suggestions JSON → flujo minuta→RAID ya existe) | † legacy, fusionar en project_artifacts (W8) |
 | `project_artifact.py` | project_artifacts | el "Artefactos" nuevo ya es esta tabla |
-| `area.py` | areas (org nullable), teams, actors (**el resource pool**: nominal/project_capacity_pct, fte_cost_rate, skills_tags, user_id?), area_assignments (cascada org/program/project) | actors.organization_id → NOT NULL + costo-snapshot (W4) |
-| `project_participation.py` | project_participations (allocation_pct FTE, periodo, status ciclo de vida) | + cost_rate_snapshot (W4) |
+| `area.py` | areas (org nullable), teams, actors (**el resource pool**: nominal/project_capacity_pct, fte_cost_rate + **cost_rate_period** US-215, skills_tags, user_id?), area_assignments (cascada org/program/project) | actors.organization_id → NOT NULL |
+| `project_participation.py` | project_participations (allocation_pct FTE, periodo, status ciclo de vida; **raci/is_key_stakeholder** US-217; **cost_rate_snapshot/currency/period/captured_at** US-215 — congelados del catálogo, nunca recalculados) | costo en `dominio/costo.py`, derivado al leer |
 | `project_role.py` / `stakeholder.py` / `project_member.py` | project_roles; stakeholders†; project_members† | † duplicados de actors/participations, consolidar (W8) |
 | `report_*.py`, `scheduled_*.py` | reports, report_history/sections/templates, report_builder_templates, scheduled_reports/minutes (cadence weekly/monthly) | cadencia biweekly + scope portfolio (W5) |
 | `metric_snapshot.py` | metric_snapshots (US-151: scope tenant/org/**portfolio**/program/project — US-201 sumó el portafolio; extras JSON) | + cadence biweekly (W5) |
@@ -70,7 +70,8 @@ entre proyectos** US-218, con ciclos validados a nivel de tarea; **línea base**
 US-212: `plan/baselines` + `plan/baseline-comparison`, sin base devuelve
 `has_baseline: false` y no ceros) · areas
 (áreas→equipos→actores, sync-users) · project_directory (project_roles +
-participations + eligible-actors) · capacity (/summary /conflicts
+participations + eligible-actors + **freeze-cost-rate** y **cost-summary** US-215:
+un importe por moneda, nunca un total único, y siempre con `without_rate`) · capacity (/summary /conflicts
 **/weekly-load** /resource-load) + organigrama · dashboard (kpis, charts, **tops**, trends (+`cadencia_dias`: un punto por corte, US-213),
 heatmap, risk/health-matrix, treemap, plan-vs-actual (+CSV; la fila de la vista maestra: 16 columnas, con completitud derivada US-210 y estatus de reporte US-211),
 **snapshots/capture**, reports/portfolio) ·
