@@ -558,6 +558,131 @@ que es lo que esta US tenía que resolver.
 
 ---
 
+## US-216 — Onboarding masivo: importar proyectos y recursos ✅ (2026-08-20)
+
+Del artboard «Onboarding masivo — Importación» de los mockups aprobados el
+2026-08-19 y del bloque **B5**: «cubre la carga inicial de 23 proyectos sin
+captura manual».
+
+**Como** PMO que arranca con un cliente nuevo
+**Quiero** subir su cartera en un Excel
+**Para** no teclear 23 proyectos y 40 personas a mano.
+
+**Por qué está en esta epic.** Es el mismo trabajo que el importador de planes
+visto una altura más arriba: aquel carga las tareas de un proyecto, este carga los
+proyectos. Comparten el patrón «vista previa → confirmar» y el mismo almacén de
+preview; documentarlos aparte esconde que un arreglo en uno debería mirar al otro.
+
+**Qué importa y qué no.** Proyectos y recursos, al nivel de la organización. Los
+**planes** ya tienen su importador —por proyecto, porque un código WBS es del
+proyecto: el `1.2` de uno no es el `1.2` de otro—. Duplicar aquí ese camino daría
+dos importadores de lo mismo que divergen con el primer arreglo. La pantalla lo
+dice, para que nadie suba un plan aquí y no entienda el 415.
+
+**Una fila mala no tumba el archivo.** Un archivo de 23 proyectos con un error en
+el 7 tiene 22 filas buenas. Abortar entero obliga a arreglar y resubir a ciegas
+—sin saber si hay más errores detrás—, que es el bucle que hace abandonar una
+importación. Se valida todo, se reporta fila por fila, y se confirma lo válido.
+
+**Una duplicada se salta y NO se actualiza.** Es la decisión con más consecuencias
+de la US. Una importación se corre dos veces —se cayó la red, alguien la repitió,
+el archivo llegó corregido— y las dos alternativas son peores:
+
+- **Duplicar** convierte 23 proyectos en 46, sin forma barata de deshacerlo.
+- **Actualizar en silencio** pisa lo que alguien editó a mano después de la
+  primera corrida. El caso concreto: se importa, el PM corrige las fechas en la
+  aplicación, alguien resube el Excel original y las fechas vuelven atrás sin que
+  nadie se enterase.
+
+Saltar y reportar deja el trabajo hecho intacto y la decisión en manos de quien la
+puede tomar. Actualizar en masa es otra operación, con su propia confirmación, y
+no se disfraza de importación.
+
+**El nombre es la clave de un proyecto** porque no hay otra: un Excel mantenido a
+mano no trae identificadores de esta plataforma, y el folio lo genera el sistema
+—en la primera carga no existe—. Se compara normalizado (sin acentos, sin
+mayúsculas, sin espacios de sobra) porque «Migración ERP» y «migracion erp  » son
+el mismo proyecto escrito por dos personas. Para un recurso la clave es el
+**correo**, que sí identifica sin ambigüedad; sin correo se cae al nombre, con la
+misma salvedad.
+
+**Criterios de aceptación:**
+- [x] `GET /imports/columns?kind=` — el catálogo de columnas con su ayuda, sus
+  alias y sus valores admitidos. Se sirve desde el backend porque el vocabulario
+  cerrado (tipos, fases, unidades de tarifa) vive en el dominio: dos listas
+  separadas divergen en cuanto se añade un tipo.
+- [x] `POST /imports/preview` valida el archivo entero y **no escribe nada**.
+  Devuelve fila por fila su estado —`valida` / `invalida` / `duplicada`— y sus
+  problemas, con la **línea real del archivo** contando el encabezado: enumerar
+  las filas ya filtradas desplazaría los números en cuanto hubiera una fila vacía
+  en medio, y entonces «revisa la fila 12» no apuntaría a la fila 12 del Excel.
+- [x] `POST /imports/{job_id}/confirm` crea las válidas. El preview se **borra**
+  al confirmar: confirmar dos veces el mismo trabajo daría el doble de proyectos,
+  y es el error que la detección de duplicados no puede atrapar dentro de la misma
+  transacción.
+- [x] Los encabezados se emparejan por **alias** («Cartera» → portafolio, «Fecha
+  inicio» → `start_date`). Lo que no reconoce queda sin mapear y se **reporta**:
+  descartar en silencio una columna «Owner» deja creer que entró.
+- [x] Faltando una columna obligatoria, el error es **del archivo** y no de las
+  filas. Decirlo así evita un reporte de 23 filas inválidas por la misma causa.
+- [x] Duplicados **dentro del mismo archivo** cuentan igual. La primera aparición
+  entra y las siguientes se saltan — no al revés: quien lee el reporte espera que
+  la de arriba sea la que pasó.
+- [x] Una fila inválida **no** se marca además como duplicada: esconder el error
+  que hay que arreglar primero es peor que no reportar el segundo.
+- [x] El portafolio, el programa y el área **se crean si no existen**, con el
+  nombre que trae la fila. Exigir que existan antes convierte la importación en
+  dos pasos, y el primero se hace a ciegas porque nadie sabe qué portafolios hay
+  hasta ver el archivo. Lo que **no** se crea es un usuario: `pm_email`
+  desconocido deja el proyecto sin PM. Crear cuentas desde un Excel es una
+  decisión de seguridad, no de carga de datos.
+- [x] Los tres números —creados, inválidos, duplicados— van **juntos** en la
+  respuesta y en la pantalla. «18 creados» sin decir que 5 quedaron fuera es la
+  misma mentira por omisión que un costo total sin las asignaciones sin tarifa
+  (US-215).
+- [x] La **plantilla mínima** que pide el artboard («simplificada según tamaño»)
+  es la misma lista filtrada por obligatorias, no otra plantilla — así no puede
+  desincronizarse de la grande. Se genera en el navegador desde las columnas que
+  el backend declara: un archivo estático se queda viejo el día que se añade una
+  columna, y el usuario descubre el desajuste al subirlo.
+- [x] Techo de 10 MB y 2.000 filas, con aviso cuando se trunca. Un archivo
+  equivocado no debe intentar crear cien mil proyectos antes de que alguien lo
+  note.
+- [x] El `job_id` lleva el inquilino que lo creó: es un UUID y no un secreto, y
+  sin la comprobación quien lo adivinara escribiría en otro inquilino.
+- [x] La organización de destino viene del **selector del header** (US-205), no de
+  un selector propio: importar «en todas» no significa nada, porque un proyecto
+  vive en una organización.
+- [x] La escritura queda en la auditoría con los tres conteos.
+
+**Tests (`tests/test_us216_importacion_masiva.py`, 25):**
+- `TC-216.1` — La regla sin base de datos (MCS DEV-02, 13 casos): normalización,
+  emparejado por alias, fila completa válida, obligatoria faltante nombrada,
+  valor fuera del vocabulario nombrando los admitidos, fin antes del inicio,
+  prioridad 1–5, tarifa sin unidad que avisa sin invalidar, duplicada del
+  catálogo, duplicada dentro del archivo, una inválida no se marca duplicada, el
+  resumen de tres estados, las obligatorias como plantilla mínima.
+- `TC-216.2` — Contra la API (12 casos): el catálogo de columnas, clase
+  inexistente rechazada, el preview valida todo y no escribe, confirmar crea solo
+  las válidas creando portafolio y programa, **correr la importación dos veces no
+  duplica la cartera**, **una duplicada no se actualiza** —se corrige a mano, se
+  resube el original, el dato corregido sigue ahí—, columnas obligatorias
+  faltantes, recursos con tarifa y unidad, un job de otro inquilino da 404,
+  confirmar dos veces el mismo job da 404, archivo vacío, formato no soportado que
+  apunta al importador correcto.
+
+**Diferido (no bloqueante):** el **mapeo manual** de columnas en la interfaz. El
+backend ya devuelve `mapping` y `unmapped_headers`, y la pantalla los muestra;
+lo que no hay es el control para reasignar una columna a mano. Con los alias
+declarados, un archivo hecho desde la plantilla no lo necesita, y uno ajeno se
+arregla renombrando encabezados — que es lo que la pantalla dice hacer. La
+sugerencia asistida por IA que el plan tiene (US-188) también aplicaría aquí y
+está fuera de esta US.
+
+**Estado de integración:** DONE (US-216).
+
+---
+
 ## Notas técnicas
 
 - **Librería Python para XML/XLSX**: `openpyxl` (xlsx) más parsers
@@ -595,6 +720,12 @@ GET    /api/v1/projects/{id}/plan/baselines                      (US-212)
 POST   /api/v1/projects/{id}/plan/baselines                      (US-212)
 DELETE /api/v1/projects/{id}/plan/baselines/{baseline_id}        (US-212)
 GET    /api/v1/projects/{id}/plan/baseline-comparison            (US-212)
+
+Carga masiva a nivel de organización (US-216) — los planes siguen siendo por
+proyecto, arriba:
+GET    /api/v1/imports/columns?kind=projects|resources           (US-216)
+POST   /api/v1/imports/preview                                   (US-216)
+POST   /api/v1/imports/{job_id}/confirm                          (US-216)
 POST   /api/v1/projects/{id}/tasks/renumber-wbs          (no se usa en UI; ENH-180, 2026-06-29)
 POST   /api/v1/tasks/{id}/move                           (no se usa en UI; ENH-180, 2026-06-29)
 ```

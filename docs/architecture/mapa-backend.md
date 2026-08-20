@@ -65,10 +65,12 @@ project_requests (CRUD + review + create-project; clasifica con portfolio/progra
 (exports plan/raid/changes/lessons/organigrama) · modules (CRUD RAID/cambios/
 docs/lessons/minutas + convert-agreement) · risk_actions · change_approvals
 (token público JWT) · stakeholders · tasks (CRUD + renumber-wbs + **import
-MPP/XML/XLSX/CSV** con preview/IA — base de importación masiva; **dependencias
-entre proyectos** US-218, con ciclos validados a nivel de tarea; **línea base**
-US-212: `plan/baselines` + `plan/baseline-comparison`, sin base devuelve
-`has_baseline: false` y no ceros) · areas
+MPP/XML/XLSX/CSV** con preview/IA; **dependencias entre proyectos** US-218, con
+ciclos validados a nivel de tarea; **línea base** US-212: `plan/baselines` +
+`plan/baseline-comparison`, sin base devuelve `has_baseline: false` y no ceros) ·
+**imports** (US-216: carga masiva de proyectos y recursos por organización,
+`columns`/`preview`/`confirm`; una fila mala no tumba el archivo y una duplicada
+se salta sin actualizar) · areas
 (áreas→equipos→actores, sync-users) · project_directory (project_roles +
 participations + eligible-actors + **freeze-cost-rate** y **cost-summary** US-215:
 un importe por moneda, nunca un total único, y siempre con `without_rate`) · capacity (/summary /conflicts

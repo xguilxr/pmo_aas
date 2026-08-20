@@ -107,6 +107,10 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   que la API tenía desde US-182 sin ninguna pantalla que la llenara).
 - **Boards**: `raid-kanban.tsx` (kanban DnD nativo, columnas=estados —
   base de project/portfolio boards).
+- **Importación masiva**: `app/(app)/pmo/imports/page.tsx` (US-216: subir →
+  validar → confirmar, con el reporte de tres estados por fila y la plantilla
+  generada desde las columnas que declara el backend; la organización de destino
+  viene del header, no de un selector propio).
 - **Directory**: `directory/` (PersonPicker, ProjectAreaPicker,
   AreasAndTeamsPanel, TenantActorsPanel),
   `admin/user-scope-assignment-picker.tsx`.

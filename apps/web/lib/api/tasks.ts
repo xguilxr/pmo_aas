@@ -628,3 +628,103 @@ export const TASK_STATUS_LABEL: Record<string, string> = {
   completed: "Completada",
   on_hold: "En pausa",
 };
+
+// ---------------------------------------------------------------------------
+// US-216 — importación masiva de proyectos y recursos
+// ---------------------------------------------------------------------------
+//
+// Vive aquí, junto al importador de planes, porque son el mismo tipo de trabajo
+// visto a dos alturas: aquel carga las tareas de un proyecto, este carga los
+// proyectos. Separarlos en dos módulos escondería que comparten el patrón
+// «preview → confirmar» y el mismo almacén de vista previa.
+
+export type ClaseDeImportacion = "projects" | "resources";
+
+export const CLASE_IMPORTACION_LABEL: Record<ClaseDeImportacion, string> = {
+  projects: "Proyectos",
+  resources: "Recursos (personas)",
+};
+
+export type ColumnaDeImportacion = {
+  key: string;
+  label: string;
+  required: boolean;
+  help: string;
+  aliases: string[];
+  values: string[];
+  type: string;
+};
+
+// Qué le pasa a una fila. `duplicada` no es un error: es una fila que ya existe
+// y que a propósito **no** se actualiza.
+export type EstadoDeFila = "valida" | "invalida" | "duplicada";
+
+export const ESTADO_FILA_LABEL: Record<EstadoDeFila, string> = {
+  valida: "Se va a crear",
+  invalida: "No se puede crear",
+  duplicada: "Ya existe — se salta",
+};
+
+export type FilaDeImportacion = {
+  // La línea real del archivo, contando el encabezado: es lo que hace útil el
+  // número, porque tiene que apuntar a esa fila del Excel.
+  row: number;
+  state: EstadoDeFila;
+  name: string | null;
+  values: Record<string, string>;
+  problems: { column: string; message: string }[];
+  conflicts_with: string | null;
+};
+
+export type PreviewDeImportacion = {
+  job_id: string;
+  kind: ClaseDeImportacion;
+  // Encabezados del archivo que el sistema no reconoció. Se muestran para que el
+  // usuario sepa qué se ignoró: descartarlos en silencio deja creer que entraron.
+  unmapped_headers: string[];
+  mapping: Record<string, string | null>;
+  summary: { total: number; valid: number; invalid: number; duplicate: number };
+  truncated: boolean;
+  max_rows: number;
+  rows: FilaDeImportacion[];
+};
+
+export type ResultadoDeImportacion = {
+  created: { id: string; name: string; folio?: string }[];
+  created_count: number;
+  // Los tres números van juntos siempre: «18 creados» sin decir que 5 quedaron
+  // fuera es mentir por omisión.
+  skipped_invalid: number;
+  skipped_duplicate: number;
+};
+
+export function getImportColumns(
+  kind: ClaseDeImportacion,
+): Promise<{ kind: string; columns: ColumnaDeImportacion[] }> {
+  return apiFetch(`/api/v1/imports/columns?kind=${kind}`);
+}
+
+export async function previewImport(
+  kind: ClaseDeImportacion,
+  organizationId: string,
+  file: File,
+): Promise<PreviewDeImportacion> {
+  // `rawFetch` y no `apiFetch`: aquel serializa el cuerpo a JSON y fija
+  // `Content-Type`, y un `multipart/form-data` necesita que el navegador ponga
+  // su propio encabezado con el separador. Es el mismo camino que `importPreview`
+  // del plan.
+  const base = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+  const form = new FormData();
+  form.append("kind", kind);
+  form.append("organization_id", organizationId);
+  form.append("file", file);
+  const res = await rawFetch(`${base}/api/v1/imports/preview`, {
+    method: "POST",
+    body: form,
+  });
+  return _decode<PreviewDeImportacion>(res);
+}
+
+export function confirmImport(jobId: string): Promise<ResultadoDeImportacion> {
+  return apiFetch(`/api/v1/imports/${jobId}/confirm`, { method: "POST" });
+}

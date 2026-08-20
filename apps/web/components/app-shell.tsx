@@ -27,6 +27,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  Upload,
   Users,
   X,
 } from "lucide-react";
@@ -111,6 +112,15 @@ const GRUPOS_NAV: GrupoNav[] = [
         icon: <FolderKanban className="h-4 w-4" aria-hidden />,
         href: "/pmo/projects",
         match: (p) => p.startsWith("/pmo/projects"),
+      },
+      {
+        // US-216 — el onboarding masivo va junto a Proyectos porque es su carga
+        // inicial: el artboard lo sitúa en «Org activa › Proyectos › Importar».
+        id: "imports",
+        label: "Importar",
+        icon: <Upload className="h-4 w-4" aria-hidden />,
+        href: "/pmo/imports",
+        match: (p) => p.startsWith("/pmo/imports"),
       },
       {
         id: "requests",
