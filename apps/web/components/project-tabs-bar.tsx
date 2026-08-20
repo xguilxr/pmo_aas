@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   BarChart3,
+  Columns3,
   FileText,
   GitBranch,
   Lightbulb,
@@ -41,6 +42,17 @@ const TABS: ProjectTab[] = [
     href: (id) => `/pmo/projects/${id}/plan`,
     match: (p) =>
       /^\/admin\/projects\/[^/]+\/(plan|tasks|gantt)/.test(p),
+  },
+  {
+    // US-219 — el Project Board del artboard «Boards». Va detrás del Plan porque
+    // es el mismo dato leído de otra forma: el plan lo ordena por WBS, el board
+    // por estado. Aquí sí se arrastra —`tasks.status` lo declara una persona—, a
+    // diferencia del Portfolio Board, cuyo estatus es derivado.
+    id: "board",
+    label: "Board",
+    icon: <Columns3 className="h-4 w-4" aria-hidden />,
+    href: (id) => `/pmo/projects/${id}/board`,
+    match: (p) => /^\/pmo\/projects\/[^/]+\/board/.test(p),
   },
   {
     id: "raid",

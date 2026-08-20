@@ -82,7 +82,7 @@ migración.
 | **US-216** ✅ | Importación masiva de **proyectos y recursos** (B5). **Sin migración**. Los planes ya tenían su importador, por proyecto, porque un WBS es del proyecto. Una duplicada se salta y **no** se actualiza: resubir el Excel original no pisa lo que alguien corrigió a mano. Mapeo manual de columnas diferido | WImportacion — la carga inicial sin captura manual |
 | **US-217** ✅ | RACI y stakeholders clave del proyecto. **Migración `0112`**: dos columnas en `project_participations`. La A única se exige en la frontera de la API y no en el esquema — el índice único parcial que haría falta no existe en SQLite, donde corren los tests | WProyectoRecursos |
 | **US-218** ✅ | Dependencias entre tareas de proyectos distintos. **Sin migración**: `task_dependencies` ya enlazaba por id. Ciclos validados a nivel de tarea cruzando las dos clases de arista | WPlan |
-| **US-219** ◐ | Boards. **Portfolio Board hecho** (por estatus de reporte, sin migración); el Project Board —kanban de tareas, donde sí se arrastra porque `tasks.status` es declarado— queda como ENH | WBoards |
+| **US-219** ✅ | Boards, los dos. **Portfolio Board** por estatus de reporte —derivado, no se arrastra— y **Project Board** kanban de tareas —`tasks.status` es declarado, ahí sí se arrastra—. Sin migración. El «corte bi-semanal» del artboard es una marca en la tarjeta y no una columna: estado × corte da un tablero de dos ejes que no se lee | WBoards |
 | **US-220** | Catálogo de IA (skills · tools · prompts · workflows) + roles de agente | WAdminIA |
 | **US-221** | Plan de suscripción: tier, límites y consumo (solo lectura) | WAdminPlan |
 

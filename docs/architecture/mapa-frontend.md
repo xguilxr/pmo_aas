@@ -106,7 +106,12 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   `directory/TenantActorsPanel.tsx` (US-215: tarifa **y su unidad de tiempo**,
   que la API tenía desde US-182 sin ninguna pantalla que la llenara).
 - **Boards**: `raid-kanban.tsx` (kanban DnD nativo, columnas=estados —
-  base de project/portfolio boards).
+  genérico: lo usan RAID y el Project Board),
+  `app/(app)/pmo/board/page.tsx` (Portfolio Board por estatus de reporte, US-219
+  — **no** se arrastra: el estatus es derivado y el recálculo lo devolvería a su
+  sitio), `app/(app)/pmo/projects/[id]/board/page.tsx` (Project Board, US-219 —
+  aquí **sí**, porque `tasks.status` lo declara una persona; el corte de la
+  cadencia es una marca en la tarjeta, no una columna).
 - **Importación masiva**: `app/(app)/pmo/imports/page.tsx` (US-216: subir →
   validar → confirmar, con el reporte de tres estados por fila y la plantilla
   generada desde las columnas que declara el backend; la organización de destino

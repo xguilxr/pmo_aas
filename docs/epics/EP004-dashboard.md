@@ -746,9 +746,38 @@ fecha. La salud no se acciona —se explica—, y la fase avanza por sí sola.
 - `TC-219.5` — La tarjeta trae retraso, hito, salud y fase; el filtro de
   organización recorta.
 
-**Lo que queda del artboard:** el **Project Board** (kanban de tareas por estado
-dentro de un proyecto). Ahí sí se arrastra, porque `tasks.status` es un dato
-declarado y no derivado, y `raid-kanban.tsx` ya tiene el mecanismo. Queda como
-ENH sobre esta US.
+#### La segunda mitad — Project Board ✅ (2026-08-20)
 
-**Estado de integración:** DONE (US-219, Portfolio Board).
+El kanban de tareas por estado dentro de un proyecto, en
+`/pmo/projects/{id}/board`. Reusa `raid-kanban.tsx` sin tocarlo: el componente ya
+era genérico —columnas, items y `onMove`—, y el WBS de una tarea hace el papel del
+folio de un riesgo.
+
+**Aquí sí se arrastra, y ahí está la diferencia entre los dos boards.**
+`tasks.status` lo pone una persona: arrastrar una tarjeta a «En curso» es la forma
+más directa de decir lo que ya se podía decir editando la tarea. El estatus de
+reporte de un proyecto se **calcula** de la fecha del último reporte y de la
+cadencia (US-211): arrastrarlo de «vencido» a «al día» pediría al sistema mentir,
+y el siguiente recálculo lo devolvería a su sitio.
+
+**El «corte bi-semanal» del artboard es una marca, no una columna.** Convertirlo
+en columnas daría un tablero de dos ejes —estado × corte— que no se lee. Lo que
+hace falta saber al mirar el board es cuáles de estas tareas caen antes del
+próximo corte, y eso cabe en la tarjeta. El corte es la cadencia del inquilino
+(US-213), no catorce días escritos a mano.
+
+**Las cuatro columnas en orden de avance, con «Detenida» al final.** Una tarea
+detenida no está «casi en curso»: está fuera del flujo, y ponerla en medio haría
+que arrastrar de izquierda a derecha pasara por ella.
+
+**Lo que el board marca y no arregla:** una tarea en «Completada» con avance por
+debajo del 100 %. Es una contradicción que ya puede existir —estado y avance son
+campos separados— y el board la señala en vez de reescribir el avance en
+silencio. Cuál de los dos está mal lo sabe quien conoce la tarea, y un tablero que
+cambia datos que nadie le pidió cambiar es peor que uno que los señala.
+
+El cambio de estado se pinta antes de que el servidor conteste: arrastrar y ver la
+tarjeta volver a su columna medio segundo se lee como que falló. Si falla de
+verdad, se recarga del servidor — el estado real no lo decide este componente.
+
+**Estado de integración:** DONE (US-219, los dos boards).
