@@ -49,7 +49,7 @@ import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import { aplicarFuente, XLSX_FONT } from "@/lib/plan-template";
 import {
-  downloadPortfolioStatusReport,
+  downloadPmoStatusReport,
   getHealthMatrix,
   type HealthMatrixResponse,
 } from "@/lib/api/analytics";
@@ -249,7 +249,7 @@ export default function PortafolioVistaMaestra() {
     setDownloading(true);
     setReportError(null);
     try {
-      await downloadPortfolioStatusReport();
+      await downloadPmoStatusReport();
     } catch {
       setReportError("No se pudo generar el status PMO. Reintenta en un momento.");
     } finally {

@@ -48,7 +48,7 @@ from app.core.observabilidad import medido
 from app.models.area import Area
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Issue, Risk
-from app.models.organization import Organization, Program
+from app.models.organization import Organization, Portfolio, Program
 from app.models.project import Project
 from app.models.report_builder_template import ReportBuilderTemplate
 from app.models.report_section import ReportSection
@@ -77,8 +77,14 @@ class ReportScope:
     tenant_id: UUID | str
     project_id: UUID | str | None = None
     organization_id: UUID | str | None = None
+    # US-209 — el nivel que ADR-037 metió **entre** la organización y el
+    # programa. Faltaba entero: sin él, la única forma de mirar una cartera era
+    # el reporte de su organización, que suma las demás.
+    portfolio_id: UUID | str | None = None
     program_id: UUID | str | None = None
-    # Nivel del reporte (1=portafolio, 2=org, 3=proyecto, 4=custom).
+    # Nivel del reporte (1=portafolio PMO, 2=org/portafolio/programa,
+    # 3=proyecto, 4=custom). «Nivel» aquí es la plantilla, no la entidad: el
+    # nivel 2 sirve a las tres entidades intermedias.
     level: int = 3
     # BUG-063: filtro de área a nivel reporte. Si está presente, el motor
     # post-filtra las rows de todas las secciones dejando solo las del
@@ -307,6 +313,19 @@ async def _build_context(
     # ENH-146 — branding (nombre PMO + logos). Antes tenant_name quedaba en
     # None, dejando el running header del PDF en blanco.
     org_id_for_brand = project.organization_id if project else scope.organization_id
+    # US-209 — un portafolio no tiene branding propio: lo hereda de su
+    # organización. Sin esto, un reporte pedido solo con `portfolio_id` saldría
+    # con el branding por defecto del inquilino en vez del logo del cliente, y
+    # eso es un PDF que alguien manda por correo.
+    if org_id_for_brand is None and scope.portfolio_id:
+        org_id_for_brand = (
+            await db.execute(
+                select(Portfolio.organization_id).where(
+                    Portfolio.id == str(scope.portfolio_id),
+                    Portfolio.tenant_id == str(scope.tenant_id),
+                )
+            )
+        ).scalar_one_or_none()
     branding = await load_report_branding(db, scope.tenant_id, org_id_for_brand)
 
     return _RenderContext(
@@ -1051,6 +1070,9 @@ async def render_template(
             "project_id": str(scope.project_id) if scope.project_id else None,
             "organization_id": (
                 str(scope.organization_id) if scope.organization_id else None
+            ),
+            "portfolio_id": (
+                str(scope.portfolio_id) if scope.portfolio_id else None
             ),
             "program_id": str(scope.program_id) if scope.program_id else None,
             "level": scope.level,

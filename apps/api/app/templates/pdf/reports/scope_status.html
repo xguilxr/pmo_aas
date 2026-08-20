@@ -51,7 +51,10 @@
 {% endif %}
 
 {% if heatmap_rows %}
-<h2>Salud por {% if rows_kind == "organizations" %}organización{% else %}programa{% endif %}</h2>
+{# US-209 — el rótulo sale del propio `rows_kind`. Con un `if/else` de dos
+   ramas, el nivel nuevo (portafolios) quedaba etiquetado «por programa», y una
+   tabla mal rotulada se lee como el nivel equivocado. #}
+<h2>Salud por {{ heatmap_label }}</h2>
 <table style="border-collapse:collapse;">
   <thead>
     <tr>

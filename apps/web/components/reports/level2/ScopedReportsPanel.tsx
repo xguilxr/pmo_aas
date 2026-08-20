@@ -22,6 +22,10 @@ import {
 
 export type ScopedReportsScope =
   | { kind: "organization"; id: string }
+  // US-209 — el nivel intermedio de ADR-037. `organizationId` va aparte porque
+  // un portafolio no tiene branding propio: lo hereda de su organización, y sin
+  // ella el PDF sale con el branding por defecto del inquilino.
+  | { kind: "portfolio"; id: string; organizationId?: string }
   | { kind: "program"; id: string };
 
 type Props = {
@@ -57,12 +61,19 @@ export function ScopedReportsPanel({ scope, emptyHint }: Props) {
   async function exportPdf(tpl: ReportBuilderTemplate) {
     setExportingId(tpl.id);
     try {
+      // Un `if/else` de dos ramas no admitía un tercer nivel sin que quedara
+      // mandado como el de al lado, que es un reporte del scope equivocado y no
+      // un error.
+      const ambito: Record<string, string | undefined> =
+        scope.kind === "organization"
+          ? { organization_id: scope.id }
+          : scope.kind === "portfolio"
+            ? { portfolio_id: scope.id, organization_id: scope.organizationId }
+            : { program_id: scope.id };
       const body = {
         level: 2,
         window_days: 30,
-        ...(scope.kind === "organization"
-          ? { organization_id: scope.id }
-          : { program_id: scope.id }),
+        ...ambito,
       } as Parameters<typeof exportBuilderPdf>[1];
       const blob = await exportBuilderPdf(tpl.id, body);
       const url = URL.createObjectURL(blob);

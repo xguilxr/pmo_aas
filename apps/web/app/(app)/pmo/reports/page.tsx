@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Download, FileText, Layers, Loader2 } from "lucide-react";
+import { Boxes, Building2, Download, FileText, Layers, Loader2 } from "lucide-react";
 
 import {
   TenantCrossFilters,
@@ -25,7 +25,13 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
-import { listPrograms, type Program } from "@/lib/api/organizations";
+import { downloadPortfolioStatusReport } from "@/lib/api/analytics";
+import {
+  listPortfolios,
+  listPrograms,
+  type Portfolio,
+  type Program,
+} from "@/lib/api/organizations";
 import {
   useOrgFiltro,
   useOrganizacionActiva,
@@ -37,7 +43,13 @@ import {
 } from "@/lib/api/report-builder";
 import { listTenantReports, type TenantReport } from "@/lib/api/tenant-cross";
 
-type TenantReportsTab = "pmo" | "organization" | "program" | "projects";
+type TenantReportsTab =
+  | "pmo"
+  | "organization"
+  // US-209 — el nivel que ADR-037 metió entre la organización y el programa.
+  | "portfolio"
+  | "program"
+  | "projects";
 
 const TABS: Array<{ v: TenantReportsTab; label: string; icon: React.ReactNode }> = [
   { v: "pmo", label: "PMO", icon: <Layers className="h-3.5 w-3.5" aria-hidden /> },
@@ -45,6 +57,11 @@ const TABS: Array<{ v: TenantReportsTab; label: string; icon: React.ReactNode }>
     v: "organization",
     label: "Organizaciones",
     icon: <Building2 className="h-3.5 w-3.5" aria-hidden />,
+  },
+  {
+    v: "portfolio",
+    label: "Portafolios",
+    icon: <Boxes className="h-3.5 w-3.5" aria-hidden />,
   },
   {
     v: "program",
@@ -76,7 +93,8 @@ export default function TenantReportsPage() {
           </h1>
         </div>
         <p className="text-sm text-[var(--color-tertiary)]">
-          Reportes a nivel PMO, organización, programa y proyecto.
+          Reportes a nivel PMO, organización, portafolio, programa y proyecto —
+          los cinco niveles de la jerarquía.
         </p>
       </header>
 
@@ -111,6 +129,8 @@ export default function TenantReportsPage() {
         <PmoScopePlaceholder />
       ) : activeTab === "organization" ? (
         <OrgScopePlaceholder />
+      ) : activeTab === "portfolio" ? (
+        <ReportesDePortafolio />
       ) : activeTab === "program" ? (
         <ProgramScopePlaceholder />
       ) : (
@@ -313,9 +333,8 @@ function OrgScopePlaceholder() {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-[2fr_3fr]">
-        </div>
-
+        {/* US-205 vació este contenedor al llevarse el select de organización
+            al header y dejó la rejilla sin hijos. */}
         {loading ? (
           <div className="mt-4 space-y-2">
             <Skeleton className="h-14 w-full" />
@@ -370,6 +389,252 @@ function OrgScopePlaceholder() {
 }
 
 // US-146 — Tab Programas con filtros org + programa.
+/**
+ * US-209 — Reportes de portafolio.
+ *
+ * El nivel que faltaba entero. ADR-037 metió el portafolio **entre** la
+ * organización y el programa, y el reporte existía para inquilino,
+ * organización, programa y proyecto: la única forma de mirar una cartera era el
+ * reporte de su organización, que suma las demás.
+ *
+ * Dos entregables, y son distintos:
+ *
+ * - **Status del portafolio (PDF)** — el reporte de siempre
+ *   (`scope_status.html`), agregando los proyectos de la cartera y comparando
+ *   por programa, que es el nivel de abajo.
+ * - **Plantillas de nivel 2** — el builder de secciones, con el scope puesto en
+ *   el portafolio.
+ */
+function ReportesDePortafolio() {
+  const orgId = useOrgFiltro() ?? "";
+  const [portafolios, setPortafolios] = useState<Portfolio[]>([]);
+  const [portfolioId, setPortfolioId] = useState("");
+  const [plantillas, setPlantillas] = useState<ReportBuilderTemplate[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [cargandoPf, setCargandoPf] = useState(false);
+  const [generando, setGenerando] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    listBuilderTemplates({ level: 2 })
+      .then((tpls) => !cancelado && setPlantillas(tpls))
+      .catch((err) => {
+        if (!cancelado)
+          setError(err instanceof Error ? err.message : "No se pudo cargar");
+      })
+      .finally(() => {
+        if (!cancelado) setCargando(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!orgId) {
+      setPortafolios([]);
+      setPortfolioId("");
+      return;
+    }
+    let cancelado = false;
+    setCargandoPf(true);
+    listPortfolios(orgId, { is_active: true })
+      .then((pfs) => {
+        if (cancelado) return;
+        setPortafolios(pfs);
+        // La elección anterior no sobrevive al cambio de organización: un
+        // portafolio de otra devolvería un reporte vacío, no un error.
+        setPortfolioId("");
+      })
+      .catch((err) => {
+        if (!cancelado)
+          setError(
+            err instanceof Error ? err.message : "No se pudieron cargar los portafolios",
+          );
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoPf(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [orgId]);
+
+  const nombrePf =
+    portafolios.find((p) => p.id === portfolioId)?.name?.replace(/[^a-z0-9]+/gi, "-") ??
+    "portafolio";
+
+  function descargar(blob: Blob, nombre: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nombre;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function statusPdf() {
+    if (!portfolioId) {
+      setError("Elige un portafolio antes de generar");
+      return;
+    }
+    setGenerando("status");
+    setError(null);
+    try {
+      // Este helper descarga solo (el nombre lo pone él), como los otros
+      // niveles. Las plantillas del builder sí devuelven Blob porque el nombre
+      // lleva el código de la plantilla.
+      await downloadPortfolioStatusReport(portfolioId);
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "No se pudo generar el status del portafolio",
+      );
+    } finally {
+      setGenerando(null);
+    }
+  }
+
+  async function plantillaPdf(tpl: ReportBuilderTemplate) {
+    if (!portfolioId) {
+      setError("Elige un portafolio antes de generar");
+      return;
+    }
+    setGenerando(tpl.id);
+    setError(null);
+    try {
+      const blob = await exportBuilderPdf(tpl.id, {
+        level: 2,
+        // Los dos: el portafolio define qué se agrega y la organización, de
+        // quién es el branding del PDF.
+        organization_id: orgId,
+        portfolio_id: portfolioId,
+        window_days: 30,
+      });
+      descargar(
+        blob,
+        `portafolio-${nombrePf}-${tpl.code}-${new Date().toISOString().slice(0, 10)}.pdf`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo generar el reporte");
+    } finally {
+      setGenerando(null);
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+        <div className="flex items-start gap-3">
+          <Boxes className="mt-0.5 h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+          <div className="flex-1">
+            <h2 className="text-base font-semibold text-[var(--text-primary)]">
+              Reporte por Portafolio
+            </h2>
+            <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
+              Agrega los proyectos de la cartera —los de sus programas y los que
+              cuelgan directo de ella— y los compara por programa.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Select
+            aria-label="Portafolio del reporte"
+            value={portfolioId}
+            onChange={(e) => setPortfolioId(e.target.value)}
+            className="h-9 min-w-[220px]"
+            disabled={!orgId || cargandoPf}
+          >
+            <option value="">
+              {!orgId
+                ? "Elige una organización en el header"
+                : cargandoPf
+                  ? "Cargando portafolios…"
+                  : "Elige un portafolio"}
+            </option>
+            {/* DIS-03 — «elige una organización» y «esta organización no tiene
+                portafolios» son cosas distintas, y un desplegable vacío sin
+                distinguirlas se lee como que algo falló al cargar. */}
+            {orgId && !cargandoPf && portafolios.length === 0 ? (
+              <option value="" disabled>
+                (esta organización no tiene portafolios)
+              </option>
+            ) : null}
+            {portafolios.map((pf) => (
+              <option key={pf.id} value={pf.id}>
+                {pf.name}
+              </option>
+            ))}
+          </Select>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={statusPdf}
+            disabled={!portfolioId || generando !== null}
+          >
+            {generando === "status" ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+            )}
+            Status del portafolio (PDF)
+          </Button>
+        </div>
+
+        {cargando ? (
+          <div className="mt-4 space-y-2">
+            <Skeleton className="h-14 w-full" />
+          </div>
+        ) : plantillas.length === 0 ? (
+          <p className="mt-4 text-xs italic text-[var(--text-tertiary)]">
+            Sin plantillas Nivel 2 disponibles. El status de arriba no las
+            necesita.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {plantillas.map((tpl) => (
+              <li
+                key={tpl.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                    {tpl.name}
+                  </p>
+                  <p className="truncate text-xs text-[var(--text-tertiary)]">
+                    {tpl.code}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => plantillaPdf(tpl)}
+                  disabled={!portfolioId || generando !== null}
+                >
+                  {generando === tpl.id ? (
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+                  )}
+                  PDF
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+
 function ProgramScopePlaceholder() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [templates, setTemplates] = useState<ReportBuilderTemplate[]>([]);

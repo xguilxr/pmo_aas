@@ -1600,6 +1600,38 @@ async def organization_status_report(
     )
 
 
+@portfolios_router.post("/portfolios/{portfolio_id}/reports/status")
+async def portfolio_status_report(
+    portfolio_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """US-209 — el reporte de status de un portafolio, en PDF.
+
+    Faltaba el nivel entero: el reporte existía para inquilino, organización,
+    programa y proyecto, y el portafolio —que ADR-037 metió **entre** la
+    organización y el programa— no tenía ninguno. Sin él, la única forma de
+    mirar una cartera era el reporte de su organización, que suma las demás.
+
+    El PDF es el mismo de los otros niveles (`scope_status.html`); lo que cambia
+    es qué agrega y contra qué se compara: un portafolio se compara por
+    **programa**, que es el nivel de abajo.
+    """
+    tenant_id = _ensure_tenant(cu)
+    role_ids = await scoped_project_ids(cu, db, tenant_id)
+    ctx = await build_scope_status_context(
+        db, tenant_id, "portfolio", portfolio_id, restrict_project_ids=role_ids
+    )
+    pdf = render_pdf("reports/scope_status.html", ctx)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": 'attachment; filename="status-portafolio.pdf"'
+        },
+    )
+
+
 @programs_router.post("/{program_id}/reports/status")
 async def program_status_report(
     program_id: UUID,

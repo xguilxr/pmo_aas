@@ -69,7 +69,6 @@ ACOTADAS: dict[str, str] = {
     "pmo/projects/[id]/minutes/new": "formulario de minuta",
     "pmo/projects/[id]/reports/[reportId]": "un reporte: texto",
     "pmo/projects/new": "formulario de alta",
-    "pmo/reports/portfolio": "un reporte: texto",
     "pmo/requests/[id]": "solicitud: texto y acta",
     "pmo/requests/new": "formulario de solicitud",
     "superadmin/ai": "formulario de proveedor de plataforma",

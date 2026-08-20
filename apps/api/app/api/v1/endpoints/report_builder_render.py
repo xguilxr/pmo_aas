@@ -73,6 +73,8 @@ class RenderRequest(BaseModel):
     name: str | None = None
     project_id: UUID | None = None
     organization_id: UUID | None = None
+    #: US-209 — el nivel intermedio que faltaba.
+    portfolio_id: UUID | None = None
     program_id: UUID | None = None
     level: int = Field(default=3, ge=1, le=4)
     cut_off_date: date | None = None
@@ -122,6 +124,7 @@ async def render_report(
         tenant_id=tenant_id,
         project_id=payload.project_id,
         organization_id=payload.organization_id,
+        portfolio_id=payload.portfolio_id,
         program_id=payload.program_id,
         level=payload.level,
         area_id=payload.area_id,
@@ -188,6 +191,7 @@ async def save_report(
         tenant_id=tenant_id,
         project_id=payload.project_id,
         organization_id=payload.organization_id,
+        portfolio_id=payload.portfolio_id,
         program_id=payload.program_id,
         level=payload.level,
         area_id=payload.area_id,
@@ -224,6 +228,8 @@ class ExportRequest(BaseModel):
 
     project_id: UUID | None = None
     organization_id: UUID | None = None
+    #: US-209 — el nivel intermedio que faltaba.
+    portfolio_id: UUID | None = None
     program_id: UUID | None = None
     level: int = Field(default=3, ge=1, le=4)
     cut_off_date: date | None = None
@@ -268,6 +274,7 @@ async def export_template_pdf(
         tenant_id=tenant_id,
         project_id=payload.project_id,
         organization_id=payload.organization_id,
+        portfolio_id=payload.portfolio_id,
         program_id=payload.program_id,
         level=payload.level,
         area_id=payload.area_id,
