@@ -22,6 +22,7 @@ from app.models.modules import Risk
 from app.models.organization import Organization, Portfolio, Program
 from app.models.project import Project
 from app.models.project_request import ProjectRequest
+from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.analytics.snapshots import (
     METRIC_FIELDS,
@@ -30,12 +31,15 @@ from app.services.analytics.snapshots import (
 )
 from app.services.completitud import a_json as completitud_a_json
 from app.services.completitud import completitud_de
+from app.services.estado_de_reporte import a_json as reporte_a_json
+from app.services.estado_de_reporte import estado_de_reporte_de
 from app.services.indicadores import avance_de_cartera
 from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.pdf_renderer import render_pdf
 from app.services.plan_metadata import round_half_up
 from app.services.progress_calculator import effective_progress_map
 from app.services.reports.scoped_status import build_scope_status_context
+from app.services.tenant_settings import get_cadencia_de_reporte
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -632,9 +636,8 @@ async def plan_vs_actual(
     porque el CSV de exportación se comparte por enlace y renombrarla rompería
     los que ya están guardados, a cambio de nada que el usuario note.
 
-    Catorce de las dieciséis columnas del mockup salen de aquí; «Completitud»
-    entró con US-210. Las dos que faltan —«Próximo hito» y «Reporte»— son
-    US-211.
+    Las dieciséis columnas del mockup salen de aquí: «Completitud» entró con
+    US-210 y «Próximo hito» y «Reporte», con US-211.
     """
     tenant_id = _tenant(cu)
     stmt = _filtro_jerarquia(
@@ -765,6 +768,17 @@ async def plan_vs_actual(
     # olvidó de recalcularlo, y entonces la columna dice 96 % de un proyecto al
     # que le faltan tres campos.
     completitudes = await completitud_de(db, list(projects))
+    # US-211 — «Próx. hito» y «Reporte». La cadencia es un acuerdo de la PMO y
+    # vive en los ajustes del inquilino: ponerla por proyecto obligaría a
+    # capturarla veintitrés veces para decir lo mismo.
+    inquilino = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    estados = await estado_de_reporte_de(
+        db,
+        list(projects),
+        cadencia_dias=get_cadencia_de_reporte(inquilino),
+    )
 
     out = []
     for p in projects:
@@ -819,6 +833,12 @@ async def plan_vs_actual(
                     completitud_a_json(completitudes[str(p.id)])
                     if str(p.id) in completitudes
                     else None
+                ),
+                # US-211 — las dos últimas columnas del mockup.
+                **(
+                    reporte_a_json(*estados[str(p.id)])
+                    if str(p.id) in estados
+                    else {}
                 ),
             }
         )
@@ -1108,7 +1128,6 @@ async def health_matrix(
     responder. Solo proyectos activos (fase != closed). No-admin: solo
     proyectos que el usuario ve.
     """
-    from app.models.tenant import Tenant
     from app.services.project_health import refresh_health_bulk
 
     tenant_id = _tenant(cu)

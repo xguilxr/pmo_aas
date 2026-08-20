@@ -30,11 +30,11 @@
  *
  * ## Las tres columnas que faltan
  *
- * «Próximo hito» y «Reporte» no están: no existen como dato, y son US-211.
- * («Completitud» sí está desde US-210.) Se declaran en `COLUMNAS_PENDIENTES` y
- * la barra de configuración las nombra como lo que son —pendientes—, en vez de
- * callarlas: quien conoce el mockup va a buscarlas, y no encontrarlas sin
- * explicación se lee como que se perdieron.
+ * Las dieciséis del artboard existen: «Completitud» entró con US-210 y
+ * «Próximo hito» y «Reporte», con US-211. `COLUMNAS_PENDIENTES` se queda
+ * declarada y vacía para la siguiente que el producto pida antes de tener su
+ * dato: quien conoce el mockup va a buscar la que falte, y no encontrarla sin
+ * explicación se lee como que se perdió.
  */
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -62,11 +62,15 @@ import { useSortableRows, type SortableCtrl } from "@/lib/hooks/use-sortable-row
 
 const CLAVE_COLUMNAS = "pmoaas:vista-maestra:columnas";
 
-/** Las columnas del mockup que todavía no tienen dato detrás. */
-export const COLUMNAS_PENDIENTES: { etiqueta: string; us: string }[] = [
-  { etiqueta: "Próximo hito", us: "US-211" },
-  { etiqueta: "Reporte", us: "US-211" },
-];
+/**
+ * Las columnas del mockup que todavía no tienen dato detrás.
+ *
+ * Vacía desde US-211: las dieciséis del artboard existen. Se conserva la lista
+ * —y el bloque que la pinta— porque la siguiente columna que el producto quiera
+ * antes de tener su dato va aquí, y reconstruir el mecanismo cuesta más que
+ * dejarlo declarado. Con la lista vacía no se pinta nada.
+ */
+export const COLUMNAS_PENDIENTES: { etiqueta: string; us: string }[] = [];
 
 type Columna = {
   clave: string;
@@ -132,6 +136,27 @@ function par(plan: number, real: number): string {
 }
 
 const PRIORIDADES = [1, 2, 3, 4, 5];
+
+/**
+ * El orden de urgencia de los estados de reporte.
+ *
+ * `sin_reporte` va **primero**, antes que `vencido`: un proyecto que nunca se
+ * reportó es un hueco más grande que uno que se reportó tarde, y en un
+ * onboarding es exactamente la lista que hay que atacar.
+ */
+const ORDEN_DE_REPORTE: Record<string, number> = {
+  sin_reporte: 0,
+  vencido: 1,
+  por_vencer: 2,
+  al_dia: 3,
+};
+
+const COLOR_DE_REPORTE: Record<string, string> = {
+  sin_reporte: "var(--color-tertiary)",
+  vencido: "var(--color-danger-fg)",
+  por_vencer: "var(--color-warning-fg)",
+  al_dia: "var(--color-success-fg)",
+};
 
 /**
  * El color de la completitud. Tres tramos y no un degradado: la pregunta es
@@ -387,6 +412,71 @@ function columnas(): Columna[] {
         ),
     },
     {
+      clave: "next_milestone",
+      etiqueta: "Próx. hito",
+      ancho: 26,
+      // Por fecha y no por nombre: la pregunta es «¿qué toca primero?». Los
+      // proyectos sin hito ordenan al final, no al principio.
+      orden: (r) => r.next_milestone?.date,
+      texto: (r) =>
+        r.next_milestone
+          ? `${r.next_milestone.name} · ${fecha(r.next_milestone.date)}`
+          : "—",
+      celda: (r) => {
+        const h = r.next_milestone;
+        if (!h) return <span className="text-[var(--color-tertiary)]">—</span>;
+        return (
+          <span
+            className="block max-w-[220px] truncate"
+            title={`${h.name} · ${fecha(h.date)}${h.overdue ? " (vencido)" : ""}`}
+          >
+            {h.name}
+            <span
+              className="ml-1.5 whitespace-nowrap text-[11px]"
+              style={{
+                color: h.overdue
+                  ? "var(--color-danger-fg)"
+                  : "var(--color-tertiary)",
+              }}
+            >
+              {fecha(h.date)}
+            </span>
+          </span>
+        );
+      },
+    },
+    {
+      clave: "report_status",
+      etiqueta: "Reporte",
+      align: "center",
+      ancho: 14,
+      // El orden es de urgencia, no alfabético: «vencido» primero es lo que
+      // hace útil ordenar por esta columna.
+      orden: (r) => ORDEN_DE_REPORTE[r.report_status] ?? 9,
+      texto: (r) =>
+        r.report_days_late > 0
+          ? `${r.report_status_label} (${r.report_days_late} d)`
+          : r.report_status_label,
+      celda: (r) => (
+        <span
+          className="whitespace-nowrap font-medium"
+          style={{ color: COLOR_DE_REPORTE[r.report_status] }}
+          title={
+            r.report_due_date
+              ? `Vence el ${fecha(r.report_due_date)}`
+              : "Nunca se ha generado un reporte de este proyecto"
+          }
+        >
+          {r.report_status_label}
+          {r.report_days_late > 0 ? (
+            <span className="ml-1 text-[11px] tabular-nums">
+              +{r.report_days_late} d
+            </span>
+          ) : null}
+        </span>
+      ),
+    },
+    {
       clave: "completeness",
       etiqueta: "Compl.",
       align: "right",
@@ -454,6 +544,7 @@ const VISIBLES_POR_DEFECTO = new Set([
   "end_date",
   "risks",
   "issues",
+  "report_status",
   "completeness",
 ]);
 
@@ -659,12 +750,15 @@ export function VistaMaestra({
             </div>
           </fieldset>
           {/* Las del mockup que no existen todavía, nombradas. Callarlas hace
-              que quien conoce el mockup las busque y crea que se perdieron. */}
-          <p className="mt-2.5 text-[11px] text-[var(--color-tertiary)]">
-            Pendientes de los mockups:{" "}
-            {COLUMNAS_PENDIENTES.map((c) => `${c.etiqueta} (${c.us})`).join(" · ")}
-            . Necesitan datos que todavía no existen.
-          </p>
+              que quien conoce el mockup las busque y crea que se perdieron.
+              Con la lista vacía no se pinta: el párrafo saldría sin sujeto. */}
+          {COLUMNAS_PENDIENTES.length > 0 ? (
+            <p className="mt-2.5 text-[11px] text-[var(--color-tertiary)]">
+              Pendientes de los mockups:{" "}
+              {COLUMNAS_PENDIENTES.map((c) => `${c.etiqueta} (${c.us})`).join(" · ")}
+              . Necesitan datos que todavía no existen.
+            </p>
+          ) : null}
         </div>
       ) : null}
 

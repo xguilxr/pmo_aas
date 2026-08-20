@@ -397,6 +397,76 @@ importación masiva (US-216).
 
 **Estado de integración:** DONE (US-210).
 
+---
+
+### US-211 — Próximo hito y estatus de reporte como datos consultables ✅ (2026-08-20)
+
+**Como** PMO Manager
+**Quiero** ver de un vistazo qué proyecto no está reportado y qué hito toca
+primero
+**Para** no abrir veintitrés proyectos y comparar fechas a mano.
+
+De los mockups: las columnas «Próx. hito» («UAT integral · 28 ago») y «Reporte»
+(«al día» / «por vencer» / «vencido») del artboard «Portafolio — Vista maestra».
+El Portfolio Board del artboard «Boards» agrupa por la segunda.
+
+**Criterios de aceptación:**
+- [x] **Sin migración.** Los hitos son `tasks.is_milestone` (que ya existía con
+  su regla D-9) y el último reporte, `report_history.generated_at`. Lo único
+  nuevo es la cadencia esperada, y esa es un ajuste del inquilino.
+- [x] La cadencia vive en `settings.report_builder.cadencia_de_reporte_dias`,
+  default **14** —la bi-semanal de los mockups—. Va en el inquilino y no en el
+  proyecto porque es un **acuerdo de la PMO**: «reportamos cada dos semanas» se
+  decide una vez para todos, y ponerlo por proyecto obligaría a capturarlo
+  veintitrés veces para decir lo mismo, dejando la columna vacía en los que
+  nadie tocó. Cuando un proyecto necesite la suya, el sitio es un campo que
+  **caiga** a este valor, no que lo reemplace.
+- [x] **`sin_reporte` no es `vencido`.** Un proyecto que nunca se reportó no
+  incumplió una fecha: es que no ha empezado a reportar. Meterlos en el mismo
+  cubo esconde el caso que más hay que mirar en un onboarding — y es la mezcla
+  que hace natural un `if ultimo is None: return "vencido"`. En el orden de la
+  columna va **primero**, antes que «vencido»: el hueco es más grande.
+- [x] El día del vencimiento **todavía no está vencido**: el límite es «después
+  de», no «en». Marcarlo vencido regaña a quien va a cumplir.
+- [x] La ventana de «por vencer» es **un quinto de la cadencia**, mínimo un día,
+  y no un número fijo: «tres días» es casi la mitad de un ciclo semanal, y la
+  mitad de los proyectos saldría «por vencer» permanentemente.
+- [x] El retraso nunca es negativo. Reportar antes no adelanta nada, y un
+  negativo se leería así.
+- [x] Una cadencia de cero o basura cae al default: cero días haría que todo
+  esté vencido siempre, que no es una configuración sino un error de captura.
+- [x] El próximo hito es el **más cercano entre los abiertos y con fecha**. Si el
+  primero ya pasó se devuelve ese, marcado como vencido: saltar a la siguiente
+  fecha futura esconde el hito que se incumplió, que es justo el que hay que
+  mirar. Empate de fechas: desempata el nombre, para que dos cargas seguidas
+  devuelvan el mismo — una columna que cambia sola entre dos refrescos parece un
+  dato que se mueve.
+- [x] La regla vive en `app/dominio/reporte.py` sin base de datos (MCS DEV-02);
+  los hechos los busca `app/services/estado_de_reporte.py` en **dos consultas
+  agrupadas** para toda la lista, no dos por fila.
+- [x] La etiqueta («al día», «por vencer») la resuelve el servidor: el
+  vocabulario de estados es del dominio y tres superficies lo muestran —tabla,
+  board y resumen del proyecto—, así que un diccionario por superficie serían
+  tres copias que se desincronizan.
+- [x] Con esto la vista maestra tiene **las dieciséis columnas** del artboard.
+
+**Test Cases:** `test_us211_hito_y_reporte.py`
+- `TC-211.1` (unit) — `sin_reporte` ≠ `vencido`; el día del vencimiento no está
+  vencido; la ventana de aviso se deriva de la cadencia; el retraso nunca es
+  negativo; cadencia cero cae al default.
+- `TC-211.2` (unit) — El más cercano; el pasado se devuelve marcado y no se
+  salta; el empate desempata por nombre en los dos órdenes de entrada.
+- `TC-211.3` — La cadencia por defecto, la configurada y la basura.
+- `TC-211.4` — Se cuenta desde el **último** de tres reportes; sin reportes sale
+  `sin_reporte`; solo los hitos abiertos y con fecha cuentan (un completado, uno
+  sin fecha y una tarea normal quedan fuera); los hitos de un proyecto no se
+  cuelan en otro.
+- `TC-211.5` — La vista maestra trae las dos columnas con su retraso en días.
+
+**Estado de integración:** DONE (US-211).
+
+---
+
 ## Notas técnicas
 
 - Folios por tenant+año (Postgres sequences o función).

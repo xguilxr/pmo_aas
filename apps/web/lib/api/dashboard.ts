@@ -150,6 +150,25 @@ export type PlanVsActualRow = {
    * no hay columna que se pueda quedar vieja.
    */
   completeness: Completitud | null;
+  // --- US-211: las dos últimas columnas del mockup ------------------------
+  /**
+   * `sin_reporte` **no** es `vencido`: un proyecto que nunca se reportó no
+   * incumplió una fecha, es que no ha empezado a reportar. Meterlos en el mismo
+   * cubo esconde el caso que más hay que mirar en un onboarding.
+   */
+  report_status: "al_dia" | "por_vencer" | "vencido" | "sin_reporte";
+  /** Ya en español: el vocabulario de estados es del dominio, no de la pantalla. */
+  report_status_label: string;
+  /** `null` cuando nunca se reportó: sin un último no hay de dónde contar. */
+  report_due_date: string | null;
+  /** Positivo solo cuando está vencido; nunca negativo. */
+  report_days_late: number;
+  next_milestone: {
+    name: string;
+    date: string;
+    /** La fecha ya pasó y el hito sigue abierto: es una alerta, no un dato. */
+    overdue: boolean;
+  } | null;
 };
 
 export type PlanVsActualParams = {

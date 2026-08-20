@@ -63,15 +63,18 @@ organización y deja el de tenant declarado como US-214.
 La mayoría lleva su migración y, cuando toca contrato, su ADR. Ordenadas por lo
 que desbloquean.
 
-**Corrección sobre US-210.** No lleva migración: la completitud se **deriva** de
-campos que ya existen. Un porcentaje guardado se queda viejo el día que alguien
-edita el proyecto por un camino que se olvidó de recalcularlo. La suposición de
-que las doce necesitaban esquema nuevo era del desglose, no del mockup.
+**Corrección sobre US-210 y US-211.** Ninguna lleva migración. La completitud se
+**deriva** de campos que ya existen —un porcentaje guardado se queda viejo el día
+que alguien edita el proyecto por un camino que se olvidó de recalcularlo—, y los
+hitos ya viven en `tasks.is_milestone` con la cadencia de reporte como ajuste del
+inquilino. La suposición de que las doce necesitaban esquema nuevo era del
+desglose, no del mockup: conviene comprobarla US por US antes de escribir una
+migración.
 
 | US | Qué | Desbloquea |
 |---|---|---|
 | **US-210** ✅ | Completitud de datos por proyecto (campos mínimos + checklist de onboarding). **Derivada, sin migración** | Columna del control tower · WProyectoResumen · WImportacion |
-| **US-211** | Próximo hito e estatus de reporte como datos consultables | Dos columnas del control tower · Portfolio Board |
+| **US-211** ✅ | Próximo hito y estatus de reporte como datos consultables. **Sin migración**: los hitos ya son `tasks.is_milestone` y la cadencia es un ajuste del inquilino | Dos columnas del control tower · Portfolio Board |
 | **US-212** | Línea base del plan (D-6) + comparación plan/base/real | WPlan · «desviación» deja de no tener referente |
 | **US-213** | Cadencia bi-semanal de snapshots + historial de cortes | Tendencias del dashboard · WReportesOrg · boards |
 | **US-214** | Membresía multi-tenant + switcher de tenant (W2) | Header completo · WAdminUsuarios |
