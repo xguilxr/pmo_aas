@@ -30,6 +30,10 @@ class ProjectRoleRead(BaseModel):
 # US-183: asignación con FTE% y ciclo de vida de capacidad.
 AssignmentType = Literal["directa", "advisory", "backup", "shared_service", "steerco_only"]
 AssignmentStatus = Literal["tentativa", "activa", "cerrada", "cancelada"]
+# US-217: el papel RACI de la participación. `None` es válido y frecuente: la
+# mayoría no tiene papel asignado, y forzar uno obligaría a inventarlo para
+# poder guardar la participación.
+RaciPapel = Literal["A", "R", "C", "I"]
 
 
 class ParticipationCreate(BaseModel):
@@ -48,6 +52,9 @@ class ParticipationCreate(BaseModel):
     status: AssignmentStatus = "activa"
     is_critical: bool = False
     phase: str | None = Field(default=None, max_length=32)
+    # US-217 — RACI y stakeholder clave.
+    raci: RaciPapel | None = None
+    is_key_stakeholder: bool = False
 
 
 class ParticipationUpdate(BaseModel):
@@ -65,6 +72,12 @@ class ParticipationUpdate(BaseModel):
     status: AssignmentStatus | None = None
     is_critical: bool | None = None
     phase: str | None = Field(default=None, max_length=32)
+    # US-217. `raci` no puede distinguir «no lo mandes» de «ponlo a nulo» con un
+    # `None` a secas, así que quitar el papel se pide con la cadena vacía: el
+    # `PATCH` lo traduce. Es la misma convención que ya usan los campos de texto
+    # opcionales del resto del contrato.
+    raci: RaciPapel | Literal[""] | None = None
+    is_key_stakeholder: bool | None = None
 
 
 class ActorMini(BaseModel):
@@ -94,6 +107,9 @@ class ParticipationRead(BaseModel):
     status: str = "activa"
     is_critical: bool = False
     phase: str | None = None
+    # US-217.
+    raci: str | None = None
+    is_key_stakeholder: bool = False
     created_at: datetime
     # Hidratado opcional (?include=actor).
     actor: ActorMini | None = None

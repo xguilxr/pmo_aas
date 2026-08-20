@@ -11,8 +11,9 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import conflict, mensaje, not_found
+from app.core.errors import conflict, mensaje, not_found, validation_error
 from app.db.session import get_db
+from app.dominio.raci import UNICO as PAPEL_UNICO
 from app.models.area import Actor
 from app.models.project_participation import ProjectParticipation
 from app.models.project_role import ProjectRole
@@ -222,6 +223,56 @@ async def list_participations(
     return [_hydrate(r, actors_by_id.get(r.actor_id)) for r in rows]
 
 
+async def _exigir_una_sola_a(
+    db: AsyncSession, tenant_id: str, project_id: str, *, esta: str, papel: str | None
+) -> None:
+    """US-217 — rechaza una segunda `A` en el mismo proyecto.
+
+    La `A` es el único papel que no se puede repartir: si dos personas responden
+    por el resultado, ninguna lo hace. Los otros tres se pueden dar a quien haga
+    falta.
+
+    El error nombra **a quién** la tiene ya: «Ana Ruiz ya es la A» es accionable
+    y «ya hay una A» obliga a ir a buscarla, que es exactamente el paso que hace
+    que alguien deje el RACI a medias.
+
+    No hay restricción de base de datos que lo cubra a propósito: un índice único
+    parcial funcionaría en Postgres y no en SQLite, y una regla que solo se
+    cumple en producción es peor que una que se cumple en la frontera.
+    """
+    if papel != PAPEL_UNICO:
+        return
+    filas = (
+        await db.execute(
+            select(ProjectParticipation.id, ProjectParticipation.actor_id)
+            .where(
+                ProjectParticipation.tenant_id == tenant_id,
+                ProjectParticipation.project_id == project_id,
+                ProjectParticipation.raci == PAPEL_UNICO,
+                ProjectParticipation.id != esta,
+            )
+            .limit(1)
+        )
+    ).all()
+    if not filas:
+        return
+    _, actor_id = filas[0]
+    nombre = (
+        await db.execute(select(Actor.name).where(Actor.id == str(actor_id)))
+    ).scalar_one_or_none()
+    raise validation_error(
+        mensaje(
+            que=f"{nombre or 'otra persona'} ya es el responsable último (A) "
+            "de este proyecto",
+            porque="La «A» del RACI responde por el resultado y no se puede "
+            "repartir: si dos personas responden, ninguna lo hace.",
+            accion=f"Quítale la A a {nombre or 'quien la tiene'} antes de "
+            "asignarla, o usa «R» si esta persona ejecuta el trabajo.",
+        ),
+        {"raci": "duplicada"},
+    )
+
+
 @participations_router.post("", response_model=ParticipationRead, status_code=201)
 async def create_participation(
     project_id: UUID,
@@ -263,10 +314,16 @@ async def create_participation(
         status=body.status,
         is_critical=body.is_critical,
         phase=body.phase,
+        # US-217 — RACI y stakeholder clave.
+        raci=body.raci,
+        is_key_stakeholder=body.is_key_stakeholder,
         created_by=str(cu.user.id),
     )
     db.add(part)
     await db.flush()
+    await _exigir_una_sola_a(
+        db, str(_tenant(cu)), str(project_id), esta=str(part.id), papel=body.raci
+    )
     if body.is_primary:
         await _ensure_unique_primary(
             db, str(project_id), str(body.actor_id), keep_id=part.id
@@ -316,9 +373,22 @@ async def update_participation(
     for k, v in data.items():
         if k in {"operational_team_id", "project_role_id", "functional_area_id"}:
             setattr(part, k, str(v) if v else None)
+        elif k == "raci":
+            # US-217 — la cadena vacía quita el papel. Un `None` no serviría:
+            # `exclude_unset` ya distingue «no lo mandes», así que `None`
+            # tendría dos lecturas y una de las dos se acabaría equivocando.
+            setattr(part, k, v or None)
         else:
             setattr(part, k, v)
     await db.flush()
+    if "raci" in data:
+        await _exigir_una_sola_a(
+            db,
+            str(_tenant(cu)),
+            str(project_id),
+            esta=str(part.id),
+            papel=part.raci,
+        )
     if data.get("is_primary") is True:
         await _ensure_unique_primary(
             db, str(project_id), part.actor_id, keep_id=part.id

@@ -446,6 +446,86 @@ la etiqueta de columna es el número de semana ISO.
 
 ---
 
+### US-217 — RACI y stakeholders clave ✅ (2026-08-20)
+
+Del artboard «Proyecto — Recursos» de los mockups aprobados el 2026-08-19,
+marcado como nuevo: «RACI / stakeholders clave».
+
+**Como** PMO Manager
+**Quiero** que cada persona del proyecto tenga declarado si responde, ejecuta,
+se le consulta o se le informa
+**Para** saber a quién llamar cuando algo se atora, y que no haya dos
+«responsables» de lo mismo.
+
+**El valor no está en las cuatro letras, está en que la A sea una.** Un proyecto
+con dos responsables últimos no tiene ninguno: cada uno supone que responde el
+otro. Es la única de las cuatro que el sistema limita; R, C e I se reparten
+cuanto haga falta y limitarlas no protegería nada.
+
+**Por qué es un campo de la participación y no una tabla nueva.** Una
+participación ya dice «esta persona está en este proyecto con este rol y este %
+de FTE». El RACI dice, de esa misma participación, **de qué tipo** es la
+responsabilidad. Una tabla aparte obligaría a mantener dos listas de las mismas
+personas y a decidir qué hacer cuando alguien está en una y no en la otra — y la
+respuesta a eso siempre acaba siendo «depende».
+
+**Por qué la unicidad de la A no es una restricción de base de datos.** Sería un
+índice único parcial (`WHERE raci = 'A'`), que Postgres soporta y SQLite no. Los
+tests corren sobre SQLite: una restricción que solo existe en producción es una
+restricción que nadie prueba. La regla vive en la frontera de la API, donde
+además puede decir **quién** ya tiene la A — «Ana ya es la responsable última»
+es accionable; «ya hay una A» obliga a ir a buscarla.
+
+**Por qué se valida a nivel de proyecto y no de tarea.** Las participaciones son
+del proyecto. Un RACI por tarea es un modelo distinto —una matriz de N personas
+por M entregables— y sería otra US; ponerlo aquí a medias daría un dato que no
+se puede leer en ninguna de las dos escalas.
+
+**Criterios de aceptación:**
+- [x] `raci` (`A`/`R`/`C`/`I`, nulable) e `is_key_stakeholder` (booleano) en
+  `project_participations`. Nulable porque estar en un proyecto sin papel
+  declarado es el estado normal de la mayoría de las participaciones, y
+  obligarlo llenaría la columna de letras puestas al azar.
+- [x] Una sola A por proyecto, exigida en `POST` y en `PATCH`. El 422 nombra a
+  quien ya la tiene.
+- [x] Poner la A a quien ya la tiene es idempotente, no conflicto. Y **quitarla
+  se permite**: un proyecto sin A es incompleto, no inválido —así está antes de
+  que alguien la asigne—, y rechazarlo impediría corregir una A puesta a la
+  persona equivocada.
+- [x] El `PATCH` borra el papel con `""`, no con `null`. El schema usa
+  `exclude_unset`, así que `undefined` ya significa «no lo mandes»; hacía falta
+  un valor que viajara y que dijera «déjalo vacío». Queda en el contrato en vez
+  de escondido.
+- [x] La columna RACI en el directorio ordena por rango (A, R, C, I, sin papel),
+  no alfabéticamente: que «A» vaya antes de «C» en el alfabeto es coincidencia, y
+  el orden que se quiere leer es el de jerarquía.
+- [x] Una franja sobre la tabla dice quién es la A, cuántos R/C/I hay y cuántos
+  stakeholders clave. Sin A, lo dice con esas palabras: «Sin asignar — nadie
+  responde por el resultado». El hueco es lo que la matriz existe para hacer
+  visible (DAT-12).
+- [x] El selector muestra la descripción de la letra elegida. Sin eso, A y R se
+  confunden en cada conversación: las dos palabras españolas empiezan por
+  «responsable».
+- [x] Índice `(project_id, raci)` — la consulta que importa es «la A de este
+  proyecto», y se hace una vez por cada guardado de papel.
+
+**Tests (`tests/test_us217_raci.py`, 16):**
+- `TC-217.1` — Crear participación con cada una de las cuatro letras.
+- `TC-217.2` — Segunda A en el mismo proyecto → 422 nombrando a la primera.
+- `TC-217.3` — Segunda A vía `PATCH` → 422; la primera queda intacta.
+- `TC-217.4` — Reasignar la A a quien ya la tiene → 200 (idempotente).
+- `TC-217.5` — Quitar la A con `""` → 200 y el proyecto queda sin A.
+- `TC-217.6` — Dos proyectos, una A cada uno → los dos 201: el límite es por
+  proyecto, no por tenant.
+- `TC-217.7` — Letra inválida → 422 del schema.
+- `TC-217.8` — `is_key_stakeholder` viaja en create, read y update.
+- `TC-217.9` — Sin `raci` en el `PATCH`, el papel existente no se toca.
+- `TC-217.10` — Aislamiento por tenant: la A de otro tenant no cuenta.
+
+**Estado de integración:** DONE (US-217).
+
+---
+
 ## Notas
 
 - IDs de DEC-### a asignar al cierre, mirando el último libre en `DECISIONS.md`.
@@ -454,3 +534,9 @@ la etiqueta de columna es el número de semana ISO.
 - **2026-07-09 — Batch Revamp 1.0:** US-182 (`c3fdf7e`), US-183 (`4aec20c`), US-184 (`595dc4f`) — Bloque F nuevo: pool de recursos con capacidad sobre `actors`, motor de saturación sobre `project_participations` + página `/pmo/resources`, alertas de capacidad in-app. Ver sección "Bloque F" arriba.
 - **2026-07-09 — US-186/US-187:** organigrama con utilización (XLSX, 2 hojas: %FTE + uso mensual con alertas amarillo/rojo) descargable por scope programa/organización/tenant. Ver sub-sección "US-186 / US-187" en Bloque F arriba.
 - **2026-07-18 — Batch feedback 16-jul:** ENH-198 (`828774f`) — tab Personas en `/pmo/resources` agrega columna "% Uso" (FTE asignado / capacidad teórica, color al 80/100%) + filtros por área funcional y equipo operativo (sub-área acotado al área elegida). Backend: `capacity.py` agrega campos `area_name`, `team_name`, `usage_pct` por recurso en responses de listado.
+- **2026-08-20 — US-217:** RACI (`A`/`R`/`C`/`I`) e `is_key_stakeholder` en
+  `project_participations` (migración `20260820_0112`). Regla de la A única en la
+  frontera de la API (`app/dominio/raci.py`), no en el esquema, porque el índice
+  único parcial que haría falta no existe en SQLite y los tests corren ahí. UI:
+  columna RACI ordenada por rango, franja de resumen que nombra a la A o dice
+  que falta, y marca de stakeholder clave en el directorio.

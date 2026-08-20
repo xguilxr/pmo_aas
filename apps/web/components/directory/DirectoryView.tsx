@@ -3,9 +3,13 @@
 // US-116 — Toggle Directorio del proyecto.
 // ENH-082 — agregado: operational_team_id en modales, inline create de
 // área/equipo/rol, botón "Quitar" en fila, nombres legibles (no UUIDs).
+// US-217 — RACI y stakeholders clave: columna en la tabla, selector en los dos
+// modales y una franja arriba que dice quién es la A. La franja existe porque el
+// dato que se busca al abrir esta pantalla es «¿quién responde por esto?», y
+// leerlo en una columna de doce filas es peor que leerlo en una línea.
 
 import { useEffect, useMemo, useState } from "react";
-import { Crown, Plus, Star, Trash2, UserPlus } from "lucide-react";
+import { Crown, Plus, ShieldCheck, Star, Trash2, UserPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +32,10 @@ import { createOrAdoptAreaForProject } from "@/lib/api/area-helpers";
 import {
   ASSIGNMENT_STATUS_LABEL,
   ASSIGNMENT_TYPE_LABEL,
+  RACI_DESCRIPCION,
+  RACI_LABEL,
+  RACI_ORDEN,
+  RACI_RANGO,
   createParticipation,
   createProjectRole,
   deleteParticipation,
@@ -38,6 +46,7 @@ import {
   type AssignmentType,
   type Participation,
   type ProjectRole,
+  type RaciPapel,
 } from "@/lib/api/project-directory";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
@@ -175,6 +184,8 @@ export function DirectoryView({ projectId }: Props) {
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
       )}
 
+      {rows.length > 0 && <ResumenRaci rows={rows} />}
+
       {rows.length === 0 ? (
         <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
           No hay personas en el directorio del proyecto. Usá "Agregar al
@@ -190,6 +201,9 @@ export function DirectoryView({ projectId }: Props) {
                 <SortableTh<Row> sortKey="area" getter={(r) => r.participation.functional_area_id ? areasById[r.participation.functional_area_id]?.name ?? "" : ""} ctrl={sortCtrl}>Área funcional</SortableTh>
                 <SortableTh<Row> sortKey="team" getter={(r) => r.participation.operational_team_id ? teamsById[r.participation.operational_team_id]?.name ?? "" : ""} ctrl={sortCtrl}>Equipo operativo</SortableTh>
                 <SortableTh<Row> sortKey="role" getter={(r) => r.participation.project_role_id ? rolesById[r.participation.project_role_id]?.name ?? "" : ""} ctrl={sortCtrl}>Rol</SortableTh>
+                {/* US-217: ordena por rango, no alfabético — la A tiene que
+                    quedar arriba, y "A" antes de "C" es coincidencia. */}
+                <SortableTh<Row> sortKey="raci" getter={(r) => RACI_RANGO[r.participation.raci ?? ""] ?? 9} ctrl={sortCtrl}>RACI</SortableTh>
                 <SortableTh<Row> sortKey="period" getter={(r) => r.participation.start_date ?? ""} ctrl={sortCtrl}>Periodo</SortableTh>
                 <SortableTh<Row> sortKey="allocation" getter={(r) => r.participation.allocation_pct ?? -1} ctrl={sortCtrl} align="right">FTE %</SortableTh>
                 <th className="px-3 py-2"></th>
@@ -211,6 +225,11 @@ export function DirectoryView({ projectId }: Props) {
                           className="h-3 w-3 text-yellow-500"
                           aria-label="Participación primaria"
                         />
+                      )}
+                      {p.is_key_stakeholder && (
+                        <Badge className="gap-1">
+                          <ShieldCheck className="h-3 w-3" /> Stakeholder clave
+                        </Badge>
                       )}
                     </div>
                     {actor?.email && (
@@ -235,6 +254,22 @@ export function DirectoryView({ projectId }: Props) {
                     {p.project_role_id
                       ? rolesById[p.project_role_id]?.name ?? "—"
                       : "—"}
+                  </td>
+                  <td className="px-3 py-2">
+                    {p.raci ? (
+                      <span
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                          p.raci === "A"
+                            ? "bg-[var(--color-primary)] text-white"
+                            : "bg-muted text-foreground"
+                        }`}
+                        title={RACI_DESCRIPCION[p.raci]}
+                      >
+                        {p.raci}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Sin papel</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs">
                     {p.start_date ?? "—"} → {p.end_date ?? "—"}
@@ -300,6 +335,93 @@ export function DirectoryView({ projectId }: Props) {
 }
 
 // ---------------------------------------------------------------------------
+// US-217 — Resumen RACI
+// ---------------------------------------------------------------------------
+
+/**
+ * La línea que responde «¿quién responde por este proyecto?».
+ *
+ * Cuando no hay A, lo dice en vez de callarse. Un proyecto sin responsable
+ * último es el estado normal antes de asignarlo, no un error —por eso es un
+ * aviso y no un bloqueo—, pero es exactamente el hueco que la matriz RACI
+ * existe para hacer visible (DAT-12: la ausencia no es un cero, es una
+ * ausencia, y se nombra).
+ */
+function ResumenRaci({ rows }: { rows: Row[] }) {
+  const conPapel = rows.filter((r) => r.participation.raci);
+  const a = conPapel.find((r) => r.participation.raci === "A");
+  const porPapel = (papel: RaciPapel) =>
+    conPapel.filter((r) => r.participation.raci === papel).length;
+  const clave = rows.filter((r) => r.participation.is_key_stakeholder);
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">Responsable último (A)</span>
+        {a ? (
+          <span className="font-medium">{a.actor?.name ?? "—"}</span>
+        ) : (
+          <span className="font-medium text-[var(--color-warning-fg)]">
+            Sin asignar — nadie responde por el resultado
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-3 text-muted-foreground">
+        {(["R", "C", "I"] as RaciPapel[]).map((papel) => (
+          <span key={papel} title={RACI_DESCRIPCION[papel]}>
+            {papel}: <span className="font-medium text-foreground">{porPapel(papel)}</span>
+          </span>
+        ))}
+        <span title="Personas marcadas como stakeholder clave del proyecto">
+          Stakeholders clave:{" "}
+          <span className="font-medium text-foreground">{clave.length}</span>
+        </span>
+      </div>
+      {conPapel.length === 0 && (
+        <span className="text-muted-foreground">
+          Ninguna persona tiene papel RACI. Se asigna al editar su participación.
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * El selector de papel, compartido por los dos modales.
+ *
+ * Muestra la descripción de la letra elegida debajo. Sin eso, «A» y «R» se
+ * confunden en cada conversación: las dos palabras españolas empiezan por
+ * «responsable», y quien llena el formulario no tiene por qué saber cuál es cuál.
+ */
+function SelectorRaci({
+  valor,
+  onChange,
+}: {
+  valor: RaciPapel | "";
+  onChange: (v: RaciPapel | "") => void;
+}) {
+  return (
+    <label className="block text-xs">
+      Papel RACI
+      <Select
+        value={valor}
+        onChange={(e) => onChange(e.target.value as RaciPapel | "")}
+      >
+        <option value="">Sin papel</option>
+        {RACI_ORDEN.map((papel) => (
+          <option key={papel} value={papel}>
+            {RACI_LABEL[papel]}
+          </option>
+        ))}
+      </Select>
+      <span className="mt-0.5 block text-[11px] text-[var(--color-tertiary)]">
+        {valor ? RACI_DESCRIPCION[valor] : "Participa sin responsabilidad declarada."}
+      </span>
+    </label>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Add Person modal
 // ---------------------------------------------------------------------------
 function AddPersonModal({
@@ -337,6 +459,9 @@ function AddPersonModal({
   const [assignmentType, setAssignmentType] = useState<AssignmentType>("directa");
   const [status, setStatus] = useState<AssignmentStatus>("activa");
   const [isCritical, setIsCritical] = useState(false);
+  // US-217: RACI y stakeholder clave.
+  const [raci, setRaci] = useState<RaciPapel | "">("");
+  const [isKeyStakeholder, setIsKeyStakeholder] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -375,6 +500,8 @@ function AddPersonModal({
         assignment_type: assignmentType,
         status,
         is_critical: isCritical,
+        raci: raci || undefined,
+        is_key_stakeholder: isKeyStakeholder,
       });
       onSaved();
     } catch (e: any) {
@@ -562,7 +689,9 @@ function AddPersonModal({
           </Select>
         </label>
 
-        <div className="flex gap-4 text-xs">
+        <SelectorRaci valor={raci} onChange={setRaci} />
+
+        <div className="flex flex-wrap gap-4 text-xs">
           <label className="flex items-center gap-1">
             <input
               type="checkbox"
@@ -578,6 +707,14 @@ function AddPersonModal({
               onChange={(e) => setIsPrimary(e.target.checked)}
             />
             Participación primaria
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={isKeyStakeholder}
+              onChange={(e) => setIsKeyStakeholder(e.target.checked)}
+            />
+            Stakeholder clave
           </label>
           <label className="flex items-center gap-1">
             <input
@@ -661,6 +798,11 @@ function EditParticipationModal({
     participation.status ?? "activa",
   );
   const [isCritical, setIsCritical] = useState(participation.is_critical ?? false);
+  // US-217: RACI y stakeholder clave.
+  const [raci, setRaci] = useState<RaciPapel | "">(participation.raci ?? "");
+  const [isKeyStakeholder, setIsKeyStakeholder] = useState(
+    participation.is_key_stakeholder ?? false,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -698,6 +840,9 @@ function EditParticipationModal({
         assignment_type: assignmentType,
         status,
         is_critical: isCritical,
+        // El `""` es el borrado explícito del papel; ver `ParticipationUpdate`.
+        raci,
+        is_key_stakeholder: isKeyStakeholder,
       });
       onSaved();
     } catch (e: any) {
@@ -886,7 +1031,9 @@ function EditParticipationModal({
           </Select>
         </label>
 
-        <div className="flex gap-4 text-xs">
+        <SelectorRaci valor={raci} onChange={setRaci} />
+
+        <div className="flex flex-wrap gap-4 text-xs">
           <label className="flex items-center gap-1">
             <input
               type="checkbox"
@@ -902,6 +1049,14 @@ function EditParticipationModal({
               onChange={(e) => setIsPrimary(e.target.checked)}
             />
             Primaria
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={isKeyStakeholder}
+              onChange={(e) => setIsKeyStakeholder(e.target.checked)}
+            />
+            Stakeholder clave
           </label>
           <label className="flex items-center gap-1">
             <input

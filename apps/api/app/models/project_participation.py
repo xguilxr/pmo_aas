@@ -77,6 +77,24 @@ class ProjectParticipation(Base, TimestampMixin):
     )
     # Fase del proyecto en la que consume capacidad (texto libre corto).
     phase: Mapped[str | None] = mapped_column(String(32))
+    # US-217 — el papel RACI de esta participación: A/R/C/I, o nulo.
+    #
+    # Nulo es un estado válido y frecuente: la mayoría de las participaciones no
+    # tienen papel asignado, y forzar uno obligaría a inventarlo para poder
+    # guardar la participación.
+    #
+    # La unicidad de la `A` por proyecto **no** es una restricción de base de
+    # datos: un índice único parcial funcionaría en Postgres y no en SQLite, y
+    # los tests van sobre SQLite. Una regla que solo se cumple en producción es
+    # peor que una que se cumple en la frontera, así que vive en la API
+    # (`dominio/raci.py::conflicto_de_unicidad`).
+    raci: Mapped[str | None] = mapped_column(String(1))
+    # US-217 — el interlocutor con el que hay que hablar. Independiente del
+    # RACI: alguien informado puede ser clave —el director que quiere el
+    # correo— y alguien que ejecuta puede no serlo.
+    is_key_stakeholder: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
     created_by: Mapped[UUID | None] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL")
     )

@@ -42,6 +42,30 @@ export const ASSIGNMENT_STATUS_LABEL: Record<AssignmentStatus, string> = {
   cancelada: "Cancelada",
 };
 
+// US-217 — RACI. Las etiquetas y descripciones son las mismas que
+// `app/dominio/raci.py`: si una letra cambia de significado, cambia en los dos
+// sitios o la interfaz miente sobre lo que valida el backend.
+export type RaciPapel = "A" | "R" | "C" | "I";
+
+export const RACI_ORDEN: RaciPapel[] = ["A", "R", "C", "I"];
+
+export const RACI_LABEL: Record<RaciPapel, string> = {
+  A: "Responsable último (A)",
+  R: "Ejecuta (R)",
+  C: "Consultado (C)",
+  I: "Informado (I)",
+};
+
+export const RACI_DESCRIPCION: Record<RaciPapel, string> = {
+  A: "Responde por el resultado ante el sponsor. Solo puede haber una persona.",
+  R: "Hace el trabajo. Puede haber varias.",
+  C: "Se le pregunta antes de decidir.",
+  I: "Se le informa de lo decidido.",
+};
+
+// Para ordenar la columna: la A primero, «sin papel» al final.
+export const RACI_RANGO: Record<string, number> = { A: 0, R: 1, C: 2, I: 3 };
+
 export type Participation = {
   id: string;
   tenant_id: string;
@@ -61,6 +85,9 @@ export type Participation = {
   status: AssignmentStatus;
   is_critical: boolean;
   phase: string | null;
+  // US-217.
+  raci: RaciPapel | null;
+  is_key_stakeholder: boolean;
   created_at: string;
   actor?: ActorMini | null;
 };
@@ -81,9 +108,18 @@ export type ParticipationCreate = {
   status?: AssignmentStatus;
   is_critical?: boolean;
   phase?: string | null;
+  // US-217.
+  raci?: RaciPapel | null;
+  is_key_stakeholder?: boolean;
 };
 
-export type ParticipationUpdate = Partial<ParticipationCreate>;
+export type ParticipationUpdate = Omit<Partial<ParticipationCreate>, "raci"> & {
+  // US-217: `undefined` es «no lo mandes» —el PATCH usa `exclude_unset`—, así
+  // que para **quitar** el papel hace falta un valor que viaje. Es `""` y no
+  // `null` porque el schema lo declara así: un `Literal[""]` explícito deja el
+  // borrado documentado en el contrato en vez de escondido en un `None`.
+  raci?: RaciPapel | "" | null;
+};
 
 // Project roles
 export const listProjectRoles = (params?: { is_active?: boolean }) =>

@@ -1124,3 +1124,35 @@ presentación con default, «ausente» y «restaurado al default» son el mismo
 estado visible. Si hubiera que reponer un inquilino concreto a mano, el
 conteo de la subida está en el registro.
 
+---
+
+## 0112 — `raci` e `is_key_stakeholder` en participaciones (US-217)
+
+Dos columnas en `project_participations` y un índice:
+
+| Columna | Tipo | Nulo | Por qué |
+|---|---|---|---|
+| `raci` | `VARCHAR(1)` | sí | `A`/`R`/`C`/`I`. Nulable porque estar en un proyecto sin papel declarado es el estado normal de la mayoría de las participaciones |
+| `is_key_stakeholder` | `BOOLEAN NOT NULL DEFAULT false` | no | Marca de interés, no de responsabilidad: `false` es una respuesta, no un hueco |
+
+Índice `ix_participations_project_raci` sobre `(project_id, raci)`. La consulta
+que importa es «¿quién es la A de este proyecto?», y se hace una vez por cada
+guardado de papel para validar la unicidad.
+
+**La unicidad de la A no está en el esquema, y es a propósito.** Expresarla
+requeriría un índice único parcial (`UNIQUE (project_id) WHERE raci = 'A'`), que
+Postgres soporta y SQLite no. La suite corre sobre SQLite: una restricción que
+solo existe en producción es una restricción que nadie prueba, y la primera vez
+que se entera alguien es con un 500 en vez de un mensaje. Vive en la frontera de
+la API (`app/dominio/raci.py`), donde además puede nombrar a quien ya la tiene.
+
+**La bajada suelta el índice antes que las columnas.** No es cosmético: en
+Postgres, soltar una columna se lleva en silencio todo índice que dependa de
+ella, así que un `drop_index` después del `drop_column` muere con «index does not
+exist». Es el fallo que la 0109 dejó en el CI del 2026-08-19. Ahora lo vigila un
+trinquete sobre **todas** las revisiones
+(`tests/test_dat_indices_antes_de_columnas.py`), no solo sobre esta.
+
+**Verificada en los dos sentidos** sobre SQLite en memoria antes de pushear —
+subida, fila preexistente con `raci = NULL`, bajada, fila intacta. Usa
+`batch_alter_table` porque SQLite no tiene `ALTER` en sitio.

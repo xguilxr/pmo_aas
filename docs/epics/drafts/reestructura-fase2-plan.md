@@ -80,7 +80,7 @@ migración.
 | **US-214** | Membresía multi-tenant + switcher de tenant (W2) | Header completo · WAdminUsuarios |
 | **US-215** | Costo-snapshot en participaciones (W4) | WProyectoRecursos · costo en el catálogo |
 | **US-216** | Importación masiva: proyectos, planes y recursos (B5) | WImportacion — la carga inicial sin captura manual |
-| **US-217** | RACI y stakeholders clave del proyecto | WProyectoRecursos |
+| **US-217** ✅ | RACI y stakeholders clave del proyecto. **Migración `0112`**: dos columnas en `project_participations`. La A única se exige en la frontera de la API y no en el esquema — el índice único parcial que haría falta no existe en SQLite, donde corren los tests | WProyectoRecursos |
 | **US-218** ✅ | Dependencias entre tareas de proyectos distintos. **Sin migración**: `task_dependencies` ya enlazaba por id. Ciclos validados a nivel de tarea cruzando las dos clases de arista | WPlan |
 | **US-219** ◐ | Boards. **Portfolio Board hecho** (por estatus de reporte, sin migración); el Project Board —kanban de tareas, donde sí se arrastra porque `tasks.status` es declarado— queda como ENH | WBoards |
 | **US-220** | Catálogo de IA (skills · tools · prompts · workflows) + roles de agente | WAdminIA |
