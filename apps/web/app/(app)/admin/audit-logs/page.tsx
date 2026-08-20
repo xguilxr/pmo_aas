@@ -77,7 +77,7 @@ export default function AuditLogsPage() {
   const csvHref = useMemo(() => auditLogsCsvUrl(apiBase), [apiBase]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="space-y-5">
       <Breadcrumb
         items={[
           { href: "/admin", label: "Admin" },

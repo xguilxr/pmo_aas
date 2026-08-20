@@ -232,7 +232,7 @@ export default function LessonsPage() {
 
   return (
     <>
-      <div className="mx-auto max-w-6xl space-y-5">
+      <div className="space-y-5">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <nav className="text-[11px] text-[var(--text-tertiary)]">

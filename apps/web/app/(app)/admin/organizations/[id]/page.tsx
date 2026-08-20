@@ -116,7 +116,7 @@ export default function OrganizationPanelPage() {
 
   if (error && !data) {
     return (
-      <div className="mx-auto max-w-4xl">
+      <div>
         <Banner variant="danger">{error}</Banner>
       </div>
     );
@@ -124,7 +124,7 @@ export default function OrganizationPanelPage() {
 
   if (loading || !data) {
     return (
-      <div className="mx-auto max-w-5xl space-y-4">
+      <div className="space-y-4">
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-96 w-full" />
@@ -137,7 +137,7 @@ export default function OrganizationPanelPage() {
   const totalProgramas = data.programs.length;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-2">
         <BackLink fallbackHref="/admin/organizations" />
         <Breadcrumb

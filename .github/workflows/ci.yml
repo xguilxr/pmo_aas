@@ -177,6 +177,14 @@ jobs:
       - name: La moneda no se escribe a mano (BUG-092)
         run: python scripts/check_moneda.py
 
+      # DIS-05 — una vista de datos usa el ancho de la pantalla
+      # (`reestructura-navegacion.md` §4.1, aprobado con los mockups). Va en
+      # este job por el mismo criterio que los cinco de arriba: barre
+      # `apps/web` leyendo ficheros, tarda milisegundos, y un check requerido
+      # más cuesta una acción del owner sin añadir cobertura.
+      - name: Ancho de las vistas de datos (DIS-05)
+        run: python scripts/check_ancho.py
+
   # Auditoría MCS 2026-08-03 — cierra CFG-02 (el repositorio NO DEBE contener
   # secretos, y la ausencia DEBE verificarse automáticamente sobre el HISTORIAL
   # COMPLETO) e INT-02 (análisis estático de seguridad, dependencias vulnerables

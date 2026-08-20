@@ -64,7 +64,7 @@ function TenantChangesInner() {
   }, [filter, status]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="space-y-5">
       <header className="space-y-2">
         <div className="flex items-center gap-3">
           <GitPullRequest className="h-6 w-6 text-[var(--color-tertiary)]" aria-hidden />

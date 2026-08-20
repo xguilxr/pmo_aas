@@ -67,7 +67,7 @@ export default function SuperadminPermissionRequestsPage() {
 
   if (me && !me.is_superadmin) {
     return (
-      <div className="mx-auto max-w-2xl p-6">
+      <div className="p-6">
         <Banner variant="danger">Solo superadmin puede ver esta página.</Banner>
       </div>
     );
@@ -116,7 +116,7 @@ export default function SuperadminPermissionRequestsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
+    <div className="space-y-6 p-6">
       <Breadcrumb
         items={[
           { label: "Superadmin", href: "/superadmin" },

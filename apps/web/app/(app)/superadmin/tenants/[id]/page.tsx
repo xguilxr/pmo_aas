@@ -169,7 +169,7 @@ export default function TenantDetailPage() {
 
   if (error && !data) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <div>
         <Banner variant="danger">{error}</Banner>
       </div>
     );
@@ -177,7 +177,7 @@ export default function TenantDetailPage() {
 
   if (loading || !data) {
     return (
-      <div className="mx-auto max-w-4xl space-y-4">
+      <div className="space-y-4">
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-72 w-full" />
@@ -188,7 +188,7 @@ export default function TenantDetailPage() {
   const { tenant, users, organizations, programs } = data;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="space-y-6">
       <Breadcrumb
         items={[
           { href: "/superadmin/tenants", label: "Tenants" },

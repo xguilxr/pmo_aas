@@ -66,7 +66,7 @@ export default function SuperadminUsersPage() {
   }, [q, activeFilter, load]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="space-y-5">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
           Usuarios

@@ -248,7 +248,7 @@ export default function ProjectDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4">
+      <div className="space-y-4">
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-10 w-72" />
         <Skeleton className="h-40 w-full" />
@@ -258,14 +258,14 @@ export default function ProjectDetailPage() {
 
   if (error || !project) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <div>
         <Banner variant="danger">{error ?? "Proyecto no encontrado"}</Banner>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       <header className="space-y-3">
         <div className="flex items-center gap-2">
           <BackLink

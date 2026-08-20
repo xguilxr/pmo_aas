@@ -2024,7 +2024,7 @@ function PlanInner() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="space-y-5">
       {/* ENH-162: acciones (Plantilla / Descargar / Importar / Nueva tarea)
           al nivel del título + breadcrumbs, por encima de la barra de filtros
           y agrupaciones. */}
