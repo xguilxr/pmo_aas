@@ -116,6 +116,10 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   sitio), `app/(app)/pmo/projects/[id]/board/page.tsx` (Project Board, US-219 —
   aquí **sí**, porque `tasks.status` lo declara una persona; el corte de la
   cadencia es una marca en la tarjeta, no una columna).
+- **Plan**: `app/(app)/admin/plan/page.tsx` (US-221: tier, topes y consumo; la
+  pantalla **dice** que no se hace cumplir —si no, «3/1» con barra roja se lee
+  como un bloqueo y genera una llamada de soporte por algo que no pasa—, y sin
+  tope no dibuja barra).
 - **Importación masiva**: `app/(app)/pmo/imports/page.tsx` (US-216: subir →
   validar → confirmar, con el reporte de tres estados por fila y la plantilla
   generada desde las columnas que declara el backend; la organización de destino

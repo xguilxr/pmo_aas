@@ -84,7 +84,7 @@ migración.
 | **US-218** ✅ | Dependencias entre tareas de proyectos distintos. **Sin migración**: `task_dependencies` ya enlazaba por id. Ciclos validados a nivel de tarea cruzando las dos clases de arista | WPlan |
 | **US-219** ✅ | Boards, los dos. **Portfolio Board** por estatus de reporte —derivado, no se arrastra— y **Project Board** kanban de tareas —`tasks.status` es declarado, ahí sí se arrastra—. Sin migración. El «corte bi-semanal» del artboard es una marca en la tarjeta y no una columna: estado × corte da un tablero de dos ejes que no se lee | WBoards |
 | **US-220** | Catálogo de IA (skills · tools · prompts · workflows) + roles de agente | WAdminIA |
-| **US-221** | Plan de suscripción: tier, límites y consumo (solo lectura) | WAdminPlan |
+| **US-221** ✅ | Plan de suscripción: tier, límites y consumo (solo lectura). **Sin migración** —los topes van en `tenants.settings.plan`, donde ya viven la moneda y la cadencia—. Los tres tiers son del artboard; los **números** de cada uno no están en ningún documento, así que se capturan por inquilino y sin ellos se dice «sin límite declarado». No bloquea nada, como pide el artboard | WAdminPlan |
 
 ## Lo que estos mockups **no** cambian
 

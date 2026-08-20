@@ -69,6 +69,8 @@ docs/lessons/minutas + convert-agreement) · risk_actions · change_approvals
 MPP/XML/XLSX/CSV** con preview/IA; **dependencias entre proyectos** US-218, con
 ciclos validados a nivel de tarea; **línea base** US-212: `plan/baselines` +
 `plan/baseline-comparison`, sin base devuelve `has_baseline: false` y no ceros) ·
+**plan** (US-221: `admin/plan` de solo lectura + `superadmin/tenants/{id}/plan`;
+los topes viven en `settings.plan`, `enforced: false` viaja en la respuesta) ·
 **imports** (US-216: carga masiva de proyectos y recursos por organización,
 `columns`/`preview`/`confirm`; una fila mala no tumba el archivo y una duplicada
 se salta sin actualizar) · areas

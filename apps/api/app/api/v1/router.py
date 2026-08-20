@@ -21,6 +21,7 @@ from app.api.v1.endpoints import (
     organigrama,
     organizations,
     permission_requests,
+    plan,
     project_artifacts,
     project_charters,
     project_directory,
@@ -65,6 +66,7 @@ api_router.include_router(areas.teams_router)
 api_router.include_router(areas.actors_router)
 api_router.include_router(areas.assignments_router)
 api_router.include_router(importacion.router)
+api_router.include_router(plan.router)
 api_router.include_router(project_directory.roles_router)
 api_router.include_router(project_directory.participations_router)
 api_router.include_router(project_directory.eligible_router)

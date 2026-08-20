@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Columns3,
+  CreditCard,
   FolderKanban,
   Gauge,
   GitBranch,
@@ -249,6 +250,15 @@ function buildAdminNav(): NavItem {
         icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
         href: "/admin/permissions",
         match: (p) => p.startsWith("/admin/permissions"),
+      },
+      {
+        // US-221 — el plan va antes de Auditoría y después de Permisos: es
+        // configuración de la cuenta, no un registro que se consulta.
+        id: "plan",
+        label: "Plan",
+        icon: <CreditCard className="h-4 w-4" aria-hidden />,
+        href: "/admin/plan",
+        match: (p) => p.startsWith("/admin/plan"),
       },
       {
         id: "audit",
