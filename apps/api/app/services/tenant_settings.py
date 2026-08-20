@@ -33,6 +33,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.compatibilidad import registrar_uso
+from app.dominio.reporte import CADENCIA_POR_DEFECTO_DIAS
 from app.models.tenant import Tenant
 
 # ---- progress_calculation_method (ENH-098) ----
@@ -94,6 +95,37 @@ def set_progress_calculation_method(tenant: Tenant, value: str) -> dict[str, Any
     merged["report_builder"] = rb
     tenant.settings = merged
     return merged
+
+
+# ---- cadencia de reporte (US-211) ----
+
+
+def get_cadencia_de_reporte(tenant: Tenant | None) -> int:
+    """Cada cuántos días se espera un reporte de estatus por proyecto.
+
+    Vive en `settings.report_builder.cadencia_de_reporte_dias` y su default son
+    catorce días, la cadencia bi-semanal que piden los mockups.
+
+    ## Por qué en el inquilino y no en el proyecto
+
+    Porque la cadencia es un **acuerdo de la PMO**, no un atributo del proyecto:
+    «reportamos cada dos semanas» se decide una vez para todos. Ponerlo por
+    proyecto obligaría a capturarlo veintitrés veces para decir lo mismo, y la
+    columna «Reporte» de la vista maestra saldría vacía en los que nadie tocó.
+
+    Cuando un proyecto necesite su propia cadencia, el sitio es un campo suyo
+    que **caiga** a este valor —no que lo reemplace—, para que el default siga
+    contestando por los demás.
+
+    Un valor no numérico o no positivo cae al default: cero días haría que todo
+    esté vencido siempre, que no es una configuración sino un error de captura.
+    """
+    rb = _report_builder_block(tenant) if tenant else {}
+    crudo = rb.get("cadencia_de_reporte_dias")
+    if isinstance(crudo, bool) or not isinstance(crudo, (int, float)):
+        return CADENCIA_POR_DEFECTO_DIAS
+    dias = int(crudo)
+    return dias if dias > 0 else CADENCIA_POR_DEFECTO_DIAS
 
 
 def get_task_load_thresholds(tenant: Tenant) -> dict[str, int]:

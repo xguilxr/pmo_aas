@@ -33,6 +33,7 @@ from app.models.organization_user_exclusion import (  # noqa: F401
     OrganizationUserExclusion,
 )
 from app.models.permission_request import PermissionChangeRequest  # noqa: F401
+from app.models.plan_baseline import PlanBaseline, PlanBaselineTask  # noqa: F401
 from app.models.platform_settings import PlatformAISettings  # noqa: F401
 from app.models.project import Project  # noqa: F401
 from app.models.project_ai_context import ProjectAIContext  # noqa: F401
@@ -56,3 +57,4 @@ from app.models.tenant import Tenant  # noqa: F401
 from app.models.tenant_permission import TenantRolePermissionOverride  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.user_scope_assignment import UserScopeAssignment  # noqa: F401
+from app.models.user_tenant_membership import UserTenantMembership  # noqa: F401

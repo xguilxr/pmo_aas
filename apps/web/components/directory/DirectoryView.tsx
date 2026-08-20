@@ -3,9 +3,25 @@
 // US-116 — Toggle Directorio del proyecto.
 // ENH-082 — agregado: operational_team_id en modales, inline create de
 // área/equipo/rol, botón "Quitar" en fila, nombres legibles (no UUIDs).
+// US-217 — RACI y stakeholders clave: columna en la tabla, selector en los dos
+// modales y una franja arriba que dice quién es la A. La franja existe porque el
+// dato que se busca al abrir esta pantalla es «¿quién responde por esto?», y
+// leerlo en una columna de doce filas es peor que leerlo en una línea.
+// US-215 — costo con la tarifa congelada: columna por persona y total por
+// moneda. El total va **con** cuántas asignaciones no tienen tarifa, porque un
+// total sin ese número miente por omisión.
 
 import { useEffect, useMemo, useState } from "react";
-import { Crown, Plus, Star, Trash2, UserPlus } from "lucide-react";
+import {
+  Coins,
+  Crown,
+  Plus,
+  RefreshCw,
+  ShieldCheck,
+  Star,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,9 +44,16 @@ import { createOrAdoptAreaForProject } from "@/lib/api/area-helpers";
 import {
   ASSIGNMENT_STATUS_LABEL,
   ASSIGNMENT_TYPE_LABEL,
+  PERIODO_TARIFA_LABEL,
+  RACI_DESCRIPCION,
+  RACI_LABEL,
+  RACI_ORDEN,
+  RACI_RANGO,
   createParticipation,
   createProjectRole,
   deleteParticipation,
+  freezeCostRate,
+  getProjectCostSummary,
   listParticipations,
   listProjectRoles,
   updateParticipation,
@@ -38,6 +61,8 @@ import {
   type AssignmentType,
   type Participation,
   type ProjectRole,
+  type RaciPapel,
+  type ResumenCosto,
 } from "@/lib/api/project-directory";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
@@ -63,6 +88,8 @@ export function DirectoryView({ projectId }: Props) {
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<Participation | null>(null);
+  // US-215.
+  const [costo, setCosto] = useState<ResumenCosto | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -75,6 +102,12 @@ export function DirectoryView({ projectId }: Props) {
         listProjectRoles().catch(() => [] as ProjectRole[]),
         listActors().catch(() => [] as Actor[]),
       ]);
+      // US-215: el resumen se pide aparte y su fallo no tumba el directorio.
+      // El costo es información añadida; sin ella la pantalla sigue sirviendo
+      // para lo que existe —ver quién está en el proyecto—.
+      getProjectCostSummary(projectId)
+        .then(setCosto)
+        .catch(() => setCosto(null));
       setParticipations(parts);
       setAreas(ar);
       setTeams(tm);
@@ -175,6 +208,10 @@ export function DirectoryView({ projectId }: Props) {
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
       )}
 
+      {rows.length > 0 && <ResumenRaci rows={rows} />}
+
+      {costo && <ResumenDeCosto c={costo} />}
+
       {rows.length === 0 ? (
         <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
           No hay personas en el directorio del proyecto. Usá "Agregar al
@@ -190,8 +227,14 @@ export function DirectoryView({ projectId }: Props) {
                 <SortableTh<Row> sortKey="area" getter={(r) => r.participation.functional_area_id ? areasById[r.participation.functional_area_id]?.name ?? "" : ""} ctrl={sortCtrl}>Área funcional</SortableTh>
                 <SortableTh<Row> sortKey="team" getter={(r) => r.participation.operational_team_id ? teamsById[r.participation.operational_team_id]?.name ?? "" : ""} ctrl={sortCtrl}>Equipo operativo</SortableTh>
                 <SortableTh<Row> sortKey="role" getter={(r) => r.participation.project_role_id ? rolesById[r.participation.project_role_id]?.name ?? "" : ""} ctrl={sortCtrl}>Rol</SortableTh>
+                {/* US-217: ordena por rango, no alfabético — la A tiene que
+                    quedar arriba, y "A" antes de "C" es coincidencia. */}
+                <SortableTh<Row> sortKey="raci" getter={(r) => RACI_RANGO[r.participation.raci ?? ""] ?? 9} ctrl={sortCtrl}>RACI</SortableTh>
                 <SortableTh<Row> sortKey="period" getter={(r) => r.participation.start_date ?? ""} ctrl={sortCtrl}>Periodo</SortableTh>
                 <SortableTh<Row> sortKey="allocation" getter={(r) => r.participation.allocation_pct ?? -1} ctrl={sortCtrl} align="right">FTE %</SortableTh>
+                {/* US-215: ordena con -1 para lo desconocido, igual que FTE %,
+                    para que «sin tarifa» no se mezcle con «cuesta 0». */}
+                <SortableTh<Row> sortKey="costo" getter={(r) => r.participation.cost_total ?? -1} ctrl={sortCtrl} align="right">Costo</SortableTh>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -211,6 +254,11 @@ export function DirectoryView({ projectId }: Props) {
                           className="h-3 w-3 text-yellow-500"
                           aria-label="Participación primaria"
                         />
+                      )}
+                      {p.is_key_stakeholder && (
+                        <Badge className="gap-1">
+                          <ShieldCheck className="h-3 w-3" /> Stakeholder clave
+                        </Badge>
                       )}
                     </div>
                     {actor?.email && (
@@ -236,12 +284,33 @@ export function DirectoryView({ projectId }: Props) {
                       ? rolesById[p.project_role_id]?.name ?? "—"
                       : "—"}
                   </td>
+                  <td className="px-3 py-2">
+                    {p.raci ? (
+                      <span
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                          p.raci === "A"
+                            ? "bg-[var(--color-primary)] text-white"
+                            : "bg-muted text-foreground"
+                        }`}
+                        title={RACI_DESCRIPCION[p.raci]}
+                      >
+                        {p.raci}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Sin papel</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-xs">
                     {p.start_date ?? "—"} → {p.end_date ?? "—"}
                   </td>
                   <td className="px-3 py-2 text-right text-xs">
                     {p.allocation_pct ?? "—"}
                   </td>
+                  <CeldaDeCosto
+                    p={p}
+                    projectId={projectId}
+                    onCongelado={refresh}
+                  />
                   <td className="px-3 py-2 text-right">
                     <Button
                       variant="ghost"
@@ -300,6 +369,243 @@ export function DirectoryView({ projectId }: Props) {
 }
 
 // ---------------------------------------------------------------------------
+// US-215 — Costo con la tarifa congelada
+// ---------------------------------------------------------------------------
+
+function importe(valor: number, moneda: string | null): string {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    // La moneda viene del backend, congelada con la tarifa. Nunca un literal:
+    // ese fue el defecto de BUG-092, y un importe con la unidad mentida está
+    // igual de mal que un importe con el número mal.
+    currency: moneda ?? "MXN",
+    maximumFractionDigits: 0,
+  }).format(valor);
+}
+
+/**
+ * El costo de una asignación, o por qué no se puede calcular.
+ *
+ * Cuando falta la tarifa ofrece congelarla, en vez de dejar un guion. El hueco
+ * más común no es «esta persona no cuesta»: es «nadie capturó su tarifa
+ * todavía», y desde aquí se arregla en un clic si el catálogo ya la tiene.
+ */
+function CeldaDeCosto({
+  p,
+  projectId,
+  onCongelado,
+}: {
+  p: Participation;
+  projectId: string;
+  onCongelado: () => void;
+}) {
+  const [congelando, setCongelando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function congelar() {
+    setCongelando(true);
+    setError(null);
+    try {
+      await freezeCostRate(projectId, p.id);
+      onCongelado();
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo congelar la tarifa");
+    } finally {
+      setCongelando(false);
+    }
+  }
+
+  if (p.cost_total !== null) {
+    return (
+      <td className="px-3 py-2 text-right text-xs">
+        <span className="font-medium">
+          {importe(p.cost_total, p.cost_currency)}
+        </span>
+        <span
+          className="ml-1 block text-[10px] text-[var(--color-tertiary)]"
+          title={`Tarifa congelada el ${p.cost_rate_captured_at?.slice(0, 10) ?? "—"}`}
+        >
+          {p.cost_rate_snapshot !== null
+            ? `${importe(p.cost_rate_snapshot, p.cost_currency)} ${
+                p.cost_rate_period
+                  ? PERIODO_TARIFA_LABEL[
+                      p.cost_rate_period as keyof typeof PERIODO_TARIFA_LABEL
+                    ]
+                  : ""
+              }`
+            : ""}
+        </span>
+      </td>
+    );
+  }
+
+  // DAT-12 — sin tarifa el costo se desconoce; no es cero. Se dice cuál de los
+  // dos huecos es, porque llevan a acciones distintas: capturar la tarifa en el
+  // catálogo, o poner fechas y % en esta asignación.
+  const faltaTarifa = p.cost_rate_snapshot === null;
+  return (
+    <td className="px-3 py-2 text-right text-xs">
+      {faltaTarifa ? (
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={congelar}
+            disabled={congelando}
+            title="Copiar la tarifa del catálogo a esta asignación"
+          >
+            <Coins className="mr-1 h-3.5 w-3.5" />
+            {congelando ? "…" : "Congelar tarifa"}
+          </Button>
+          {error && (
+            <span className="block text-[10px] text-red-600">{error}</span>
+          )}
+        </>
+      ) : (
+        <span
+          className="text-[var(--color-tertiary)]"
+          title="La tarifa está congelada, pero falta el % de dedicación o las fechas de la asignación"
+        >
+          Sin fechas o % FTE
+        </span>
+      )}
+    </td>
+  );
+}
+
+/**
+ * El costo de recursos del proyecto, por moneda.
+ *
+ * Nunca un total único: dos personas facturadas en monedas distintas no tienen
+ * un costo total, y sumarlas inventaría un número que no existe. Y siempre con
+ * cuántas asignaciones quedaron sin tarifa — «$400.000 en recursos» con doce
+ * sin tarifa es un presupuesto a medias presentado como completo.
+ */
+function ResumenDeCosto({ c }: { c: ResumenCosto }) {
+  const monedas = Object.entries(c.by_currency);
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
+      <div className="flex items-center gap-2">
+        <Coins className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+        <span className="text-muted-foreground">Costo de recursos</span>
+        {monedas.length === 0 ? (
+          <span className="font-medium text-muted-foreground">
+            Sin tarifas congeladas
+          </span>
+        ) : (
+          <span className="font-medium">
+            {monedas.map(([m, v]) => importe(v, m)).join(" + ")}
+          </span>
+        )}
+      </div>
+      <span className="text-muted-foreground">
+        {c.assignments} asignación{c.assignments === 1 ? "" : "es"} activa
+        {c.assignments === 1 ? "" : "s"}
+      </span>
+      {c.without_rate > 0 && (
+        <span className="flex items-center gap-1 text-[var(--color-warning-fg)]">
+          <RefreshCw className="h-3 w-3" aria-hidden />
+          {c.without_rate} sin costo calculable — el total está incompleto
+        </span>
+      )}
+      {monedas.length > 1 && (
+        <span className="text-muted-foreground">
+          Dos monedas no se suman: convertirlas exigiría un tipo de cambio con
+          fecha, que es una estimación y no un dato.
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// US-217 — Resumen RACI
+// ---------------------------------------------------------------------------
+
+/**
+ * La línea que responde «¿quién responde por este proyecto?».
+ *
+ * Cuando no hay A, lo dice en vez de callarse. Un proyecto sin responsable
+ * último es el estado normal antes de asignarlo, no un error —por eso es un
+ * aviso y no un bloqueo—, pero es exactamente el hueco que la matriz RACI
+ * existe para hacer visible (DAT-12: la ausencia no es un cero, es una
+ * ausencia, y se nombra).
+ */
+function ResumenRaci({ rows }: { rows: Row[] }) {
+  const conPapel = rows.filter((r) => r.participation.raci);
+  const a = conPapel.find((r) => r.participation.raci === "A");
+  const porPapel = (papel: RaciPapel) =>
+    conPapel.filter((r) => r.participation.raci === papel).length;
+  const clave = rows.filter((r) => r.participation.is_key_stakeholder);
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">Responsable último (A)</span>
+        {a ? (
+          <span className="font-medium">{a.actor?.name ?? "—"}</span>
+        ) : (
+          <span className="font-medium text-[var(--color-warning-fg)]">
+            Sin asignar — nadie responde por el resultado
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-3 text-muted-foreground">
+        {(["R", "C", "I"] as RaciPapel[]).map((papel) => (
+          <span key={papel} title={RACI_DESCRIPCION[papel]}>
+            {papel}: <span className="font-medium text-foreground">{porPapel(papel)}</span>
+          </span>
+        ))}
+        <span title="Personas marcadas como stakeholder clave del proyecto">
+          Stakeholders clave:{" "}
+          <span className="font-medium text-foreground">{clave.length}</span>
+        </span>
+      </div>
+      {conPapel.length === 0 && (
+        <span className="text-muted-foreground">
+          Ninguna persona tiene papel RACI. Se asigna al editar su participación.
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * El selector de papel, compartido por los dos modales.
+ *
+ * Muestra la descripción de la letra elegida debajo. Sin eso, «A» y «R» se
+ * confunden en cada conversación: las dos palabras españolas empiezan por
+ * «responsable», y quien llena el formulario no tiene por qué saber cuál es cuál.
+ */
+function SelectorRaci({
+  valor,
+  onChange,
+}: {
+  valor: RaciPapel | "";
+  onChange: (v: RaciPapel | "") => void;
+}) {
+  return (
+    <label className="block text-xs">
+      Papel RACI
+      <Select
+        value={valor}
+        onChange={(e) => onChange(e.target.value as RaciPapel | "")}
+      >
+        <option value="">Sin papel</option>
+        {RACI_ORDEN.map((papel) => (
+          <option key={papel} value={papel}>
+            {RACI_LABEL[papel]}
+          </option>
+        ))}
+      </Select>
+      <span className="mt-0.5 block text-[11px] text-[var(--color-tertiary)]">
+        {valor ? RACI_DESCRIPCION[valor] : "Participa sin responsabilidad declarada."}
+      </span>
+    </label>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Add Person modal
 // ---------------------------------------------------------------------------
 function AddPersonModal({
@@ -337,6 +643,9 @@ function AddPersonModal({
   const [assignmentType, setAssignmentType] = useState<AssignmentType>("directa");
   const [status, setStatus] = useState<AssignmentStatus>("activa");
   const [isCritical, setIsCritical] = useState(false);
+  // US-217: RACI y stakeholder clave.
+  const [raci, setRaci] = useState<RaciPapel | "">("");
+  const [isKeyStakeholder, setIsKeyStakeholder] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -375,6 +684,8 @@ function AddPersonModal({
         assignment_type: assignmentType,
         status,
         is_critical: isCritical,
+        raci: raci || undefined,
+        is_key_stakeholder: isKeyStakeholder,
       });
       onSaved();
     } catch (e: any) {
@@ -562,7 +873,9 @@ function AddPersonModal({
           </Select>
         </label>
 
-        <div className="flex gap-4 text-xs">
+        <SelectorRaci valor={raci} onChange={setRaci} />
+
+        <div className="flex flex-wrap gap-4 text-xs">
           <label className="flex items-center gap-1">
             <input
               type="checkbox"
@@ -578,6 +891,14 @@ function AddPersonModal({
               onChange={(e) => setIsPrimary(e.target.checked)}
             />
             Participación primaria
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={isKeyStakeholder}
+              onChange={(e) => setIsKeyStakeholder(e.target.checked)}
+            />
+            Stakeholder clave
           </label>
           <label className="flex items-center gap-1">
             <input
@@ -661,6 +982,11 @@ function EditParticipationModal({
     participation.status ?? "activa",
   );
   const [isCritical, setIsCritical] = useState(participation.is_critical ?? false);
+  // US-217: RACI y stakeholder clave.
+  const [raci, setRaci] = useState<RaciPapel | "">(participation.raci ?? "");
+  const [isKeyStakeholder, setIsKeyStakeholder] = useState(
+    participation.is_key_stakeholder ?? false,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -698,6 +1024,9 @@ function EditParticipationModal({
         assignment_type: assignmentType,
         status,
         is_critical: isCritical,
+        // El `""` es el borrado explícito del papel; ver `ParticipationUpdate`.
+        raci,
+        is_key_stakeholder: isKeyStakeholder,
       });
       onSaved();
     } catch (e: any) {
@@ -886,7 +1215,9 @@ function EditParticipationModal({
           </Select>
         </label>
 
-        <div className="flex gap-4 text-xs">
+        <SelectorRaci valor={raci} onChange={setRaci} />
+
+        <div className="flex flex-wrap gap-4 text-xs">
           <label className="flex items-center gap-1">
             <input
               type="checkbox"
@@ -902,6 +1233,14 @@ function EditParticipationModal({
               onChange={(e) => setIsPrimary(e.target.checked)}
             />
             Primaria
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={isKeyStakeholder}
+              onChange={(e) => setIsKeyStakeholder(e.target.checked)}
+            />
+            Stakeholder clave
           </label>
           <label className="flex items-center gap-1">
             <input

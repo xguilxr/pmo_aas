@@ -36,13 +36,15 @@ apps/api/app/
 | `user_scope_assignment.py` | user_scope_assignments (scope_type org/program/project, sin FK real) | base de visibilidad PM |
 | `auth.py` | refresh_tokens, password_reset_tokens, admin_otp_codes, dispositivos_confiables | JWT: claims tenant_ids, active_tenant_id (falta active_organization_id, W2) |
 | `tenant_permission.py` | tenant_role_permission_overrides | overrides capability×tenant (DEC-021) |
+| `user_tenant_membership.py` | user_tenant_memberships (US-214/AM-16) | la fuente de verdad de a qué inquilinos pertenece alguien; se consulta en el cambio **y en cada petición**, nunca el claim del token |
 | `project.py` | projects (**portfolio_id nullable** US-198, sin business_unit_id/department_id desde 0109; **phase/type en español** US-202, default `preparacion`; health_status/source/reason US-180; manually_edited_fields US-084), project_health_evaluations (US-191: 5+1 dimensiones, histórico) | |
 | `project_request.py` / `project_charter.py` | project_requests (+**portfolio_id/program_id** 0109; `business_unit`/`department` siguen como texto libre del solicitante), project_charters (+portfolio_id/program_id) | folios SOL- via folio_sequences |
-| `task.py` | tasks (wbs_code, parent_id, is_milestone, position US-176, predecessors JSON), task_dependencies (FS/SS/FF/SF + lag) | baseline y hito clave: W6 |
+| `task.py` | tasks (wbs_code, parent_id, is_milestone, position US-176, predecessors JSON), task_dependencies (FS/SS/FF/SF + lag) | hito clave: W6 |
+| `plan_baseline.py` | plan_baselines (captura con autor y nota), plan_baseline_tasks (**sin FK a tasks**: una foto no gobierna el ciclo de vida de lo que retrata, US-212) | derivas en `dominio/linea_base.py`; barras de base en el Gantt SVG: diferido |
 | `modules.py` | risks, issues (type action/issue/decision), change_requests, documents†, lessons, meeting_minutes (raid_suggestions JSON → flujo minuta→RAID ya existe) | † legacy, fusionar en project_artifacts (W8) |
 | `project_artifact.py` | project_artifacts | el "Artefactos" nuevo ya es esta tabla |
-| `area.py` | areas (org nullable), teams, actors (**el resource pool**: nominal/project_capacity_pct, fte_cost_rate, skills_tags, user_id?), area_assignments (cascada org/program/project) | actors.organization_id → NOT NULL + costo-snapshot (W4) |
-| `project_participation.py` | project_participations (allocation_pct FTE, periodo, status ciclo de vida) | + cost_rate_snapshot (W4) |
+| `area.py` | areas (org nullable), teams, actors (**el resource pool**: nominal/project_capacity_pct, fte_cost_rate + **cost_rate_period** US-215, skills_tags, user_id?), area_assignments (cascada org/program/project) | actors.organization_id → NOT NULL |
+| `project_participation.py` | project_participations (allocation_pct FTE, periodo, status ciclo de vida; **raci/is_key_stakeholder** US-217; **cost_rate_snapshot/currency/period/captured_at** US-215 — congelados del catálogo, nunca recalculados) | costo en `dominio/costo.py`, derivado al leer |
 | `project_role.py` / `stakeholder.py` / `project_member.py` | project_roles; stakeholders†; project_members† | † duplicados de actors/participations, consolidar (W8) |
 | `report_*.py`, `scheduled_*.py` | reports, report_history/sections/templates, report_builder_templates, scheduled_reports/minutes (cadence weekly/monthly) | cadencia biweekly + scope portfolio (W5) |
 | `metric_snapshot.py` | metric_snapshots (US-151: scope tenant/org/**portfolio**/program/project — US-201 sumó el portafolio; extras JSON) | + cadence biweekly (W5) |
@@ -64,13 +66,26 @@ project_requests (CRUD + review + create-project; clasifica con portfolio/progra
 (exports plan/raid/changes/lessons/organigrama) · modules (CRUD RAID/cambios/
 docs/lessons/minutas + convert-agreement) · risk_actions · change_approvals
 (token público JWT) · stakeholders · tasks (CRUD + renumber-wbs + **import
-MPP/XML/XLSX/CSV** con preview/IA — base de importación masiva) · areas
+MPP/XML/XLSX/CSV** con preview/IA; **dependencias entre proyectos** US-218, con
+ciclos validados a nivel de tarea; **línea base** US-212: `plan/baselines` +
+`plan/baseline-comparison`, sin base devuelve `has_baseline: false` y no ceros) ·
+**admin_ai** (+`/usage` US-222: trabajos y tokens por mes y por modelo, **sin
+dinero** — la tarifa la fija el proveedor y no vive aquí) ·
+**plan** (US-221: `admin/plan` de solo lectura + `superadmin/tenants/{id}/plan`;
+los topes viven en `settings.plan`, `enforced: false` viaja en la respuesta) ·
+**imports** (US-216: carga masiva de proyectos y recursos por organización,
+`columns`/`preview`/`confirm`; una fila mala no tumba el archivo y una duplicada
+se salta sin actualizar) · areas
 (áreas→equipos→actores, sync-users) · project_directory (project_roles +
-participations + eligible-actors) · capacity (/summary /conflicts
-/resource-load) + organigrama · dashboard (kpis, charts, trends, heatmap,
-risk/health-matrix, treemap, **snapshots/capture**, reports/portfolio) ·
+participations + eligible-actors + **freeze-cost-rate** y **cost-summary** US-215:
+un importe por moneda, nunca un total único, y siempre con `without_rate`) · capacity (/summary /conflicts
+**/weekly-load** /resource-load) + organigrama · dashboard (kpis, charts, **tops**, trends (+`cadencia_dias`: un punto por corte, US-213),
+heatmap, risk/health-matrix, treemap, plan-vs-actual (+CSV; la fila de la vista maestra: 16 columnas, con completitud derivada US-210 y estatus de reporte US-211),
+**snapshots/capture**, reports/portfolio) ·
 tenant_cross (RAID/cambios/minutas/reportes cross con filtros) · reports +
-report_templates/sections + report_builder (+ai-chat) + scheduled_* · ai
+report_templates/sections + report_builder (+ai-chat) + scheduled_* ·
+status PDF por nivel: `/dashboard/reports/portfolio` (PMO) ·
+`/organizations/{id}` · **`/portfolios/{id}`** (US-209) · `/programs/{id}` · ai
 (minutas IA, drafts, jobs) + assistant (chat) + ai_context · superadmin +
 superadmin_panel (tenants, join-as-admin, freeze) · branding ·
 permission_requests · gantt_snapshot · entity_history · notifications.

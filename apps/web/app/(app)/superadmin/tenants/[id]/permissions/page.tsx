@@ -127,7 +127,7 @@ export default function SuperadminTenantPermissionsPage() {
 
   if (me && !me.is_superadmin) {
     return (
-      <div className="mx-auto max-w-2xl p-6">
+      <div className="p-6">
         <Banner variant="danger">
           Solo los super administradores pueden ver esta página.
         </Banner>
@@ -136,7 +136,7 @@ export default function SuperadminTenantPermissionsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
+    <div className="space-y-6 p-6">
       <Breadcrumb
         items={[
           { label: "Superadmin", href: "/superadmin" },

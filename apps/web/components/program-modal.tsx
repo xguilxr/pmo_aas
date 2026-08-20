@@ -12,12 +12,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   createProgram,
-  listOrganizations,
   listPortfolios,
-  type Organization,
   type Portfolio,
   type ProgramCreateBody,
 } from "@/lib/api/organizations";
+import { useOrganizacionActiva } from "@/components/organizacion-activa";
 
 type Props = {
   open: boolean;
@@ -27,7 +26,14 @@ type Props = {
 };
 
 export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
-  const [orgs, setOrgs] = useState<Organization[]>([]);
+  // US-205 — la lista y el default salen del header. `initialOrgId` sigue
+  // ganando: quien abre el modal desde la ficha de una organización está
+  // creando el programa **ahí**, diga lo que diga el switcher.
+  const {
+    organizaciones: orgs,
+    efectiva: orgDelHeader,
+    cargando: loadingOrgs,
+  } = useOrganizacionActiva();
   const [orgId, setOrgId] = useState(initialOrgId ?? "");
   // US-200 — el programa vive dentro de un portafolio. Vacío es válido: cae en
   // el «Portafolio General» de su organización (DEC-030), que es lo que evita
@@ -43,30 +49,14 @@ export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [loadingOrgs, setLoadingOrgs] = useState(true);
 
+  // Al abrir se resuelve la organización. `orgs[0]` es el último recurso para
+  // la única ruta que agrega y donde este modal existe (`/pmo`): ahí `efectiva`
+  // vale «todas», que no es una organización en la que crear nada.
   useEffect(() => {
     if (!open) return;
-    let cancelled = false;
-    setLoadingOrgs(true);
-    listOrganizations({ is_active: true })
-      .then((rows) => {
-        if (!cancelled) {
-          setOrgs(rows);
-          if (initialOrgId) setOrgId(initialOrgId);
-          else if (rows.length > 0) setOrgId(rows[0].id);
-        }
-      })
-      .catch(() => {
-        /* non-fatal */
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingOrgs(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, initialOrgId]);
+    setOrgId(initialOrgId || orgDelHeader || orgs[0]?.id || "");
+  }, [open, initialOrgId, orgDelHeader, orgs]);
 
   useEffect(() => {
     if (!open || !orgId) {

@@ -28,6 +28,9 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DependenciasExternasPanel } from "@/components/dependencias-externas";
+import { LineaBasePlan } from "@/components/linea-base-plan";
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { GanttView } from "@/components/gantt-view";
 import { ImportWizard } from "@/components/import-wizard";
 import { InlineSelectCell } from "@/components/inline-select-cell";
@@ -1221,6 +1224,12 @@ function TaskList({
 
 function PlanInner() {
   const { id } = useParams<{ id: string }>();
+  // US-218 — sin permiso de escritura el panel de dependencias externas se ve
+  // pero no ofrece el borrado: enseñar un botón que va a dar 403 es peor que
+  // no enseñarlo.
+  const { canUpdate: puedeActualizar, loading: permisosCargando } =
+    useMyPermissions();
+  const puedeEditarPlan = !permisosCargando && puedeActualizar("projects");
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialMode = MODE_FROM_PARAM(searchParams.get("view"));
@@ -2024,7 +2033,7 @@ function PlanInner() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="space-y-5">
       {/* ENH-162: acciones (Plantilla / Descargar / Importar / Nueva tarea)
           al nivel del título + breadcrumbs, por encima de la barra de filtros
           y agrupaciones. */}
@@ -2759,6 +2768,23 @@ function PlanInner() {
           </div>
         ) : null}
       </Modal>
+
+      {/* US-212 — la línea base. Va aquí y no al final porque es el marco con el
+          que se lee todo lo de abajo: sin ella, ninguna de las fechas del plan
+          es una desviación de nada. El estado vacío lo dice con esas palabras
+          en vez de mostrar un cero (DAT-12); el porqué está en el componente. */}
+      <div className="mt-4">
+        <LineaBasePlan projectId={id} puedeEditar={puedeEditarPlan} />
+      </div>
+
+      {/* US-218 — las dependencias con otros proyectos. Van en un panel y no
+          como flechas del Gantt: una flecha necesita dos extremos en pantalla, y
+          la tarea del otro proyecto está en otro plan con otra escala, así que
+          la flecha saldría del borde apuntando a la nada. El porqué completo
+          está en el componente. */}
+      <div className="mt-4">
+        <DependenciasExternasPanel projectId={id} puedeEditar={puedeEditarPlan} />
+      </div>
     </div>
   );
 }

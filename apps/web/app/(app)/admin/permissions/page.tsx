@@ -81,7 +81,7 @@ function YesNo({ ok }: { ok: boolean }) {
 
 export default function PermissionsPage() {
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="space-y-6">
       <Breadcrumb
         items={[
           { href: "/admin", label: "Admin" },

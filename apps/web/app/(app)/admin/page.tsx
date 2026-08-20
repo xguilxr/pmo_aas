@@ -75,7 +75,7 @@ const PANELS = [
 
 export default function AdminLanding() {
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
           Admin

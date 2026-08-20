@@ -326,6 +326,147 @@ o el que entra por importación masiva.
 
 ---
 
+### US-210 — Completitud de datos por proyecto ✅ (2026-08-20)
+
+**Como** PMO
+**Quiero** saber de qué proyectos se puede hablar
+**Para** no leer un tablero donde seis proyectos sin capturar bajan el promedio
+sin que nada lo diga.
+
+De los mockups aprobados: la columna «Compl.» del artboard «Portafolio — Vista
+maestra» y el «checklist de onboarding» de «Onboarding masivo». Son la misma
+cosa: el porcentaje resume y el checklist detalla.
+
+**Para qué sirve.** Un proyecto sin fechas no tiene desviación de calendario;
+uno sin presupuesto no tiene consumo; uno sin PM no tiene a quién preguntarle.
+En un tablero esos proyectos no salen mal: salen **vacíos**, y un hueco se lee
+como un cero. Es también la única lista de tareas honesta después de una
+importación masiva (US-216).
+
+**Criterios de aceptación:**
+- [x] **Se deriva, no se guarda.** Un porcentaje persistido habría que
+  recalcularlo en cada edición del proyecto, en cada tarea, en cada
+  participación y en cada acta; el día que se olvide un camino, la columna dice
+  96 % de un proyecto al que le faltan tres campos. Mismo criterio que el avance
+  del plan (ENH-109). **Sin migración**: el desglose de la Fase 2 asumía una
+  para cada US de la oleada 2C y esta no la necesita.
+- [x] Once requisitos, **todos con el mismo peso**. Ponderarlos exige defender
+  por qué el sponsor vale el doble que el presupuesto, y esa discusión no tiene
+  respuesta: los dos son obligatorios o no lo son. Un porcentaje con pesos
+  secretos es peor que uno plano porque nadie puede reproducirlo.
+- [x] **No se piden `name`, `folio` ni `phase`**: son NOT NULL, y una casilla que
+  nunca puede fallar infla el porcentaje sin decir nada. La completitud mide lo
+  que **puede** faltar.
+- [x] Un presupuesto declarado de **cero cuenta como capturado** — es un
+  proyecto sin costo, no un dato ausente. Es DAT-12 del lado del que evalúa. Un
+  sponsor de espacios en blanco, en cambio, no cuenta: «capturado con nada» no
+  es capturado.
+- [x] Una clave que nadie averiguó cuenta como **faltante**: colapsar «no lo
+  tiene» y «no lo miré» hacia el lado optimista es cómo un porcentaje acaba
+  diciendo 100 % de un proyecto vacío.
+- [x] El porcentaje redondea **hacia abajo**: con diez de once, «90 %» es más
+  honesto que «91 %» — al proyecto le falta algo y el redondeo no puede
+  insinuar que casi no.
+- [x] Cada faltante viaja con su **etiqueta y su porqué**, no solo con la clave.
+  Una casilla sin consecuencia se ignora, y la consecuencia es lo que hace que
+  alguien capture el dato. Además evita traducir once claves a español en las
+  tres superficies que lo pintan.
+- [x] La regla vive en `app/dominio/completitud.py` y **no importa SQLAlchemy**
+  (MCS DEV-02): recibe hechos y devuelve el veredicto, así que se prueba sin
+  base de datos. Los hechos los averigua `app/services/completitud.py` en **tres
+  consultas agrupadas** para todos los proyectos a la vez, no tres por fila.
+- [x] `GET /projects/{id}/completeness` y el campo `completeness` en la fila de
+  la vista maestra. El detalle viaja con la fila: una ida al servidor por
+  proyecto para abrir el checklist es la razón por la que nadie lo abriría.
+- [x] La columna usa **tres tramos de color** (100 · ≥80 · resto) y no un
+  degradado: la pregunta es «¿este proyecto se puede leer?» y tiene tres
+  respuestas. El 100 tiene su propio color porque es el único que significa «no
+  falta nada» — pintar el 99 % igual que el completo es lo que hace que nadie lo
+  termine.
+
+**Test Cases:** `test_us210_completitud.py`
+- `TC-210.1` (unit, sin base) — Todo/nada; una clave ausente cuenta como
+  faltante; el redondeo va hacia abajo; el total se deriva de la lista; ningún
+  faltante se explica con una frase hueca; no se piden los NOT NULL.
+- `TC-210.2` — Presupuesto cero cuenta y `NULL` no; un sponsor de espacios no
+  cuenta; los ocho del registro y los tres de gobierno; el acta de un proyecto
+  no cuenta para otro; con la lista vacía no se consulta nada.
+- `TC-210.3` — La vista maestra trae el porcentaje y el detalle; el endpoint del
+  proyecto devuelve el checklist con sus cinco grupos; un proyecto de otro
+  inquilino no se consulta.
+
+**Estado de integración:** DONE (US-210).
+
+---
+
+### US-211 — Próximo hito y estatus de reporte como datos consultables ✅ (2026-08-20)
+
+**Como** PMO Manager
+**Quiero** ver de un vistazo qué proyecto no está reportado y qué hito toca
+primero
+**Para** no abrir veintitrés proyectos y comparar fechas a mano.
+
+De los mockups: las columnas «Próx. hito» («UAT integral · 28 ago») y «Reporte»
+(«al día» / «por vencer» / «vencido») del artboard «Portafolio — Vista maestra».
+El Portfolio Board del artboard «Boards» agrupa por la segunda.
+
+**Criterios de aceptación:**
+- [x] **Sin migración.** Los hitos son `tasks.is_milestone` (que ya existía con
+  su regla D-9) y el último reporte, `report_history.generated_at`. Lo único
+  nuevo es la cadencia esperada, y esa es un ajuste del inquilino.
+- [x] La cadencia vive en `settings.report_builder.cadencia_de_reporte_dias`,
+  default **14** —la bi-semanal de los mockups—. Va en el inquilino y no en el
+  proyecto porque es un **acuerdo de la PMO**: «reportamos cada dos semanas» se
+  decide una vez para todos, y ponerlo por proyecto obligaría a capturarlo
+  veintitrés veces para decir lo mismo, dejando la columna vacía en los que
+  nadie tocó. Cuando un proyecto necesite la suya, el sitio es un campo que
+  **caiga** a este valor, no que lo reemplace.
+- [x] **`sin_reporte` no es `vencido`.** Un proyecto que nunca se reportó no
+  incumplió una fecha: es que no ha empezado a reportar. Meterlos en el mismo
+  cubo esconde el caso que más hay que mirar en un onboarding — y es la mezcla
+  que hace natural un `if ultimo is None: return "vencido"`. En el orden de la
+  columna va **primero**, antes que «vencido»: el hueco es más grande.
+- [x] El día del vencimiento **todavía no está vencido**: el límite es «después
+  de», no «en». Marcarlo vencido regaña a quien va a cumplir.
+- [x] La ventana de «por vencer» es **un quinto de la cadencia**, mínimo un día,
+  y no un número fijo: «tres días» es casi la mitad de un ciclo semanal, y la
+  mitad de los proyectos saldría «por vencer» permanentemente.
+- [x] El retraso nunca es negativo. Reportar antes no adelanta nada, y un
+  negativo se leería así.
+- [x] Una cadencia de cero o basura cae al default: cero días haría que todo
+  esté vencido siempre, que no es una configuración sino un error de captura.
+- [x] El próximo hito es el **más cercano entre los abiertos y con fecha**. Si el
+  primero ya pasó se devuelve ese, marcado como vencido: saltar a la siguiente
+  fecha futura esconde el hito que se incumplió, que es justo el que hay que
+  mirar. Empate de fechas: desempata el nombre, para que dos cargas seguidas
+  devuelvan el mismo — una columna que cambia sola entre dos refrescos parece un
+  dato que se mueve.
+- [x] La regla vive en `app/dominio/reporte.py` sin base de datos (MCS DEV-02);
+  los hechos los busca `app/services/estado_de_reporte.py` en **dos consultas
+  agrupadas** para toda la lista, no dos por fila.
+- [x] La etiqueta («al día», «por vencer») la resuelve el servidor: el
+  vocabulario de estados es del dominio y tres superficies lo muestran —tabla,
+  board y resumen del proyecto—, así que un diccionario por superficie serían
+  tres copias que se desincronizan.
+- [x] Con esto la vista maestra tiene **las dieciséis columnas** del artboard.
+
+**Test Cases:** `test_us211_hito_y_reporte.py`
+- `TC-211.1` (unit) — `sin_reporte` ≠ `vencido`; el día del vencimiento no está
+  vencido; la ventana de aviso se deriva de la cadencia; el retraso nunca es
+  negativo; cadencia cero cae al default.
+- `TC-211.2` (unit) — El más cercano; el pasado se devuelve marcado y no se
+  salta; el empate desempata por nombre en los dos órdenes de entrada.
+- `TC-211.3` — La cadencia por defecto, la configurada y la basura.
+- `TC-211.4` — Se cuenta desde el **último** de tres reportes; sin reportes sale
+  `sin_reporte`; solo los hitos abiertos y con fecha cuentan (un completado, uno
+  sin fecha y una tarea normal quedan fuera); los hitos de un proyecto no se
+  cuelan en otro.
+- `TC-211.5` — La vista maestra trae las dos columnas con su retraso en días.
+
+**Estado de integración:** DONE (US-211).
+
+---
+
 ## Notas técnicas
 
 - Folios por tenant+año (Postgres sequences o función).
@@ -337,6 +478,7 @@ o el que entra por importación masiva.
 GET    /api/v1/projects
 POST   /api/v1/projects
 GET    /api/v1/projects/{id}
+GET    /api/v1/projects/{id}/completeness   # US-210 (derivado, no persistido)
 PATCH  /api/v1/projects/{id}
 DELETE /api/v1/projects/{id}                 (soft)
 POST   /api/v1/projects/{id}/phase/change

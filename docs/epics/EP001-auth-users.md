@@ -497,3 +497,114 @@ de seguimiento.
 - `is_admin_equivalent` helper cubierto por test unitario ✅.
 
 **Estado de integración:** DONE (US-010).
+
+---
+
+### US-214 / AM-16 — Membresía multi-inquilino y selector de inquilino ✅ (2026-08-20)
+
+Del artboard «Header — contexto tenant/org» de los mockups aprobados el
+2026-08-19: «Switcher de tenant — visible solo con más de una membresía. Cambiar
+re-emite la sesión y recarga la aplicación en el tenant elegido.»
+
+**Como** consultor que trabaja para dos clientes
+**Quiero** cambiar de inquilino sin cerrar sesión
+**Para** no tener dos cuentas y dos contraseñas para el mismo trabajo.
+
+**Esta US es un cambio de seguridad antes que de modelo, y por eso el análisis de
+amenazas se escribió primero** (CLAUDE.md §0.3). Está en el modelo como **AM-16**.
+
+**El defecto que cierra.** Hasta aquí el cambio de inquilino se autorizaba contra
+el claim `tenant_ids` del JWT: `switch_tenant` comprobaba
+`body.tenant_id in cu.tenant_ids`, y esa lista sale de `payload.get("tenant_ids")`.
+Con un inquilino por usuario la lista era de un elemento y el defecto no tenía
+consecuencia. Con dos, **revocar una membresía no surte efecto hasta que el token
+caduca** — una hora—. El caso concreto: un consultor externo termina con un
+cliente, el administrador le quita la membresía, y sigue viendo su cartera durante
+sesenta minutos.
+
+**Los dos controles, y los dos van contra la tabla:**
+
+1. `POST /auth/switch-tenant` resuelve la membresía en la base antes de emitir el
+   token nuevo, y **rearma los claims desde la tabla** en vez de copiarlos del
+   token viejo.
+2. `get_current_user` comprueba en **cada petición** que el inquilino activo sigue
+   siendo una membresía viva. Sin esto, el punto 1 solo cubre el instante del
+   cambio.
+
+El precio del segundo es una consulta por petición autenticada, por un índice
+compuesto. Es el precio de que revocar signifique revocar: sin ella la ventana de
+una hora existe por diseño y no hay control que la cierre.
+
+**La membresía de origen se crea con el usuario, desde el modelo.** Los usuarios
+se crean por cinco caminos —alta de administrador, alta de inquilino del
+superadministrador, dos siembras y las factorías de prueba— y la comprobación de
+cada petición deja fuera a quien no tenga membresía. Una regla que hay que
+recordar en cinco sitios se olvida en el sexto, así que vive en un
+`after_insert` del modelo, igual que `normalizar_hito` vive en el modelo de
+tareas y por la misma razón.
+
+**Conceder membresía es del superadministrador (FC-4), no del administrador de
+inquilino.** El inquilino es la frontera de aislamiento del producto; un
+administrador que pudiera añadir a alguien a otro inquilino podría concederse a sí
+mismo acceso a los datos de otro cliente, que es exactamente lo que la frontera
+existe para impedir.
+
+**`users.tenant_id` no desaparece.** Sigue siendo el inquilino de origen: dónde se
+creó la cuenta y quién la administra. Retirarlo obligaría a reescribir toda
+consulta que hoy lo use para resolver el inquilino por defecto, y a decidir qué
+pasa con un usuario cuya única membresía se revoca. La membresía **añade**
+inquilinos.
+
+**Criterios de aceptación:**
+- [x] Tabla `user_tenant_memberships` con unicidad `(user_id, tenant_id)` sin
+  importar el estado: dos filas para la misma pareja obligarían a decidir cuál
+  manda cada vez que se lee. Migración `0115`, que **siembra** el inquilino de
+  origen de cada usuario existente.
+- [x] Revocar **marca** `revoked_at`, no borra la fila. «¿Quién tuvo acceso a este
+  cliente y cuándo se le quitó?» no se contesta con una fila borrada, y es la
+  pregunta de una auditoría.
+- [x] Conceder sobre una membresía revocada la **reactiva** en vez de crear otra
+  fila.
+- [x] `GET /auth/my-tenants` — la lista para el selector, de la tabla, con el
+  conteo de organizaciones que el artboard pinta en cada fila.
+- [x] `POST /superadmin/memberships` y `DELETE /superadmin/memberships` para
+  conceder y revocar; `GET /superadmin/users/{id}/tenants` para ver las de una
+  persona. Las dos escrituras quedan en la auditoría.
+- [x] **No se puede revocar el inquilino de origen**: dejaría la cuenta sin
+  ningún sitio donde entrar, que es una baja disfrazada de cambio de permiso. Para
+  dar de baja está `is_active`, que dice lo que hace.
+- [x] **A un superadministrador no se le conceden membresías**: le darían el mismo
+  acceso que «entrar como administrador» sin el rastro de auditoría que esa
+  operación deja (AM-06).
+- [x] El selector se pinta **solo con más de una membresía**. Un desplegable de un
+  elemento es un control que no hace nada, en el sitio más caro de la pantalla.
+- [x] Cambiar de inquilino **recarga la aplicación**. A diferencia del selector de
+  organización —que solo cambia un filtro—, cambiar de inquilino cambia las
+  organizaciones, los proyectos, el catálogo de personas, la marca, la moneda y
+  los permisos. Re-consultar pantalla por pantalla dejaría media interfaz con
+  datos del inquilino anterior, y esa mezcla es peor que una recarga.
+- [x] La recarga aterriza en `/dashboard` y no en la ruta actual: la actual puede
+  ser el detalle de un proyecto que en el inquilino nuevo no existe, y un 404 tras
+  cambiar de cliente se lee como que el cambio falló.
+- [x] El selector va **antes** del de organización: leídos de izquierda a derecha
+  dicen «este cliente, esta organización suya».
+
+**Tests (`tests/test_us214_multi_tenant.py`, 15):**
+- `TC-214.1` — La membresía de origen nace con el usuario; un superadministrador
+  no gana ninguna inventada.
+- `TC-214.2` — Conceder, listar ordenado, conceder dos veces sin duplicar,
+  revocar y reactivar reusando la fila, una revocada no aparece en el selector.
+- `TC-214.3` — El login trae los dos inquilinos y aterriza en el de origen; el
+  cambio funciona; sin membresía da 403; **revocar surte efecto en la siguiente
+  petición con el mismo token** —el test que justifica la consulta por
+  petición—; y el claim del token no autoriza por sí mismo.
+- `TC-214.4` — Un administrador de inquilino no puede conceder (403); el
+  superadministrador concede, lista y revoca; el inquilino de origen no se puede
+  revocar; a un superadministrador no se le conceden membresías.
+
+**Lo que queda del artboard:** la etiqueta de plan («Plan Pro · 3
+organizaciones») que el mockup pinta junto a cada inquilino. El conteo de
+organizaciones ya va; el plan es US-221 y no se inventa aquí.
+
+**Estado de integración:** DONE (US-214).
+

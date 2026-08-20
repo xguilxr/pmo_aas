@@ -52,7 +52,7 @@ export default function SuperadminHomePage() {
 
   if (user && !user.is_superadmin) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <div>
         <Banner variant="danger">Solo Super Admin puede acceder a este panel.</Banner>
       </div>
     );
@@ -61,7 +61,7 @@ export default function SuperadminHomePage() {
   const kpis = data?.kpis;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">

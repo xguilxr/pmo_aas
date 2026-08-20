@@ -502,7 +502,9 @@ cuando muchos usuarios solo necesitan vista informativa.
 - Rutas viejas `/admin/projects/*`, `/admin/requests/*`, `/admin/raid/*`,
   etc. quedan como redirects 301 → `/pmo/...` por compat.
 - `OrgTreeNav` pasa a ser visible para todos los usuarios del tenant
-  (antes solo admin).
+  (antes solo admin). *(El árbol se retiró en US-205; la organización se
+  elige en el header. La frontera `/pmo` vs `/admin` que decide esta DEC
+  sigue vigente.)*
 - Permisos backend: endpoints GET de `organizations`, `programs`,
   `projects` aceptan lectura de cualquier user del tenant.
 
@@ -667,3 +669,11 @@ legacy en Sprint 7 (US-081).
 **Reversible:** sí en código; el valor que tuviera cada inquilino no se restaura. Para un dato de presentación con default, «ausente» y «puesto al default» son el mismo estado visible.
 **Implementación:** migración 0111 · trinquete en `tests/test_dec032_retiro_org_label.py` · ADR-037 (consecuencia).
 
+
+## DEC-033 — Un agente actúa en nombre de una persona; no hay segundo modelo de permisos (EP021)
+**Fecha:** 2026-08-20
+**Decisión:** Los «roles de agente» del artboard «Admin — IA» **no** llevan permisos propios. Un agente ejecuta siempre en nombre de una persona, con las capacidades de su rol y el alcance de sus `user_scope_assignments` (AM-15). Lo propio del rol de agente es la **personalidad** —tono, formato, qué mira— y un **techo** de consumo; nunca una capacidad que la persona no tenga. El artboard decía «separado del RBAC» y esa lectura queda descartada.
+**Rationale:** un sistema de permisos aparte significa que una petición podría quedar autorizada por un camino que el modelo existente no conoce, y entonces hay dos respuestas posibles a «¿puede esto tocar aquello?». El costo no se paga al construirlo, se paga después: el día que alguien tape un agujero en uno de los dos, el otro sigue abierto, y nada en el código señala que había dos sitios donde mirar. Un techo sobre el modelo que ya existe da lo que el artboard quiere —que un agente pueda menos que su dueño— sin duplicar el punto de decisión.
+**Por qué «personalidad» sí y «permiso» no:** lo que distingue a un rol de agente en el artboard (un revisor de riesgos, un redactor de minutas) es qué mira y cómo escribe, no a qué tiene derecho. Esa parte es configuración de producto y es barata. La otra era un subsistema de seguridad escondido en una frase de cinco palabras.
+**Reversible:** sí. Añadir permisos propios más adelante es trabajo nuevo, y arranca por `docs/architecture/modelo-amenazas.md` y no por el esquema (CLAUDE.md §0.3).
+**Implementación:** US-225 (pendiente). Contexto y alternativas en `docs/epics/EP021-catalogo-de-ia.md` §pregunta 4.

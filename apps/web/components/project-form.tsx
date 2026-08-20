@@ -11,13 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { listUsers, type AdminUser } from "@/lib/api/admin";
 import {
-  listOrganizations,
   listPortfolios,
   listPrograms,
-  type Organization,
   type Portfolio,
   type Program,
 } from "@/lib/api/organizations";
+import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import { MONEDAS } from "@/lib/moneda";
 import { useMonedaPreferida } from "@/lib/moneda-tenant";
 import {
@@ -46,6 +45,11 @@ export function ProjectForm({ mode, initial }: Props) {
   const [type, setType] = useState<ProjectType>((initial?.type as ProjectType) ?? "transformacion");
   const [priority, setPriority] = useState(String(initial?.priority ?? 3));
   const [phase, setPhase] = useState<ProjectPhase>(initial?.phase ?? "preparacion");
+  // US-205 — la organización sigue siendo un **campo** del proyecto y no un
+  // filtro: decide dónde vive, así que el select se queda. Lo que cambia es el
+  // valor con el que arranca al crear — la del header, no «Selecciona…» —, que
+  // era el paso que se repetía en cada alta.
+  const { organizaciones: orgs, efectiva: orgDelHeader } = useOrganizacionActiva();
   const [organizationId, setOrganizationId] = useState(initial?.organization_id ?? "");
   // US-200 — el portafolio del proyecto. Con programa se autocompleta con el
   // suyo; sin programa, se elige directo (un proyecto puede colgar del
@@ -64,7 +68,6 @@ export function ProjectForm({ mode, initial }: Props) {
   // ENH-132: salud y presupuesto real editables (solo modo edición).
   const [actualBudget, setActualBudget] = useState(initial?.actual_budget ?? "");
 
-  const [orgs, setOrgs] = useState<Organization[]>([]);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [pms, setPms] = useState<AdminUser[]>([]);
@@ -73,13 +76,18 @@ export function ProjectForm({ mode, initial }: Props) {
   const [notice, setNotice] = useState<Notice>(null);
 
   useEffect(() => {
-    listOrganizations({ is_active: true })
-      .then(setOrgs)
-      .catch(() => {});
     listUsers({ is_active: true, limit: 100 })
       .then((r) => setPms(r.items))
       .catch(() => {});
   }, []);
+
+  // El header carga sus organizaciones de forma asíncrona, así que al montar
+  // todavía no hay ninguna. Se siembra cuando llega, y **solo** si el campo
+  // sigue vacío: si la persona ya eligió otra, esto no se la cambia debajo.
+  useEffect(() => {
+    if (mode === "edit" || !orgDelHeader) return;
+    setOrganizationId((actual) => actual || orgDelHeader);
+  }, [mode, orgDelHeader]);
 
   useEffect(() => {
     if (!organizationId) {

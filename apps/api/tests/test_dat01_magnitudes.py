@@ -69,6 +69,10 @@ POR_NOMBRE: dict[str, str] = {
     "MetricSnapshot.budget_plan": "importe",
     "MetricSnapshot.budget_actual": "importe",
     "Actor.fte_cost_rate": "importe",
+    # US-215: la tarifa congelada en la asignación. Es un importe, y su unidad de
+    # tiempo va aparte en `cost_rate_period` — sin ella el número no significa
+    # nada, y por eso son dos columnas y no una.
+    "ProjectParticipation.cost_rate_snapshot": "importe",
     # Avance — porcentaje 0–100, y el nombre no lo dice
     "Project.progress": "porcentaje",
     "Task.progress": "porcentaje",
@@ -101,6 +105,8 @@ POR_NOMBRE: dict[str, str] = {
     "MetricSnapshot.milestones_due_14": "conteo",
     "MetricSnapshot.milestones_due_30": "conteo",
     "User.failed_login_attempts": "conteo",
+    # US-212: cuántas tareas tenía el plan al capturar la línea base.
+    "PlanBaseline.task_count": "conteo",
     # ASVS 4.3.1 — intentos gastados de un código de segundo factor.
     "AdminOtpCode.intentos": "conteo",
     # Ordinales: ordenan, no miden.

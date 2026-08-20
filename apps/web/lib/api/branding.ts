@@ -6,12 +6,18 @@ export type TenantBranding = {
   tenant_slug: string | null;
   logo_url: string | null;
   primary_color: string | null;
-  // ENH-190: per-tenant UI label ("organizations" | "portfolios").
-  // UI-only — no schema/route/API change to the underlying entity.
   // BUG-092: la moneda PREFERIDA del inquilino — el valor inicial de los
   // proyectos que no eligen una propia. La efectiva de un importe la trae el
   // objeto que lo lleva, ya resuelta por la API.
+  //
+  // (Aquí viajaba el `org_label` de ENH-190, retirado en DEC-032.)
   preferred_currency?: string | null;
+  /**
+   * US-213 — cada cuántos días reporta esta PMO. Viaja por aquí por el mismo
+   * motivo que la moneda: lo necesitan el rótulo de la tendencia, el muestreo
+   * de la serie y el historial de cortes, y ninguno debería ir a pedirlo aparte.
+   */
+  reporting_cadence_days?: number | null;
 };
 
 export function getMyTenantBranding(): Promise<TenantBranding> {

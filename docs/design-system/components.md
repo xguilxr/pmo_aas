@@ -81,13 +81,17 @@ Layout root:
 Programas / Proyectos → Módulos" del diseño original por una topología
 plana de 3 grupos. Detalle completo en `architecture/navigation.md` §2.
 
-- **TOP_NAV** (siempre visible): `Dashboard`, `Solicitudes` (`/pmo/requests`),
-  `Proyectos` (`/pmo/projects`), grupo "Módulos" (RAID / Cambios / Minutas /
-  Reportes / Portfolio admin-only) — todo bajo `/pmo/`.
-- **OrgTreeNav** (debajo de TOP_NAV): drill-down vivo de orgs → programas → proyectos.
-- **ADMIN_NAV** (solo si capability admin): `Tenant`, `IA`, `Organizaciones`,
+- **ORGANIZACIÓN** (siempre visible): `Dashboard`, `Portafolio` (`/pmo`),
+  `Proyectos`, `Solicitudes`, `Recursos`, `Reportes` — lo que se lee por
+  organización.
+- **TRANSVERSAL** (siempre visible): `RAID`, `Cambios`, `Minutas`,
+  `Notificaciones` — lo que cruza proyectos o es de quien lo recibe.
+- **ADMIN** (solo si capability admin): `Tenant`, `IA`, `Organizaciones`,
   `Usuarios`, `Permisos`, `Auditoría`. Items en `/admin/*`.
-- **SUPERADMIN_NAV** (solo `is_superadmin`): `Overview`, `Tenants`, `Users`, `IA`, `Logs`.
+- **PLATAFORMA** (solo `is_superadmin`): `Overview`, `Tenants`, `Users`, `IA`, `Logs`.
+- El rótulo de cada grupo se oculta con el sidebar colapsado: a 48 px no cabe.
+- El **switcher de organización** vive en el topbar (US-205), no en el sidebar.
+  El árbol `OrgTreeNav` que hacía el drill-down se retiró con él.
 - Las rutas legacy `/admin/projects`, `/admin/programs`, `/admin/raid`, etc.
   redirigen 301 a `/pmo/*` (US-075 / DEC-022). Los bookmarks viejos no se
   rompen, pero el sidebar las saca del menú.

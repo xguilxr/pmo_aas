@@ -205,7 +205,7 @@ function ReportsInner() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <nav className="text-[11px] text-[var(--text-tertiary)]">
@@ -1272,7 +1272,7 @@ function ReportEditor({
 
   if (loading || !report) {
     return (
-      <div className="mx-auto max-w-5xl space-y-3">
+      <div className="space-y-3">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -1280,7 +1280,7 @@ function ReportEditor({
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <button

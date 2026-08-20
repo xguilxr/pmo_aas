@@ -125,3 +125,44 @@ export const BYO_PROVIDER_MODELS: Record<BYOProvider, string[]> = {
   custom: [],
   azure: ["gpt-4o", "gpt-4", "gpt-35-turbo"],
 };
+
+// ---------------------------------------------------------------------------
+// US-222 / EP021 — consumo de IA del inquilino
+// ---------------------------------------------------------------------------
+//
+// **No trae dinero, y es deliberado.** La tarifa de cada modelo la fija su
+// proveedor, cambia cuando él la cambia y no vive en esta plataforma: un importe
+// estimado con una tarifa vieja se leería como el gasto y no lo sería. Se cuentan
+// tokens, que es el dato que sí es nuestro.
+
+export type ConsumoMensual = {
+  // `AAAA-MM`. Un mes sin trabajos viene con ceros, no se omite: un hueco en una
+  // serie se lee como continuidad.
+  month: string;
+  jobs: number;
+  tokens_in: number;
+  tokens_out: number;
+  tokens_total: number;
+};
+
+export type ConsumoPorModelo = {
+  // `null` cuando el trabajo falló antes de saber qué modelo lo iba a atender.
+  model: string | null;
+  provider: string | null;
+  jobs: number;
+  tokens_total: number;
+};
+
+export type ConsumoDeIA = {
+  current_month: string | null;
+  jobs_this_month: number;
+  tokens_this_month: number;
+  // Va junto al total y no en otra llamada: «120 trabajos» con treinta fallidos
+  // se lee como éxito y no lo es.
+  failed_this_month: number;
+  by_month: ConsumoMensual[];
+  by_model: ConsumoPorModelo[];
+  note: string;
+};
+
+export const getAIUsage = () => apiFetch<ConsumoDeIA>("/api/v1/admin/ai/usage");

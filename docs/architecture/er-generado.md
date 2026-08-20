@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-19
+revisado: 2026-08-20
 revisar_cada: nunca
 ---
 
@@ -19,7 +19,7 @@ revisar_cada: nunca
 La descripción en prosa de cada tabla vive en
 [`database.md`](database.md): eso no está en el modelo y no se puede derivar.
 
-**59 tablas · 166 relaciones declaradas por clave foránea.**
+**62 tablas · 170 relaciones declaradas por clave foránea.**
 
 ```mermaid
 erDiagram
@@ -91,6 +91,8 @@ erDiagram
     USERS ||--o{ PERMISSION_CHANGE_REQUESTS : requested_by_user_id
     USERS ||--o{ PERMISSION_CHANGE_REQUESTS : target_user_id
     TENANTS ||--o{ PERMISSION_CHANGE_REQUESTS : tenant_id
+    PLAN_BASELINES ||--o{ PLAN_BASELINE_TASKS : baseline_id
+    PROJECTS ||--o{ PLAN_BASELINES : project_id
     USERS |o--o{ PORTFOLIOS : created_by
     ORGANIZATIONS ||--o{ PORTFOLIOS : organization_id
     ACTORS |o--o{ PORTFOLIOS : owner_actor_id
@@ -188,6 +190,8 @@ erDiagram
     USERS |o--o{ USER_SCOPE_ASSIGNMENTS : created_by_user_id
     TENANTS ||--o{ USER_SCOPE_ASSIGNMENTS : tenant_id
     USERS ||--o{ USER_SCOPE_ASSIGNMENTS : user_id
+    TENANTS ||--o{ USER_TENANT_MEMBERSHIPS : tenant_id
+    USERS ||--o{ USER_TENANT_MEMBERSHIPS : user_id
     TENANTS |o--o{ USERS : tenant_id
     AUDIT_LOG { }
     PLATFORM_AI_SETTINGS { }

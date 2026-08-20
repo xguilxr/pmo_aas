@@ -65,6 +65,23 @@ def pct_a_fraccion(pct: float) -> float:
     return pct / 100
 
 
+def pct_a_fte(pct_acumulado: float, *, decimales: int = 1) -> float:
+    """3860 → 38,6. Porcentajes de asignación sumados, en personas equivalentes.
+
+    Es la misma aritmética que `pct_a_fraccion` y se nombra aparte porque dice
+    otra cosa. Ahí «0,42» es una fracción de uno; aquí «38,6» son treinta y
+    ocho personas y media, y el número se **presenta** con esa unidad
+    («38,6 / 35,0 FTE»).
+
+    Existe porque la alternativa era un `/ 100` suelto en el cálculo de
+    capacidad, y un `/ 100` suelto no dice de qué a qué. En `capacity.py`
+    conviven porcentajes por recurso, porcentajes sumados y FTE: leer cuál es
+    cuál sin el nombre exige reconstruirlo, y equivocarse no da un error, da un
+    número plausible — que es justo lo que DAT-04 existe para impedir.
+    """
+    return round(pct_a_fraccion(pct_acumulado), decimales)
+
+
 def razon_a_pct(numerador: float, denominador: float, *, decimales: int = 1) -> float:
     """`numerador/denominador` en porcentaje, y **0,0 si el denominador es cero**.
 
@@ -80,6 +97,24 @@ def razon_a_pct(numerador: float, denominador: float, *, decimales: int = 1) -> 
     if not denominador:
         return 0.0
     return round(numerador * 100 / denominador, decimales)
+
+
+def razon_a_pct_piso(numerador: int, denominador: int) -> int:
+    """`numerador/denominador` en porcentaje entero, **truncando hacia abajo**.
+
+    Existe aparte de `razon_a_pct` porque el redondeo no es un detalle de
+    formato: es la diferencia entre decir «91 %» y «90 %» de un proyecto al que
+    le falta un dato de once. Redondear hacia arriba insinúa que casi no le
+    falta nada, y quien lea la columna no va a abrirla.
+
+    Con `denominador` cero devuelve 100: la razón es que la única fuente de un
+    cero ahí es «no hay requisitos que cumplir», y no cumplir ninguno de cero
+    requisitos es estar completo. La otra opción —cero por ciento— diría que
+    falta todo cuando no falta nada.
+    """
+    if not denominador:
+        return 100
+    return numerador * 100 // denominador
 
 
 def razon_a_pct_decimal(numerador: Decimal, denominador: Decimal) -> Decimal:

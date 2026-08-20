@@ -64,6 +64,12 @@ export type RenderRequest = {
   name?: string | null;
   project_id?: string | null;
   organization_id?: string | null;
+  /**
+   * US-209 — el nivel que ADR-037 metió entre la organización y el programa.
+   * Se manda junto a `organization_id`: el portafolio define **qué** se agrega
+   * y la organización, de quién es el branding del PDF.
+   */
+  portfolio_id?: string | null;
   program_id?: string | null;
   level?: number;
   /** El corte se define automáticamente al generar (hoy); el builder ya

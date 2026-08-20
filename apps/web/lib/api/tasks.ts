@@ -114,6 +114,186 @@ export type GanttData = {
   dependencies: GanttDependency[];
 };
 
+// --- US-218: dependencias entre tareas de proyectos distintos --------------
+
+/** El extremo de una dependencia externa: la tarea y de qué proyecto es. */
+export type ExtremoExterno = {
+  task_id: string;
+  task_name?: string;
+  wbs_code?: string;
+  end_date?: string | null;
+  status?: string;
+  project_id?: string;
+  project_folio?: string;
+  project_name?: string;
+};
+
+export type DependenciaExterna = {
+  id: string;
+  /** El vínculo de MS Project: FS, SS, FF o SF. */
+  type: string;
+  lag_days: number;
+  predecessor: ExtremoExterno;
+  successor: ExtremoExterno;
+};
+
+/**
+ * Las dependencias externas de un proyecto, en las dos direcciones.
+ *
+ * Separadas porque significan cosas distintas para quien mira el plan: una
+ * **entrante** es algo que este proyecto espera —y que puede retrasarlo—, y una
+ * **saliente** es alguien esperándonos. Una lista sola obligaría a leer el
+ * sentido en cada fila.
+ */
+export type DependenciasExternas = {
+  entrantes: DependenciaExterna[];
+  salientes: DependenciaExterna[];
+};
+
+export function listExternalDependencies(
+  projectId: string,
+): Promise<DependenciasExternas> {
+  return apiFetch<DependenciasExternas>(
+    `/api/v1/projects/${projectId}/external-dependencies`,
+  );
+}
+
+export function createExternalDependency(
+  projectId: string,
+  body: {
+    predecessor_task_id: string;
+    successor_task_id: string;
+    type?: string;
+    lag_days?: number;
+  },
+): Promise<{ id: string }> {
+  return apiFetch(`/api/v1/projects/${projectId}/external-dependencies`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function deleteExternalDependency(
+  projectId: string,
+  dependencyId: string,
+): Promise<void> {
+  return apiFetch(
+    `/api/v1/projects/${projectId}/external-dependencies/${dependencyId}`,
+    { method: "DELETE" },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// US-212 / D-6 — línea base del plan
+// ---------------------------------------------------------------------------
+
+export type LineaBase = {
+  id: string;
+  project_id: string;
+  name: string;
+  note: string | null;
+  captured_at: string | null;
+  captured_by_user_id: string | null;
+  captured_by_name: string | null;
+  task_count: number;
+};
+
+// Qué le pasó a una tarea entre la promesa y el plan de hoy. `nueva` y
+// `retirada` son alcance, no atraso: mezclarlos con las corridas pierde la
+// conversación sobre el alcance.
+export type EstadoBaseline =
+  | "sin_cambio"
+  | "corrida"
+  | "adelantada"
+  | "nueva"
+  | "retirada";
+
+export const ESTADO_BASELINE_LABEL: Record<EstadoBaseline, string> = {
+  sin_cambio: "En fecha base",
+  corrida: "Corrida",
+  adelantada: "Adelantada",
+  nueva: "Nueva",
+  retirada: "Retirada",
+};
+
+export type FilaBaseline = {
+  task_id: string;
+  wbs_code: string | null;
+  name: string;
+  baseline_start: string | null;
+  baseline_end: string | null;
+  plan_start: string | null;
+  plan_end: string | null;
+  // Días entre el fin del plan y el prometido. `null` cuando falta una de las
+  // dos fechas — no 0, que se leería como «en fecha» (DAT-12).
+  slip_days: number | null;
+  // El cierre real contra lo prometido. Esta no se puede reescribir.
+  actual_slip_days: number | null;
+  progress: number | null;
+  is_milestone: boolean;
+  state: EstadoBaseline;
+};
+
+export type ResumenBaseline = {
+  tasks_in_baseline: number;
+  tasks_in_plan: number;
+  slipped: number;
+  pulled_in: number;
+  unchanged: number;
+  added: number;
+  removed: number;
+  project_slip_days: number | null;
+  baseline_finish: string | null;
+  plan_finish: string | null;
+  worst_slip_days: number | null;
+  worst_slip_task_id: string | null;
+};
+
+export type ComparacionBaseline = {
+  // `false` significa «no hay promesa contra la que medir», que no es lo mismo
+  // que «no se desvió». La interfaz tiene que decirlo con esas palabras.
+  has_baseline: boolean;
+  baseline: LineaBase | null;
+  baseline_count: number;
+  summary: ResumenBaseline | null;
+  rows: FilaBaseline[];
+};
+
+export function listPlanBaselines(
+  projectId: string,
+): Promise<{ baselines: LineaBase[] }> {
+  return apiFetch(`/api/v1/projects/${projectId}/plan/baselines`);
+}
+
+export function capturePlanBaseline(
+  projectId: string,
+  body: { name: string; note?: string | null },
+): Promise<LineaBase> {
+  return apiFetch(`/api/v1/projects/${projectId}/plan/baselines`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function deletePlanBaseline(
+  projectId: string,
+  baselineId: string,
+): Promise<void> {
+  return apiFetch(`/api/v1/projects/${projectId}/plan/baselines/${baselineId}`, {
+    method: "DELETE",
+  });
+}
+
+export function getBaselineComparison(
+  projectId: string,
+  baselineId?: string,
+): Promise<ComparacionBaseline> {
+  const qs = baselineId ? `?baseline_id=${baselineId}` : "";
+  return apiFetch(
+    `/api/v1/projects/${projectId}/plan/baseline-comparison${qs}`,
+  );
+}
+
 export function listTasks(projectId: string): Promise<Task[]> {
   return apiFetch<Task[]>(`/api/v1/projects/${projectId}/tasks`);
 }
@@ -448,3 +628,103 @@ export const TASK_STATUS_LABEL: Record<string, string> = {
   completed: "Completada",
   on_hold: "En pausa",
 };
+
+// ---------------------------------------------------------------------------
+// US-216 — importación masiva de proyectos y recursos
+// ---------------------------------------------------------------------------
+//
+// Vive aquí, junto al importador de planes, porque son el mismo tipo de trabajo
+// visto a dos alturas: aquel carga las tareas de un proyecto, este carga los
+// proyectos. Separarlos en dos módulos escondería que comparten el patrón
+// «preview → confirmar» y el mismo almacén de vista previa.
+
+export type ClaseDeImportacion = "projects" | "resources";
+
+export const CLASE_IMPORTACION_LABEL: Record<ClaseDeImportacion, string> = {
+  projects: "Proyectos",
+  resources: "Recursos (personas)",
+};
+
+export type ColumnaDeImportacion = {
+  key: string;
+  label: string;
+  required: boolean;
+  help: string;
+  aliases: string[];
+  values: string[];
+  type: string;
+};
+
+// Qué le pasa a una fila. `duplicada` no es un error: es una fila que ya existe
+// y que a propósito **no** se actualiza.
+export type EstadoDeFila = "valida" | "invalida" | "duplicada";
+
+export const ESTADO_FILA_LABEL: Record<EstadoDeFila, string> = {
+  valida: "Se va a crear",
+  invalida: "No se puede crear",
+  duplicada: "Ya existe — se salta",
+};
+
+export type FilaDeImportacion = {
+  // La línea real del archivo, contando el encabezado: es lo que hace útil el
+  // número, porque tiene que apuntar a esa fila del Excel.
+  row: number;
+  state: EstadoDeFila;
+  name: string | null;
+  values: Record<string, string>;
+  problems: { column: string; message: string }[];
+  conflicts_with: string | null;
+};
+
+export type PreviewDeImportacion = {
+  job_id: string;
+  kind: ClaseDeImportacion;
+  // Encabezados del archivo que el sistema no reconoció. Se muestran para que el
+  // usuario sepa qué se ignoró: descartarlos en silencio deja creer que entraron.
+  unmapped_headers: string[];
+  mapping: Record<string, string | null>;
+  summary: { total: number; valid: number; invalid: number; duplicate: number };
+  truncated: boolean;
+  max_rows: number;
+  rows: FilaDeImportacion[];
+};
+
+export type ResultadoDeImportacion = {
+  created: { id: string; name: string; folio?: string }[];
+  created_count: number;
+  // Los tres números van juntos siempre: «18 creados» sin decir que 5 quedaron
+  // fuera es mentir por omisión.
+  skipped_invalid: number;
+  skipped_duplicate: number;
+};
+
+export function getImportColumns(
+  kind: ClaseDeImportacion,
+): Promise<{ kind: string; columns: ColumnaDeImportacion[] }> {
+  return apiFetch(`/api/v1/imports/columns?kind=${kind}`);
+}
+
+export async function previewImport(
+  kind: ClaseDeImportacion,
+  organizationId: string,
+  file: File,
+): Promise<PreviewDeImportacion> {
+  // `rawFetch` y no `apiFetch`: aquel serializa el cuerpo a JSON y fija
+  // `Content-Type`, y un `multipart/form-data` necesita que el navegador ponga
+  // su propio encabezado con el separador. Es el mismo camino que `importPreview`
+  // del plan.
+  const base = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+  const form = new FormData();
+  form.append("kind", kind);
+  form.append("organization_id", organizationId);
+  form.append("file", file);
+  const res = await rawFetch(`${base}/api/v1/imports/preview`, {
+    method: "POST",
+    body: form,
+  });
+  return _decode<PreviewDeImportacion>(res);
+}
+
+export function confirmImport(jobId: string): Promise<ResultadoDeImportacion> {
+  return apiFetch(`/api/v1/imports/${jobId}/confirm`, { method: "POST" });
+}

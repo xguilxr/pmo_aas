@@ -8,20 +8,23 @@ revisar_cada: 30d
 
 # SPRINT.md — Tarea activa
 
-> Este archivo se mira cada día. El epic se abre al tocarlo (`CLAUDE.md` §1).
-> 1 US = 1 commit. Al terminar, mover la siguiente a IN-PROGRESS.
-> Histórico: `SPRINT-DONE-HISTORY.md`. El techo de líneas lo hace cumplir el CI
-> (`scripts/check_contexto.py`).
+> Se mira cada día. El epic se abre al tocarlo (`CLAUDE.md` §1). 1 US = 1 commit.
+> Histórico: `SPRINT-DONE-HISTORY.md`. El techo lo hace cumplir el CI.
 
 ---
 
 ## 🔴 IN-PROGRESS
 
-**Sin US activa.** Reestructura-W1 implementada y pusheada; el PR **#594**
-espera tu verificación. Detalle en `SPRINT-DONE-HISTORY.md` (ronda 2026-08-19).
+**Sin US activa.** **Fase 2 completa** en `claude/merge-deuda-tecnica-yamaca`:
+US-203 a US-222, el mockup aprobado el 2026-08-19. Migraciones `0112`–`0115`.
 
-Próximo paso: verificar #594, cerrar #588–#592, desplegar `0105`–`0111`. Después,
-**W2** según la «Guía de sesiones» de `drafts/reestructura-plan.md`.
+**Las cuatro preguntas de EP021 están contestadas** (2026-08-20), las cuatro
+acotadas — detalle en la epic y en DEC-033. Desbloquea **US-223 a US-226**.
+
+Próximo paso tuyo: **mergear el PR** —Fase 2 nunca tuvo uno abierto: no esperaba
+revisión, esperaba que alguien lo abriera— y **desplegar `0105`–`0115`** leyendo
+el registro (abajo). Los ~23 commits sin merge y las US de más de 10 archivos son
+deuda de proceso contra §8 y §3: se pidió no detenerse.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).
@@ -30,37 +33,34 @@ Próximo paso: verificar #594, cerrar #588–#592, desplegar `0105`–`0111`. De
 
 ## 📥 INBOX / TRIAGE
 
-### Reestructura de plataforma — oleadas siguientes
+### Reestructura de plataforma — lo que queda
 
-Planeación en `docs/epics/drafts/reestructura-{conceptos,plan,inventario,modelo-datos}.md`
-(mapas: `docs/architecture/mapa-{backend,frontend}.md`). W1 cerrada. Lo que
-queda comprometido de las oleadas: **W3** RLS de Postgres, **W8** el `drop` de
-`business_units` y `departments` cuando el contador de compat lo confirme.
+Planeación en `docs/epics/drafts/reestructura-*.md`; mapas en
+`docs/architecture/mapa-{backend,frontend}.md`. W1 y Fase 2 cerradas. Queda **W3**
+RLS de Postgres y **W8** el `drop` de `business_units`/`departments` cuando el
+contador de compat lo confirme.
 
 ### Producto — abierto
 
-- [ ] **Desplegar `0105`–`0111`** (#584/#585 y #594). `0105`–`0107` cierran
-  **todas las sesiones vivas** (ADR-033) y el panel pasa a dos pasos (ADR-035):
-  ten acceso a tu correo, y si Resend se cae ningún administrador entra. De W1,
-  mirar el registro del despliegue: `0110` lista los `projects.type` sin traducir
-  y `0111` cuántos inquilinos tenían `org_label`.
-- [ ] **Tapar un hueco antes de cerrar ventanas de compat.** `GET /projects`
-  mete `phase` y `type` crudos en el `IN (...)` sin normalizar ni registrar: el
-  contador no ve a quien filtra con el nombre viejo. Fichas y ventanas abiertas
-  en `core/compatibilidad.py`.
-- [ ] **Decidir los nueve follow-ups del PR #594**, listados ahí con su
-  evidencia (superficie de API sin pantalla, permisos muertos, rutas sin enlace).
-- [ ] **Contrastar los umbrales de D-4 contra cartera real.** Los valores de
-  US-196 son razonados, no medidos; se ajustan en `settings`, sin tocar código.
-- [ ] **`design-system/tokens.md`** describe una paleta anterior a D-7 y
-  ADR-023. Marcado `reemplazado` el 2026-08-06; queda reescribirlo contra la
-  paleta vigente (trabajo de diseño).
-- [ ] **Línea base** (D-6), sin la cual «desviación» no tiene referente, y
-  **DCMA 14-point**. Épica propia, sin abrir.
+- [ ] **Desplegar `0105`–`0115`** (#584/#585, #594 y Fase 2). `0105`–`0107`
+  cierran **todas las sesiones vivas** (ADR-033) y el panel pasa a dos pasos
+  (ADR-035): ten acceso a tu correo. Mirar el registro: `0110` lista los
+  `projects.type` sin traducir, `0111` los inquilinos con `org_label` y `0115`
+  cuántas membresías sembró.
+- [ ] **Hueco antes de cerrar ventanas de compat.** `GET /projects` mete `phase`
+  y `type` crudos en el `IN (...)` sin normalizar ni registrar: el contador no ve
+  a quien filtra con el nombre viejo. Ver `core/compatibilidad.py`.
+- [ ] **Decidir los nueve follow-ups del PR #594**, listados ahí con su evidencia.
+- [ ] **Contrastar los umbrales de D-4 contra cartera real.** Los de US-196 son
+  razonados, no medidos; se ajustan en `settings`.
+- [ ] **`design-system/tokens.md`** describe una paleta previa a D-7 y ADR-023.
+  Marcado `reemplazado`; reescribirlo es trabajo de diseño.
+- [ ] **Las cuatro preguntas de `EP021-catalogo-de-ia.md`.** Son definiciones, no
+  aprobaciones; la cuarta decide si hay un segundo sistema de autorización.
+- [ ] **DCMA 14-point.** La línea base que lo bloqueaba ya está (US-212).
 
-- 2026-08-07 — **Conformidad cerrada** (ADR-036); detalle en
-  `docs/conformidad/asvs-l1.md`. Vuelve a la mesa solo con un cliente que exija
-  certificación, un requisito contractual o un incidente de credenciales.
+- 2026-08-07 — **Conformidad cerrada** (ADR-036): `docs/conformidad/asvs-l1.md`.
+  Vuelve solo con un requisito contractual o un incidente.
 
 ---
 

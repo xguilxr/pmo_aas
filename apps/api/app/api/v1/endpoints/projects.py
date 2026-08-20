@@ -1,4 +1,5 @@
 from datetime import UTC, date, datetime
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -31,6 +32,8 @@ from app.schemas.project import (
 )
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
+from app.services.completitud import a_json as completitud_a_json
+from app.services.completitud import completitud_de
 from app.services.folio import next_folio
 from app.services.jerarquia import (
     resolver_portafolio,
@@ -516,6 +519,27 @@ async def update_project(
         )
     await db.commit()
     return ProjectRead.model_validate(p, context=ctx_moneda)
+
+
+@router.get("/{project_id}/completeness")
+async def get_completeness(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-210 — cuánto del proyecto está capturado, y qué falta.
+
+    El porcentaje que la vista maestra pinta en su columna «Compl.», con el
+    checklist detrás: qué requisito falta, en qué grupo cae y **qué se pierde**
+    sin él. La consecuencia no es decoración — una casilla sin consecuencia se
+    ignora, y la consecuencia es lo que hace que alguien capture el dato.
+
+    Se deriva en cada llamada y no se guarda; el porqué está en
+    `app/dominio/completitud.py`.
+    """
+    proyecto = await proyecto_autorizado(db, project_id, cu)
+    completitud = (await completitud_de(db, [proyecto]))[str(proyecto.id)]
+    return completitud_a_json(completitud)
 
 
 @router.get("/{project_id}/health-detail")

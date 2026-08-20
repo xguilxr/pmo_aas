@@ -36,6 +36,13 @@ export type TrendsResponse = {
   scope: ScopeType;
   scope_id: string;
   metric: string | null;
+  /**
+   * US-213 — la cadencia con la que se muestreó, o `0` si viene sin muestrear.
+   * La devuelve el servidor para que el gráfico rotule la cadencia real en vez
+   * de escribir «bi-semanal» a mano y quedarse viejo cuando el inquilino la
+   * cambie.
+   */
+  cadencia_dias?: number;
   series: TrendPoint[];
 };
 
@@ -108,7 +115,12 @@ function qs(params: Record<string, unknown>): string {
 }
 
 export function getTrends(
-  params: ScopeParams & { metric?: string; weeks?: number } = {},
+  params: ScopeParams & {
+    metric?: string;
+    weeks?: number;
+    /** US-213 — un punto por periodo de reporte. `0` u omitido: sin muestrear. */
+    cadencia_dias?: number;
+  } = {},
 ): Promise<TrendsResponse> {
   return apiFetch<TrendsResponse>(`/api/v1/dashboard/trends${qs(params)}`);
 }
@@ -185,8 +197,25 @@ async function _downloadPdf(path: string, filename: string): Promise<void> {
 
 const _stamp = () => new Date().toISOString().slice(0, 10);
 
-export function downloadPortfolioStatusReport(): Promise<void> {
-  return _downloadPdf(`/api/v1/dashboard/reports/portfolio`, `status-portafolio-${_stamp()}.pdf`);
+/**
+ * El status de **toda la PMO** (nivel inquilino).
+ *
+ * Se llamaba `downloadPortfolioStatusReport`, y ese nombre dejó de ser
+ * inequívoco cuando ADR-037 convirtió «Portafolio» en una entidad dentro de la
+ * organización: los dos reportes existen, agregan cosas distintas, y un nombre
+ * que sirve para los dos es un error esperando a que alguien elija el otro.
+ * Aquí «PMO» es el inquilino entero.
+ */
+export function downloadPmoStatusReport(): Promise<void> {
+  return _downloadPdf(`/api/v1/dashboard/reports/portfolio`, `status-pmo-${_stamp()}.pdf`);
+}
+
+/** US-209 — el status de **un** portafolio: la entidad de ADR-037. */
+export function downloadPortfolioStatusReport(portfolioId: string): Promise<void> {
+  return _downloadPdf(
+    `/api/v1/portfolios/${portfolioId}/reports/status`,
+    `status-portafolio-${_stamp()}.pdf`,
+  );
 }
 
 export function downloadOrgStatusReport(orgId: string): Promise<void> {

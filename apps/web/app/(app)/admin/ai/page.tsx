@@ -19,6 +19,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { ConsumoDeIAPanel } from "@/components/consumo-de-ia";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -287,6 +288,11 @@ export default function TenantAdminAIPage() {
           }}
         />
       ) : null}
+
+      {/* US-222 — la fila «Consumo / alertas» del artboard. Va al final porque
+          se lee después de decidir la configuración, no antes: primero qué
+          proveedor, luego cuánto se está gastando con él. */}
+      <ConsumoDeIAPanel />
     </div>
   );
 }

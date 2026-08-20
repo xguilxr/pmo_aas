@@ -20,6 +20,20 @@ export type DashboardKpis = {
   /** Un importe por moneda. Vacío cuando no hay presupuesto que sumar. */
   budget_by_currency: Record<string, number>;
   progress_avg: number | null;
+  /**
+   * US-206 — el avance **esperado por calendario** de los mismos proyectos que
+   * `progress_avg`. La tarjeta enfrenta los dos y la resta solo significa algo
+   * porque los dos lados cubren el mismo conjunto. `null` por lo mismo que el
+   * otro: sin proyectos activos no hay avance del que hablar.
+   */
+  plan_progress_avg: number | null;
+  /** US-206 — lo consumido, por moneda. Vacío cuando no hay nada gastado. */
+  budget_consumed_by_currency: Record<string, number>;
+  /**
+   * US-206 — de los severos, los que no tiene nadie: ni `owner_id` ni
+   * `owner_actor_id`. Siete severos es un estado; dos sin dueño es una tarea.
+   */
+  severe_risks_unassigned: number;
 };
 
 export type DashboardCharts = {
@@ -27,8 +41,71 @@ export type DashboardCharts = {
   progress_by_phase: Record<string, number>;
   budget_by_type: Record<string, number>;
   portfolio_health: Record<string, number>;
+  /**
+   * US-206 — las dos distribuciones del mockup que faltaban. La clave `""` es
+   * «sin programa» y «sin sponsor»: la API no manda la etiqueta porque el
+   * rótulo es vocabulario de interfaz, y el grupo existe de verdad — son los
+   * proyectos que cuelgan del portafolio sin que nadie los coordine (DEC-030).
+   */
+  projects_by_program: Record<string, number>;
+  projects_by_sponsor: Record<string, number>;
 };
 
+/** US-206 — un proyecto en la lista «top en riesgo». */
+export type TopPorRiesgo = {
+  project_id: string;
+  folio: string;
+  name: string;
+  health: string | null;
+  severe_risks: number;
+};
+
+/** US-206 — un proyecto en la lista «top con atraso». */
+export type TopPorAtraso = {
+  project_id: string;
+  folio: string;
+  name: string;
+  health: string | null;
+  progress_plan: number;
+  progress_actual: number;
+  /** Negativo: puntos por debajo del avance esperado por calendario. */
+  delta_pts: number;
+};
+
+export type DashboardTops = {
+  by_risk: TopPorRiesgo[];
+  by_delay: TopPorAtraso[];
+};
+
+/** US-210 — un requisito mínimo que al proyecto le falta. */
+export type RequisitoFaltante = {
+  clave: string;
+  etiqueta: string;
+  grupo: "identidad" | "responsables" | "calendario" | "dinero" | "gobierno";
+  /**
+   * Qué se pierde sin el dato. Viene de la API y no se escribe en la pantalla:
+   * el checklist se pinta en tres superficies, y traducir once claves a español
+   * en cada una son tres copias del mismo diccionario.
+   */
+  porque: string;
+};
+
+export type Completitud = {
+  /** 0-100, entero, redondeado hacia abajo. */
+  pct: number;
+  presentes: number;
+  total: number;
+  faltantes: RequisitoFaltante[];
+};
+
+/**
+ * Una fila de la **vista maestra** (US-207).
+ *
+ * El nombre del tipo es histórico, como el de su endpoint: empezó siendo la
+ * tabla «Plan vs Real» del tablero y ahora es la fila del control tower. Trece
+ * de las dieciséis columnas del mockup salen de aquí; «Próximo hito»,
+ * «Reporte» y «Completitud» son US-210 y US-211.
+ */
 export type PlanVsActualRow = {
   project_id: string;
   folio: string;
@@ -41,8 +118,57 @@ export type PlanVsActualRow = {
   progress_plan: number;
   progress_actual: number;
   health: string | null;
+  /** `auto` = lo mantiene el motor de reglas; `manual` = lo declaró el PM. */
+  health_source: "auto" | "manual";
   pm_id: string | null;
   pm_name: string | null;
+  // --- US-207: las columnas de la vista maestra ---------------------------
+  /**
+   * `/pmo` puede estar en «todas las organizaciones» (US-205). Sin este nombre,
+   * cuatro organizaciones dan filas indistinguibles: la columna solo se muestra
+   * cuando el header agrega, que es cuando hace falta.
+   */
+  organization_id: string | null;
+  organization_name: string | null;
+  portfolio_id: string | null;
+  portfolio_name: string | null;
+  program_id: string | null;
+  program_name: string | null;
+  type: string | null;
+  phase: string;
+  priority: number | null;
+  open_risks: number;
+  open_issues: number;
+  /**
+   * Cuándo cambió el **registro**, no cuándo alguien reportó. La distinción
+   * importa: un proyecto sin tocar en tres semanas puede estar bien reportado
+   * fuera del sistema. El estatus de reporte es US-211.
+   */
+  updated_at: string | null;
+  /**
+   * US-210 — cuánto del proyecto está capturado. Se **deriva** en el servidor;
+   * no hay columna que se pueda quedar vieja.
+   */
+  completeness: Completitud | null;
+  // --- US-211: las dos últimas columnas del mockup ------------------------
+  /**
+   * `sin_reporte` **no** es `vencido`: un proyecto que nunca se reportó no
+   * incumplió una fecha, es que no ha empezado a reportar. Meterlos en el mismo
+   * cubo esconde el caso que más hay que mirar en un onboarding.
+   */
+  report_status: "al_dia" | "por_vencer" | "vencido" | "sin_reporte";
+  /** Ya en español: el vocabulario de estados es del dominio, no de la pantalla. */
+  report_status_label: string;
+  /** `null` cuando nunca se reportó: sin un último no hay de dónde contar. */
+  report_due_date: string | null;
+  /** Positivo solo cuando está vencido; nunca negativo. */
+  report_days_late: number;
+  next_milestone: {
+    name: string;
+    date: string;
+    /** La fecha ya pasó y el hito sigue abierto: es una alerta, no un dato. */
+    overdue: boolean;
+  } | null;
 };
 
 export type PlanVsActualParams = {
@@ -82,6 +208,56 @@ export function getDashboardCharts(
   params: DashboardFilter = {},
 ): Promise<DashboardCharts> {
   return apiFetch<DashboardCharts>(`/api/v1/dashboard/charts${qs(params)}`);
+}
+
+/**
+ * US-206 — las dos listas cortas del tablero.
+ *
+ * La tercera del mockup —sobrecarga de recursos— no sale de aquí: viene de
+ * `/capacity/summary`, que ya ordena por holgura y conoce los umbrales del
+ * inquilino.
+ */
+// --- US-219: Portfolio Board -----------------------------------------------
+
+export type TarjetaDeBoard = {
+  project_id: string;
+  folio: string;
+  name: string;
+  health: string | null;
+  phase: string;
+  report_days_late: number;
+  /**
+   * Decisiones abiertas del proyecto. Es un **marcador** y no una columna: un
+   * proyecto al día también puede tener decisiones esperando, y un kanban no
+   * admite que una tarjeta esté en dos columnas —o se duplica y los conteos
+   * dejan de sumar el total, o se elige una y se esconde la otra mitad—.
+   */
+  pending_decisions: number;
+  next_milestone: { name: string; date: string; overdue: boolean } | null;
+};
+
+export type ColumnaDeBoard = {
+  status: "sin_reporte" | "vencido" | "por_vencer" | "al_dia";
+  label: string;
+  projects: TarjetaDeBoard[];
+};
+
+export type PortfolioBoard = {
+  columns: ColumnaDeBoard[];
+  total: number;
+};
+
+/** US-219 — los proyectos por estatus de reporte, en orden de urgencia. */
+export function getPortfolioBoard(
+  params: DashboardFilter = {},
+): Promise<PortfolioBoard> {
+  return apiFetch<PortfolioBoard>(`/api/v1/dashboard/portfolio-board${qs(params)}`);
+}
+
+export function getDashboardTops(
+  params: DashboardFilter & { limite?: number } = {},
+): Promise<DashboardTops> {
+  return apiFetch<DashboardTops>(`/api/v1/dashboard/tops${qs(params)}`);
 }
 
 export function getPlanVsActual(

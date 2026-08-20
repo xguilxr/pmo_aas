@@ -30,7 +30,7 @@ from typing import Any
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.unidades import razon_a_pct
+from app.core.unidades import pct_a_fte, razon_a_pct
 from app.dominio.proyecto import CERRADO
 from app.models.area import Actor, Area, Team
 from app.models.project import Project
@@ -279,6 +279,356 @@ async def monthly_utilization(
         })
     rows.sort(key=lambda r: (-r["alert_months"], -r["scope_current_pct"], r["name"]))
     return {"months": [w[0] for w in windows], "rows": rows}
+
+
+# --- US-208: carga semanal (heatmap persona × semana del mockup) -----------
+
+#: El horizonte por defecto del mockup. Doce semanas es lo que cabe en pantalla
+#: sin scroll horizontal y lo que un plan trimestral abarca.
+SEMANAS_POR_DEFECTO = 12
+
+_MES_CORTO = ("ene", "feb", "mar", "abr", "may", "jun",
+              "jul", "ago", "sep", "oct", "nov", "dic")
+
+
+def _semanas(cantidad: int, today: date) -> list[tuple[str, date, date]]:
+    """`[(etiqueta 's33', lunes, domingo)]` desde la semana en curso.
+
+    La etiqueta es el número de semana ISO, que es lo que el mockup dibuja y lo
+    que una PMO usa para hablar de fechas («lo movemos a la s37»). Se empieza en
+    el lunes de la semana actual y no en hoy: media semana como primera columna
+    daría un porcentaje que no se puede comparar con las de al lado.
+    """
+    lunes = today - timedelta(days=today.weekday())
+    salida = []
+    for i in range(cantidad):
+        inicio = lunes + timedelta(weeks=i)
+        fin = inicio + timedelta(days=6)
+        salida.append((f"s{inicio.isocalendar().week}", inicio, fin))
+    return salida
+
+
+def _meses_del_horizonte(
+    semanas: list[tuple[str, date, date]],
+) -> list[tuple[str, date, date]]:
+    """Los meses que las semanas tocan, para «capacidad vs demanda».
+
+    Se derivan del horizonte y no se piden aparte: dos rangos distintos en la
+    misma pantalla —doce semanas arriba, cuatro meses abajo— son dos preguntas
+    que se leen como una.
+    """
+    vistos: list[tuple[str, date, date]] = []
+    for _, inicio, _fin in semanas:
+        clave = (inicio.year, inicio.month)
+        if vistos and (vistos[-1][1].year, vistos[-1][1].month) == clave:
+            continue
+        primero = date(inicio.year, inicio.month, 1)
+        ny, nm = (inicio.year + 1, 1) if inicio.month == 12 else (inicio.year, inicio.month + 1)
+        vistos.append((_MES_CORTO[inicio.month - 1], primero, date(ny, nm, 1) - timedelta(days=1)))
+    return vistos
+
+
+def _intersecta(r: Any, inicio: date, fin: date) -> bool:
+    """La participación toca [inicio, fin]. Sin fechas se considera vigente:
+    una asignación sin plazo es indefinida, no inexistente."""
+    return (r.start_date is None or r.start_date <= fin) and (
+        r.end_date is None or r.end_date >= inicio
+    )
+
+
+async def weekly_load(
+    db: AsyncSession,
+    tenant: Tenant,
+    *,
+    weeks: int = SEMANAS_POR_DEFECTO,
+    organization_id: str | None = None,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """US-208 — carga por persona y por semana, en % de FTE asignado.
+
+    Es el heatmap del artboard «Recursos › Capacidad». Devuelve además lo que
+    los otros tres paneles del mockup necesitan, y en la misma respuesta:
+
+    - `capacity_vs_demand` — demanda asignada contra capacidad, por mes.
+    - `shared_critical` — quién está en más proyectos a la vez.
+    - `suggested` — la lectura de lo anterior, en una frase.
+
+    ## Por qué todo en una respuesta
+
+    Los cuatro paneles miran las **mismas** asignaciones. Con un endpoint por
+    panel, cuatro consultas leen la misma tabla y —peor— pueden leerla en
+    momentos distintos: el heatmap diría que alguien está al 160 % mientras el
+    panel de al lado ya no lo lista como crítico. Un solo corte no puede
+    contradecirse consigo mismo.
+
+    ## Las filas de equipo son un promedio, no una suma
+
+    El mockup pinta «Equipo QA (6) · 120». Sumar los seis daría 720 %, que no
+    significa nada: la pregunta de una fila de equipo es «¿el equipo está
+    saturado?», y eso es el promedio de sus miembros. Se dice en el contrato
+    (`kind: "team"`, `members`) para que la pantalla pueda rotularlo.
+    """
+    today = today or date.today()
+    tenant_id = str(tenant.id)
+    umbrales = get_capacity_thresholds(tenant)
+    semanas = _semanas(max(1, weeks), today)
+    horizonte_inicio, horizonte_fin = semanas[0][1], semanas[-1][2]
+
+    actor_stmt = select(Actor).where(
+        Actor.tenant_id == tenant_id,
+        Actor.deleted_at.is_(None),
+        Actor.is_active.is_(True),
+    )
+    if organization_id:
+        # Los actores sin organización entran igual: son el catálogo compartido
+        # del inquilino, y excluirlos haría desaparecer del heatmap a quien
+        # trabaja para varias organizaciones — que es justo el caso crítico.
+        actor_stmt = actor_stmt.where(
+            or_(
+                Actor.organization_id == organization_id,
+                Actor.organization_id.is_(None),
+            )
+        )
+    actores = list((await db.execute(actor_stmt.order_by(Actor.name))).scalars().all())
+    vacio: dict[str, Any] = {
+        "weeks": [
+            {"label": e, "start": i.isoformat(), "end": f.isoformat()}
+            for e, i, f in semanas
+        ],
+        "rows": [],
+        "capacity_vs_demand": [],
+        "shared_critical": [],
+        "suggested": [],
+        "unquantified_resources": 0,
+    }
+    if not actores:
+        return vacio
+
+    ids = [str(a.id) for a in actores]
+    # La demanda de cada recurso considera **todos** sus proyectos, no solo los
+    # de la organización filtrada: alguien saturado lo está por la suma de todo
+    # lo que tiene encima. Es la misma regla que `/projects/{id}/resource-load`.
+    filas = [
+        r
+        for r in await _load_assignments(
+            db, tenant_id, horizonte_inicio, horizonte_fin, actor_ids=ids
+        )
+        if r.status == "activa"
+    ]
+    por_actor: dict[str, list[Any]] = {}
+    for r in filas:
+        por_actor.setdefault(str(r.actor_id), []).append(r)
+
+    equipos = {
+        str(i): n
+        for i, n in (
+            await db.execute(select(Team.id, Team.name).where(Team.tenant_id == tenant_id))
+        ).all()
+    }
+    areas = {
+        str(i): n
+        for i, n in (
+            await db.execute(select(Area.id, Area.name).where(Area.tenant_id == tenant_id))
+        ).all()
+    }
+
+    def por_semana(asignaciones: list[Any]) -> list[float]:
+        return [
+            round(
+                sum(
+                    float(r.allocation_pct)
+                    for r in asignaciones
+                    if r.allocation_pct is not None and _intersecta(r, inicio, fin)
+                ),
+                1,
+            )
+            for _, inicio, fin in semanas
+        ]
+
+    filas_salida: list[dict[str, Any]] = []
+    # Asignados **sin** `%` capturado. No entran en el heatmap y no se callan:
+    # una fila en cero para alguien que sí está asignado se lee como «libre»,
+    # cuando lo que pasa es que no se sabe cuánto pesa. Y es accionable —hay que
+    # capturar el FTE—, así que la pantalla lo dice.
+    sin_cuantificar = 0
+    for a in actores:
+        aid = str(a.id)
+        mias = por_actor.get(aid, [])
+        # Solo quien tiene alguna señal. Un catálogo de cuarenta y ocho actores
+        # de los que diez están asignados daría treinta y ocho filas en cero, y
+        # el heatmap se lee peor con ellas que sin ellas.
+        if not mias:
+            continue
+        serie = por_semana(mias)
+        # La participación existe pero ninguna lleva `allocation_pct`: es el
+        # caso del PM que la sincronización de membresía (US-118) asigna sola.
+        if not any(serie):
+            sin_cuantificar += 1
+            continue
+        capacidad = float(a.project_capacity_pct or 0)
+        filas_salida.append(
+            {
+                "kind": "actor",
+                "id": aid,
+                "name": a.name,
+                "discipline": a.discipline,
+                "area": areas.get(str(a.area_id), "") if a.area_id else "",
+                "team_id": str(a.team_id) if a.team_id else None,
+                "team": equipos.get(str(a.team_id), "") if a.team_id else "",
+                "capacity_pct": capacidad,
+                "per_week": serie,
+                "peak_pct": max(serie) if serie else 0.0,
+                "projects_count": len({str(r.project_id) for r in mias}),
+                "is_key_resource": bool(a.is_key_resource),
+                "is_shared_resource": bool(a.is_shared_resource),
+                # El desglose de la celda del mockup («click: proyectos que
+                # componen la carga») se resuelve en el cliente con esto, sin
+                # una ida al servidor por celda.
+                "assignments": [
+                    {
+                        "project_id": str(r.project_id),
+                        "project_name": r.project_name,
+                        "project_folio": r.project_folio,
+                        "allocation_pct": (
+                            float(r.allocation_pct) if r.allocation_pct is not None else None
+                        ),
+                        "start_date": r.start_date.isoformat() if r.start_date else None,
+                        "end_date": r.end_date.isoformat() if r.end_date else None,
+                        "is_critical": bool(r.is_critical),
+                    }
+                    for r in mias
+                ],
+            }
+        )
+
+    # Filas de equipo: el promedio de sus miembros presentes en el heatmap.
+    por_equipo: dict[str, list[dict[str, Any]]] = {}
+    for f in filas_salida:
+        if f["team_id"]:
+            por_equipo.setdefault(str(f["team_id"]), []).append(f)
+    for tid, miembros in sorted(por_equipo.items(), key=lambda kv: equipos.get(kv[0], "")):
+        # Con un solo miembro la fila de equipo repetiría la suya.
+        if len(miembros) < 2:
+            continue
+        promedio = [
+            round(sum(m["per_week"][i] for m in miembros) / len(miembros), 1)
+            for i in range(len(semanas))
+        ]
+        filas_salida.append(
+            {
+                "kind": "team",
+                "id": tid,
+                "name": equipos.get(tid, "Equipo"),
+                "discipline": None,
+                "area": "",
+                "team_id": tid,
+                "team": equipos.get(tid, ""),
+                "members": len(miembros),
+                "capacity_pct": round(
+                    sum(m["capacity_pct"] for m in miembros) / len(miembros), 1
+                ),
+                "per_week": promedio,
+                "peak_pct": max(promedio) if promedio else 0.0,
+                "projects_count": len(
+                    {
+                        p["project_id"]
+                        for m in miembros
+                        for p in m["assignments"]
+                    }
+                ),
+                "is_key_resource": False,
+                "is_shared_resource": False,
+                "assignments": [],
+            }
+        )
+
+    # Lo más saturado arriba: el heatmap existe para encontrar el fuego.
+    filas_salida.sort(key=lambda f: (-float(f["peak_pct"]), str(f["name"])))
+
+    # --- capacidad vs demanda, por mes -------------------------------------
+    solo_personas = [f for f in filas_salida if f["kind"] == "actor"]
+    capacidad_fte = pct_a_fte(sum(float(f["capacity_pct"]) for f in solo_personas))
+    # Las asignaciones de los recursos que **sí** salen en el heatmap. Sumar
+    # todas incluiría a los sin cuantificar, y la demanda mensual dejaría de
+    # cuadrar con las columnas de arriba.
+    ids_en_heatmap = {str(f["id"]) for f in solo_personas}
+    filas_en_heatmap = [r for r in filas if str(r.actor_id) in ids_en_heatmap]
+    cap_vs_dem = []
+    for etiqueta, inicio, fin in _meses_del_horizonte(semanas):
+        demanda = sum(
+            float(r.allocation_pct)
+            for r in filas_en_heatmap
+            if r.allocation_pct is not None and _intersecta(r, inicio, fin)
+        )
+        cap_vs_dem.append(
+            {
+                "label": etiqueta,
+                # En FTE y no en porcentaje: «38.6 de 35 personas» se entiende
+                # sin conversión, y «3860 % de 3500 %» no. La conversión tiene
+                # nombre (DAT-04): un `/ 100` suelto no dice de qué a qué.
+                "demand_fte": pct_a_fte(demanda),
+                "capacity_fte": round(capacidad_fte, 1),
+            }
+        )
+
+    # --- recursos críticos compartidos -------------------------------------
+    # «Compartido» aquí es medido, no declarado: estar en tres proyectos a la vez
+    # lo es, tenga o no la marca `is_shared_resource` puesta a mano. El umbral es
+    # dos porque con uno no hay nada que compartir.
+    compartidos = sorted(
+        (f for f in solo_personas if int(f["projects_count"]) >= 2),
+        key=lambda f: (-int(f["projects_count"]), -float(f["peak_pct"]), str(f["name"])),
+    )[:5]
+    criticos = [
+        {
+            "actor_id": f["id"],
+            "name": f["name"],
+            "discipline": f["discipline"],
+            "projects_count": f["projects_count"],
+            "projects": sorted(
+                {str(p["project_name"]) for p in f["assignments"]}
+            ),
+            "peak_pct": f["peak_pct"],
+        }
+        for f in compartidos
+    ]
+
+    # --- lo que hay que hacer con todo esto --------------------------------
+    # Derivado, no escrito: la frase nombra el recurso y las semanas concretas
+    # donde se pasa de su capacidad. Un consejo genérico («revisa la carga») no
+    # es una acción, y un consejo inventado es peor que ninguno.
+    sugerencias: list[str] = []
+    for f in filas_salida[:2]:
+        capacidad = float(f["capacity_pct"])
+        if capacidad <= 0:
+            continue
+        excedidas = [
+            semanas[i][0]
+            for i, v in enumerate(f["per_week"])
+            if v - capacidad > umbrales["red_over"]
+        ]
+        if not excedidas:
+            continue
+        rango = (
+            f"{excedidas[0]} a {excedidas[-1]}" if len(excedidas) > 1 else excedidas[0]
+        )
+        sugerencias.append(
+            f"{f['name']} pasa de su capacidad ({capacidad:.0f}%) en "
+            f"{rango}: pico de {float(f['peak_pct']):.0f}%. Renivelar o mover "
+            f"lo que empieza en {excedidas[0]}."
+        )
+
+    return {
+        "weeks": [
+            {"label": e, "start": i.isoformat(), "end": f.isoformat()}
+            for e, i, f in semanas
+        ],
+        "rows": filas_salida,
+        "capacity_vs_demand": cap_vs_dem,
+        "shared_critical": criticos,
+        "suggested": sugerencias,
+        "unquantified_resources": sin_cuantificar,
+    }
 
 
 def _summarize_actor(

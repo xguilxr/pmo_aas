@@ -8,11 +8,14 @@ import {
   Boxes,
   Building2,
   ChevronRight,
+  Bell,
   ClipboardCheck,
+  ClipboardList,
+  Columns3,
+  CreditCard,
   FolderKanban,
   Gauge,
   GitBranch,
-  Inbox,
   KeyRound,
   LayoutDashboard,
   Menu,
@@ -25,12 +28,14 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  Upload,
   Users,
   X,
 } from "lucide-react";
 
 import { NotificationBell } from "@/components/notification-bell";
-import { OrgTreeNav } from "@/components/org-tree-nav";
+import { SwitcherDeInquilino } from "@/components/switcher-de-inquilino";
+import { SwitcherDeOrganizacion } from "@/components/switcher-de-organizacion";
 import { useTenantBranding } from "@/components/tenant-branding-provider";
 import { UserMenu } from "@/components/user-menu";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
@@ -56,43 +61,98 @@ type NavItem = {
   adminOnly?: boolean;
 };
 
-// US-052: sidebar top-nav extendido con vistas cross-tenant. El orden
-// refleja el flujo del PMO: de resumen (Tablero) a ingreso (Solicitudes)
-// a ejecución (Proyectos) a gobernanza (Módulos con RAID/Cambios/Minutas/Reportes).
-// ENH-012 / ENH-116: RAID, Cambios, Minutas y Reportes agrupados bajo "Módulos" (colapsable).
-const TOP_NAV: NavItem[] = [
+// US-204 — el sidebar baja de «todo al mismo nivel» a grupos estables, según
+// el mockup aprobado (`reestructura-navegacion.md` §2). Dos cambios de fondo:
+//
+// 1. Se disuelve el grupo colapsable «Módulos». Agrupaba por *implementación*
+//    («son los módulos del producto») y no por lo que la persona va a hacer:
+//    metía RAID junto a Recursos y Reportes, que no se parecen en nada. Un
+//    nivel de plegado que hay que abrir para llegar a lo de todos los días es
+//    un clic de peaje.
+// 2. Los grupos son rótulos, no acordeones. Se ven los diez destinos a la vez;
+//    con siete entradas por grupo no hace falta plegar nada.
+//
+// «Portafolio» apunta a `/pmo` mientras US-207 construya la vista maestra
+// (control tower) que el mockup pide en ese lugar.
+type GrupoNav = {
+  id: string;
+  titulo: string;
+  items: NavItem[];
+};
+
+const GRUPOS_NAV: GrupoNav[] = [
   {
-    id: "dashboard",
-    label: "Tablero",
-    icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
-    href: "/dashboard",
-    match: (p) => p === "/dashboard",
+    id: "organizacion",
+    titulo: "Organización",
+    items: [
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
+        href: "/dashboard",
+        match: (p) => p === "/dashboard",
+      },
+      {
+        id: "portfolio",
+        label: "Portafolio",
+        icon: <Boxes className="h-4 w-4" aria-hidden />,
+        href: "/pmo",
+        match: (p) => p === "/pmo",
+      },
+      {
+        // US-219 — el board contesta «¿qué persigo esta semana?». Va junto a
+        // Portafolio porque es la misma cartera vista por otro eje.
+        id: "board",
+        label: "Board",
+        icon: <Columns3 className="h-4 w-4" aria-hidden />,
+        href: "/pmo/board",
+        match: (p) => p.startsWith("/pmo/board"),
+      },
+      {
+        id: "projects",
+        label: "Proyectos",
+        icon: <FolderKanban className="h-4 w-4" aria-hidden />,
+        href: "/pmo/projects",
+        match: (p) => p.startsWith("/pmo/projects"),
+      },
+      {
+        // US-216 — el onboarding masivo va junto a Proyectos porque es su carga
+        // inicial: el artboard lo sitúa en «Org activa › Proyectos › Importar».
+        id: "imports",
+        label: "Importar",
+        icon: <Upload className="h-4 w-4" aria-hidden />,
+        href: "/pmo/imports",
+        match: (p) => p.startsWith("/pmo/imports"),
+      },
+      {
+        id: "requests",
+        label: "Solicitudes",
+        icon: <ClipboardList className="h-4 w-4" aria-hidden />,
+        href: "/pmo/requests",
+        match: (p) => p.startsWith("/pmo/requests"),
+      },
+      {
+        // US-183: capacidad y saturación. El mockup lo sube al primer grupo:
+        // es una pregunta de la organización, no un módulo del proyecto.
+        id: "resources",
+        label: "Recursos",
+        icon: <Gauge className="h-4 w-4" aria-hidden />,
+        href: "/pmo/resources",
+        match: (p) => p.startsWith("/pmo/resources"),
+      },
+      {
+        id: "reports",
+        label: "Reportes",
+        icon: <BarChart3 className="h-4 w-4" aria-hidden />,
+        href: "/pmo/reports",
+        match: (p) => p === "/pmo/reports" || p.startsWith("/pmo/reports/"),
+      },
+    ],
   },
   {
-    id: "requests",
-    label: "Solicitudes",
-    icon: <Inbox className="h-4 w-4" aria-hidden />,
-    href: "/pmo/requests",
-    match: (p) => p.startsWith("/pmo/requests"),
-  },
-  {
-    id: "projects",
-    label: "Proyectos",
-    icon: <FolderKanban className="h-4 w-4" aria-hidden />,
-    href: "/pmo/projects",
-    match: (p) => p.startsWith("/pmo/projects"),
-  },
-  {
-    id: "project-modules",
-    label: "Módulos",
-    icon: <Boxes className="h-4 w-4" aria-hidden />,
-    match: (p) =>
-      p.startsWith("/pmo/raid") ||
-      p.startsWith("/pmo/changes") ||
-      p.startsWith("/pmo/minutes") ||
-      p.startsWith("/pmo/reports") ||
-      p.startsWith("/pmo/resources"),
-    children: [
+    id: "transversal",
+    titulo: "Transversal",
+    items: [
       {
         id: "raid",
         label: "RAID",
@@ -115,38 +175,23 @@ const TOP_NAV: NavItem[] = [
         match: (p) => p === "/pmo/minutes" || p.startsWith("/pmo/minutes/"),
       },
       {
-        // ENH-116: Reportes ahora apunta directo a /pmo/reports (sin
-        // dropdown). Builder Portafolio vive como TAB dentro de esa
-        // página (US-144). Esto aplana la jerarquía del sidebar.
-        id: "reports",
-        label: "Reportes",
-        icon: <BarChart3 className="h-4 w-4" aria-hidden />,
-        href: "/pmo/reports",
-        match: (p) => p === "/pmo/reports" || p.startsWith("/pmo/reports/"),
-      },
-      {
-        // US-183: vista ejecutiva de capacidad/saturación de recursos
-        // (individual + rol/área/equipo + conflictos).
-        id: "resources",
-        label: "Recursos",
-        icon: <Gauge className="h-4 w-4" aria-hidden />,
-        href: "/pmo/resources",
-        match: (p) => p.startsWith("/pmo/resources"),
+        // El mockup lo pone en este grupo, y encaja: una notificación no es de
+        // una organización ni de un proyecto — es de quien la recibe.
+        id: "notifications",
+        label: "Notificaciones",
+        icon: <Bell className="h-4 w-4" aria-hidden />,
+        href: "/notifications",
+        match: (p) => p.startsWith("/notifications"),
       },
     ],
   },
-  // US-068: vista informativa del portafolio (separada del CRUD en /admin).
-  // US-075 (DEC-022): retirado del TOP_NAV — el portafolio se accede por
-  // el header del OrgTreeNav (entrada `PMO`). Mantener el item aquí
-  // duplicaba la entrada en el sidebar (un "PMO" en TOP_NAV + otro en
-  // OrgTreeNav).
 ];
 
 // Admin-only. Sidebar con 4 ítems raíz (US-036 / issue #17).
 // "Tenant" fusiona "Mi tenant" + "Panel del Tenant" + "Configuración"
 // con tabs internos (?tab=info|branding|config|stats) en /admin/tenant.
-// El drill-down real (Organizaciones → Programas → Proyectos) vive en el
-// sidebar principal vía <OrgTreeNav />.
+// El drill-down por portafolio y programa vive en los filtros de cada vista
+// desde US-205, no en un árbol del sidebar.
 // Sigue siendo una función y no una constante porque el árbol lleva JSX de
 // iconos: construirlo en el módulo lo evaluaría antes del render.
 // (ENH-190 hacía configurable el label "Organizaciones"; se retiró en DEC-032.)
@@ -205,6 +250,15 @@ function buildAdminNav(): NavItem {
         icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
         href: "/admin/permissions",
         match: (p) => p.startsWith("/admin/permissions"),
+      },
+      {
+        // US-221 — el plan va antes de Auditoría y después de Permisos: es
+        // configuración de la cuenta, no un registro que se consulta.
+        id: "plan",
+        label: "Plan",
+        icon: <CreditCard className="h-4 w-4" aria-hidden />,
+        href: "/admin/plan",
+        match: (p) => p.startsWith("/admin/plan"),
       },
       {
         id: "audit",
@@ -272,6 +326,28 @@ function collectExpandedIds(items: NavItem[], pathname: string, acc: Set<string>
     if (selfActive || childActive) anyActive = true;
   }
   return anyActive;
+}
+
+/**
+ * Rótulo de grupo del sidebar. Con el sidebar colapsado desaparece en vez de
+ * truncarse: «Organización» recortado a «Org…» sobre una columna de iconos no
+ * informa de nada y roba las dos líneas que necesitan los destinos.
+ *
+ * Es `aria-hidden` y no un encabezado real porque los grupos son ayuda visual:
+ * cada destino ya se anuncia por su propio texto, y un `<h3>` por grupo mete
+ * tres niveles de encabezado en el árbol de accesibilidad que no corresponden
+ * a la estructura del documento.
+ */
+function RotuloDeGrupo({ titulo, oculto }: { titulo: string; oculto: boolean }) {
+  if (oculto) return null;
+  return (
+    <p
+      aria-hidden
+      className="px-3 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--chrome-text-muted)]"
+    >
+      {titulo}
+    </p>
+  );
 }
 
 function NavTree({
@@ -468,32 +544,34 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // US-075 (DEC-022): el OrgTreeNav lo ve cualquier usuario del tenant
-  // (no solo admin). El menú ADMIN_NAV se restringe a role_type=admin
-  // (o superadmin actuando como admin del tenant).
   // BUG-056: el superadmin que usó "Unirme como admin" guarda
-  // `active_tenant_id` en localStorage — cuando ese flag está presente
-  // se renderiza como admin del tenant para que el nav y los flujos
-  // (dashboard, /admin/*, OrgTreeNav) le aparezcan.
+  // `active_tenant_id` en localStorage — cuando ese flag está presente se
+  // renderiza como admin del tenant para que el nav y los flujos (dashboard,
+  // /admin/*) le aparezcan.
   const superadminJoinedTenant = Boolean(
     user?.is_superadmin && activeTenantId,
   );
-  const orgTreeVisible = useMemo(
+  // US-075 (DEC-022) lo llamaba `orgTreeVisible` porque decidía si se pintaba
+  // el árbol del sidebar. US-205 retiró ese árbol —el contexto vive en el
+  // header— y la condición sobrevive porque sigue diciendo lo mismo: si esta
+  // persona está actuando dentro de un inquilino.
+  const dentroDeInquilino = useMemo(
     () =>
       Boolean(user && (!user.is_superadmin || superadminJoinedTenant)),
     [user, superadminJoinedTenant],
   );
   const { roleType } = useMyPermissions();
   const adminVisible =
-    superadminJoinedTenant || (orgTreeVisible && roleType === "admin");
+    superadminJoinedTenant || (dentroDeInquilino && roleType === "admin");
 
-  // ENH-190: label configurable por tenant para "Organización(es)".
   const adminNav = useMemo(() => buildAdminNav(), []);
 
   useEffect(() => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      collectExpandedIds(TOP_NAV, pathname, next);
+      // Los grupos ya no se plegan, pero sus items sí pueden tener hijos, así
+      // que el recorrido sigue: se hace por grupo en vez de sobre una lista.
+      for (const grupo of GRUPOS_NAV) collectExpandedIds(grupo.items, pathname, next);
       if (adminVisible) collectExpandedIds([adminNav], pathname, next);
       collectExpandedIds(SUPERADMIN_NAV, pathname, next);
       return next;
@@ -548,6 +626,20 @@ export function AppShell({ children }: { children: ReactNode }) {
               PMO-aaS
             </span>
           </Link>
+          {/* US-205 — el contexto de organización, una vez y aquí. El mockup lo
+              pega a la marca: se lee «esta plataforma, esta organización» de
+              izquierda a derecha, que es el orden en que se decide. */}
+          {/* US-214 — el inquilino va **antes** de la organización, porque la
+              contiene: leídos de izquierda a derecha dicen «este cliente, esta
+              organización suya». Al revés se leen como dos filtros
+              independientes, que es lo que no son. El de inquilino se pinta solo
+              con más de una membresía; él mismo lo decide. */}
+          {userReady && user && !user.is_superadmin ? (
+            <>
+              <SwitcherDeInquilino />
+              <SwitcherDeOrganizacion />
+            </>
+          ) : null}
         </div>
         <div className="flex items-center gap-1.5">
           <button
@@ -611,25 +703,26 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </div>
           <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3">
-            {userReady && (!user?.is_superadmin || superadminJoinedTenant) ? (
-              <NavTree
-                items={TOP_NAV}
-                pathname={pathname}
-                onNavigate={close}
-                expanded={expanded}
-                toggle={toggle}
-                adminVisible={adminVisible}
-                collapsed={collapsed}
-                onExpandSidebar={() => setCollapsedPersisted(false)}
-              />
-            ) : null}
-            {orgTreeVisible && !collapsed ? (
-              <div className="mt-0.5">
-                <OrgTreeNav onNavigate={close} />
-              </div>
-            ) : null}
+            {userReady && (!user?.is_superadmin || superadminJoinedTenant)
+              ? GRUPOS_NAV.map((grupo) => (
+                  <div key={grupo.id} className="mb-1.5">
+                    <RotuloDeGrupo titulo={grupo.titulo} oculto={collapsed} />
+                    <NavTree
+                      items={grupo.items}
+                      pathname={pathname}
+                      onNavigate={close}
+                      expanded={expanded}
+                      toggle={toggle}
+                      adminVisible={adminVisible}
+                      collapsed={collapsed}
+                      onExpandSidebar={() => setCollapsedPersisted(false)}
+                    />
+                  </div>
+                ))
+              : null}
             {adminVisible ? (
               <div className="mt-0.5">
+                <RotuloDeGrupo titulo="Admin" oculto={collapsed} />
                 <NavTree
                   items={[adminNav]}
                   pathname={pathname}
@@ -642,15 +735,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             ) : null}
             {userReady && user?.is_superadmin ? (
-              <NavTree
-                items={SUPERADMIN_NAV}
-                pathname={pathname}
-                onNavigate={close}
-                expanded={expanded}
-                toggle={toggle}
-                collapsed={collapsed}
-                onExpandSidebar={() => setCollapsedPersisted(false)}
-              />
+              <div className="mt-0.5">
+                <RotuloDeGrupo titulo="Plataforma" oculto={collapsed} />
+                <NavTree
+                  items={SUPERADMIN_NAV}
+                  pathname={pathname}
+                  onNavigate={close}
+                  expanded={expanded}
+                  toggle={toggle}
+                  collapsed={collapsed}
+                  onExpandSidebar={() => setCollapsedPersisted(false)}
+                />
+              </div>
             ) : null}
           </nav>
         </aside>

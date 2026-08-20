@@ -1,5 +1,5 @@
 from datetime import UTC, date, datetime, timedelta
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, UploadFile
@@ -14,13 +14,19 @@ from app.core.errors import business_rule, forbidden, mensaje, not_found, valida
 from app.core.unidades import mebibytes
 from app.db.session import get_db
 from app.dominio.proyecto import CERRADO
+from app.models.plan_baseline import PlanBaseline
 from app.models.project_artifact import ProjectArtifact
 from app.models.task import Task, TaskDependency
 from app.models.user import User
 from app.schemas.modules import UserMini
+from app.services import linea_base as servicio_linea_base
 from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.audit import write_audit
 from app.services.csv_task_parser import parse_csv
+from app.services.dependencias_externas import (
+    crear_dependencia_externa,
+    externas_de_proyecto,
+)
 from app.services.import_ai import (
     ai_match_resources,
     ai_normalize_statuses,
@@ -309,6 +315,121 @@ async def _attach_owners(db: AsyncSession, tasks: list[Task]) -> None:
             )
         else:
             t.owner = None  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
+# US-218 — dependencias entre tareas de proyectos distintos
+# ---------------------------------------------------------------------------
+
+
+class DependenciaExternaCreate(BaseModel):
+    """Una dependencia hacia o desde una tarea de **otro** proyecto.
+
+    Dentro de un proyecto las dependencias van en `predecessors` de la tarea, por
+    código WBS. Aquí se enlaza por identificador porque un WBS es del proyecto:
+    el `1.2` de uno no es el `1.2` de otro.
+    """
+
+    predecessor_task_id: UUID
+    successor_task_id: UUID
+    type: str = "FS"
+    lag_days: int = 0
+
+
+@router.get("/projects/{project_id}/external-dependencies")
+async def list_external_dependencies(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-218 — las dependencias de este proyecto con otros.
+
+    Separadas en `entrantes` y `salientes` porque significan cosas distintas
+    para quien mira el plan: una entrante es algo que este proyecto **espera** —y
+    que puede retrasarlo—, y una saliente es alguien esperándonos. Una lista sola
+    obligaría a leer el sentido en cada fila.
+    """
+    await proyecto_autorizado(db, project_id, cu)
+    return await externas_de_proyecto(db, _tenant(cu), project_id)
+
+
+@router.post("/projects/{project_id}/external-dependencies", status_code=201)
+async def create_external_dependency(
+    project_id: UUID,
+    body: DependenciaExternaCreate,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-218 — enlaza una tarea de este proyecto con una de otro.
+
+    El guardarraíl es `proyecto_autorizado`, como el resto de escrituras de
+    tareas: comprueba que el proyecto existe, es del inquilino y está en el
+    alcance del usuario. La tarea del otro extremo se valida aparte contra el
+    mismo inquilino, en el servicio.
+
+    Rechaza el ciclo recorriendo **las dos** clases de arista, las internas por
+    WBS y las externas por identificador: mirar solo una deja pasar el ciclo que
+    alterna entre ambas. El porqué está en `services/dependencias_externas.py`.
+    """
+    await proyecto_autorizado(db, project_id, cu)
+    dep = await crear_dependencia_externa(
+        db,
+        _tenant(cu),
+        predecessor_id=body.predecessor_task_id,
+        successor_id=body.successor_task_id,
+        tipo=body.type,
+        lag_days=body.lag_days,
+    )
+    await db.commit()
+    return {
+        "id": str(dep.id),
+        "predecessor_task_id": str(dep.predecessor_id),
+        "successor_task_id": str(dep.successor_id),
+        "type": dep.type,
+        "lag_days": dep.lag_days,
+    }
+
+
+@router.delete(
+    "/projects/{project_id}/external-dependencies/{dependency_id}", status_code=204
+)
+async def delete_external_dependency(
+    project_id: UUID,
+    dependency_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Quita la dependencia, si toca a una tarea de este proyecto.
+
+    La comprobación de que toca al proyecto no es ceremonia: `task_dependencies`
+    no lleva `tenant_id` —enlaza por identificador—, así que sin ella un
+    identificador adivinado borraría la dependencia de otro cliente.
+    """
+    await proyecto_autorizado(db, project_id, cu)
+    mias = {
+        str(i)
+        for i in (
+            await db.execute(
+                select(Task.id).where(
+                    Task.tenant_id == _tenant(cu),
+                    Task.project_id == str(project_id),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    }
+    dep = (
+        await db.execute(
+            select(TaskDependency).where(TaskDependency.id == str(dependency_id))
+        )
+    ).scalar_one_or_none()
+    if dep is None or (
+        str(dep.predecessor_id) not in mias and str(dep.successor_id) not in mias
+    ):
+        raise not_found("Dependencia")
+    await db.delete(dep)
+    await db.commit()
 
 
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskRead])
@@ -1909,6 +2030,252 @@ async def plan_quality(
         "observations": observations,
         "score": plan_quality_score(observations),
         "task_count": len(tasks),
+    }
+
+
+# ---------------------------------------------------------------------------
+# US-212 / D-6 — línea base del plan
+# ---------------------------------------------------------------------------
+
+
+class LineaBaseCreate(BaseModel):
+    """Capturar el plan de hoy como promesa.
+
+    El nombre es obligatorio y la nota no. El nombre porque «Línea base 3» no le
+    dice a nadie contra qué está comparando; la nota porque exigir una
+    justificación cada vez acaba llenándose de «replan» y dejando de decir nada.
+    """
+
+    name: str = Field(min_length=1, max_length=200)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+def _linea_base_leida(base: PlanBaseline, autor: str | None) -> dict[str, Any]:
+    return {
+        "id": str(base.id),
+        "project_id": str(base.project_id),
+        "name": base.name,
+        "note": base.note,
+        "captured_at": base.captured_at.isoformat() if base.captured_at else None,
+        "captured_by_user_id": (
+            str(base.captured_by_user_id) if base.captured_by_user_id else None
+        ),
+        "captured_by_name": autor,
+        "task_count": base.task_count,
+    }
+
+
+async def _autores(db: AsyncSession, bases: list[PlanBaseline]) -> dict[str, str]:
+    """`user_id → nombre` de quienes capturaron estas líneas base.
+
+    En una consulta y no una por línea base. Un usuario borrado no aparece en el
+    mapa y el nombre queda en `null`: la línea base sigue siendo válida sin él
+    —la promesa no depende de que su autor siga en la empresa—, y por eso la
+    columna no tiene clave ajena.
+    """
+    ids = {str(b.captured_by_user_id) for b in bases if b.captured_by_user_id}
+    if not ids:
+        return {}
+    filas = (
+        await db.execute(select(User.id, User.full_name).where(User.id.in_(ids)))
+    ).all()
+    return {str(uid): nombre for uid, nombre in filas if nombre}
+
+
+@router.get("/projects/{project_id}/plan/baselines")
+async def list_plan_baselines(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-212 — las líneas base del proyecto, la más reciente primero.
+
+    Una lista vacía es una respuesta legítima y frecuente: hasta que alguien
+    captura, el proyecto no tiene promesa contra la que medirse. Quien consuma
+    esto tiene que decir «sin línea base», no una desviación de cero (MCS DAT-12).
+    """
+    await proyecto_autorizado(db, project_id, cu)
+    bases = await servicio_linea_base.listar(
+        db, tenant_id=_tenant(cu), project_id=project_id
+    )
+    autores = await _autores(db, bases)
+    return {
+        "baselines": [
+            _linea_base_leida(b, autores.get(str(b.captured_by_user_id)))
+            for b in bases
+        ]
+    }
+
+
+@router.post("/projects/{project_id}/plan/baselines", status_code=201)
+async def capture_plan_baseline(
+    project_id: UUID,
+    body: LineaBaseCreate,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-212 — copia el plan de hoy a una línea base nueva.
+
+    No sustituye a la anterior: se apilan, la más reciente arriba. Sobrescribir
+    borraría la única prueba de que la promesa cambió, que es el dato que un
+    comité de cambios pide.
+
+    Un proyecto **cerrado** no se puede recapturar: replanificar lo que ya
+    terminó no es una operación con sentido, y la línea base de un proyecto
+    cerrado es parte de su historia.
+    """
+    proyecto = await proyecto_autorizado(db, project_id, cu)
+    if proyecto.phase == CERRADO:
+        raise business_rule(mensaje(
+            que="El proyecto está cerrado y no admite una línea base nueva",
+            porque="La línea base es la promesa contra la que se mide un plan en curso.",
+            accion="Si hay que corregir la historia del proyecto, reábrelo primero.",
+        ))
+    base = await servicio_linea_base.capturar(
+        db,
+        tenant_id=_tenant(cu),
+        project_id=project_id,
+        nombre=body.name,
+        nota=body.note,
+        usuario_id=cu.id,
+    )
+    await write_audit(
+        db,
+        tenant_id=_tenant(cu),
+        user_id=cu.id,
+        action="plan_baseline.capture",
+        entity_type="project",
+        entity_id=str(project_id),
+        details={"baseline_id": str(base.id), "task_count": base.task_count},
+    )
+    await db.commit()
+    autores = await _autores(db, [base])
+    return _linea_base_leida(base, autores.get(str(base.captured_by_user_id)))
+
+
+@router.delete("/projects/{project_id}/plan/baselines/{baseline_id}", status_code=204)
+async def delete_plan_baseline(
+    project_id: UUID,
+    baseline_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """US-212 — borra una línea base capturada por error.
+
+    Existe porque capturar es un botón y equivocarse en el nombre o el momento
+    es fácil. Lo que no hay es forma de **editarla**: cambiarle las fechas sería
+    falsificar la promesa contra la que se mide el plan, y entonces la
+    comparación no significaría nada.
+    """
+    await proyecto_autorizado(db, project_id, cu)
+    base = await servicio_linea_base.obtener(
+        db, tenant_id=_tenant(cu), baseline_id=baseline_id
+    )
+    if base is None or str(base.project_id) != str(project_id):
+        raise not_found("Baseline")
+    await servicio_linea_base.borrar(db, base=base)
+    await write_audit(
+        db,
+        tenant_id=_tenant(cu),
+        user_id=cu.id,
+        action="plan_baseline.delete",
+        entity_type="project",
+        entity_id=str(project_id),
+        details={"baseline_id": str(baseline_id), "name": base.name},
+    )
+    await db.commit()
+
+
+@router.get("/projects/{project_id}/plan/baseline-comparison")
+async def plan_baseline_comparison(
+    project_id: UUID,
+    baseline_id: UUID | None = Query(
+        default=None,
+        description="Cuál comparar. Por defecto, la más reciente.",
+    ),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-212 — plan de hoy contra la línea base: qué se corrió y qué se agregó.
+
+    **Sin línea base devuelve `has_baseline: false` y nada más**, no una
+    comparación de ceros. Es la diferencia entre «este proyecto no se ha
+    desviado» y «no sabemos si se desvió porque nunca se prometió nada», y
+    confundirlas es cómo un tablero acaba lleno de verdes que no significan nada
+    (MCS DAT-12).
+
+    Devuelve dos derivas por tarea. La del **plan** (`slip_days`) se puede hacer
+    desaparecer reescribiendo fechas; la **real** (`actual_slip_days`, el cierre
+    contra el fin prometido) no. Un tablero que solo mira la primera premia
+    replanificar.
+    """
+    await proyecto_autorizado(db, project_id, cu)
+    tenant_id = _tenant(cu)
+    if baseline_id is None:
+        base = await servicio_linea_base.vigente(
+            db, tenant_id=tenant_id, project_id=project_id
+        )
+    else:
+        base = await servicio_linea_base.obtener(
+            db, tenant_id=tenant_id, baseline_id=baseline_id
+        )
+        if base is not None and str(base.project_id) != str(project_id):
+            raise not_found("Baseline")
+        if base is None:
+            raise not_found("Baseline")
+    if base is None:
+        return {
+            "has_baseline": False,
+            "baseline": None,
+            "summary": None,
+            "rows": [],
+            "baseline_count": 0,
+        }
+    comparaciones, resumen = await servicio_linea_base.comparar_con(
+        db, tenant_id=tenant_id, base=base
+    )
+    autores = await _autores(db, [base])
+    return {
+        "has_baseline": True,
+        "baseline": _linea_base_leida(base, autores.get(str(base.captured_by_user_id))),
+        "baseline_count": await servicio_linea_base.cuantas(
+            db, tenant_id=tenant_id, project_id=project_id
+        ),
+        "summary": {
+            "tasks_in_baseline": resumen.total_base,
+            "tasks_in_plan": resumen.total_plan,
+            "slipped": resumen.corridas,
+            "pulled_in": resumen.adelantadas,
+            "unchanged": resumen.sin_cambio,
+            "added": resumen.nuevas,
+            "removed": resumen.retiradas,
+            "project_slip_days": resumen.deriva_proyecto_dias,
+            "baseline_finish": (
+                resumen.fin_base.isoformat() if resumen.fin_base else None
+            ),
+            "plan_finish": resumen.fin_plan.isoformat() if resumen.fin_plan else None,
+            "worst_slip_days": resumen.peor_deriva_dias,
+            "worst_slip_task_id": resumen.peor_deriva_task_id,
+        },
+        "rows": [
+            {
+                "task_id": c.task_id,
+                "wbs_code": c.wbs_code,
+                "name": c.nombre,
+                "baseline_start": (
+                    c.base_inicio.isoformat() if c.base_inicio else None
+                ),
+                "baseline_end": c.base_fin.isoformat() if c.base_fin else None,
+                "plan_start": c.plan_inicio.isoformat() if c.plan_inicio else None,
+                "plan_end": c.plan_fin.isoformat() if c.plan_fin else None,
+                "slip_days": c.deriva_dias,
+                "actual_slip_days": c.deriva_real_dias,
+                "progress": c.progreso,
+                "is_milestone": c.es_hito,
+                "state": c.estado,
+            }
+            for c in comparaciones
+        ],
     }
 
 

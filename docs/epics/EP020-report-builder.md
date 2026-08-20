@@ -56,7 +56,7 @@ revisar_cada: 90d
 
 Habilita **4 niveles de reportes** del PMOaaS:
 
-1. **Nivel 1 PMO** — agregado interno de todos los proyectos del tenant (módulo nuevo `/pmo/reports/portfolio`).
+1. **Nivel 1 PMO** — agregado interno de todos los proyectos del tenant (pestaña «PMO» de `/pmo/reports`; el módulo `/pmo/reports/portfolio` se borró en US-209).
 2. **Nivel 2 Organización / Programa** — agregado por org o programa, cliente-facing (tab nuevo en organización).
 3. **Nivel 3 Proyecto** — extiende Avance y Seguimiento (EP014) para que sean composiciones declarativas del catálogo de secciones atómicas.
 4. **Nivel 4 PM / Usuario** — canvas drag-and-drop con preview en vivo y modo IA conversacional, plantillas privadas con opción "publicar al proyecto".
@@ -213,13 +213,16 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el único bloque de 
 
 ### # DONE (2026-05-23) — Rediseño Reportes Nivel 1, 2, 3 (4 tabs PMO/Org/Prog/Proyectos) — ENH-116, ENH-120, US-144, US-145, US-146
 
-Integra reportes a nivel PMO (Status), Organización, Programa y Proyectos en una estructura 4-tabs unificada bajo `/pmo/reports`.
+Integra reportes a nivel PMO (Status), Organización, Portafolio, Programa y
+Proyectos en una estructura de **cinco** pestañas unificadas bajo `/pmo/reports`
+(cuatro hasta US-209, que añadió el nivel de portafolio).
 
 **Ruta principal:** `/pmo/reports`
 
 **Criterios de aceptación:**
 - [x] Tab "PMO" — Status PMO via `exportBuilderPdf({level:1})` — US-144 (f639d88).
 - [x] Tab "Organizaciones" — filtro por org, scope nivel 2 — US-145 (ee8ab24).
+- [x] Tab "Portafolios" — US-209. Ver su sección más abajo.
 - [x] Tab "Programas" — filtro org+programa — US-146 (0b5af6a).
 - [x] Tab "Proyectos" — folio, tipo, período enriquecidos; filtro drafts; link a detail — ENH-120 (ba3aae1).
 - [x] Sidebar simplificado: "Módulos" sin dropdown Reportes separado — ENH-116 (bf423ca).
@@ -227,9 +230,72 @@ Integra reportes a nivel PMO (Status), Organización, Programa y Proyectos en un
 
 **Generación:** cada tab usa `exportBuilderPdf({level})` disparado desde generador backend 3-paneles (Avance/Seguimiento/Look-ahead — ver ENH-121).
 
+### US-209 — El nivel de portafolio en los reportes ✅ (2026-08-20)
+
+De los mockups aprobados, artboard «Reportes — organización»: «Nivel:
+Organización · Portafolio · Programa · Proyecto», con «· nivel portafolio»
+marcado como nuevo.
+
+**Como** PMO Manager
+**Quiero** el reporte de status de **una** cartera
+**Para** llevarla a comité sin que el número incluya las demás.
+
+**El nivel faltaba entero.** ADR-037 metió el portafolio entre la organización y
+el programa, y el reporte de status existía para inquilino, organización,
+programa y proyecto. La única forma de mirar una cartera era el reporte de su
+organización, que suma todas.
+
+**Criterios de aceptación:**
+- [x] `POST /portfolios/{id}/reports/status` — el mismo PDF de los otros niveles
+  (`scope_status.html`).
+- [x] Un portafolio agrega los proyectos de sus programas **y** los que cuelgan
+  directo de él (DEC-030). Se filtra por `portfolio_id` y no por los programas
+  de la cartera: la segunda forma deja fuera exactamente a los segundos y el
+  reporte sale con un total más chico sin que nada falle. Es TC-201.1 un nivel
+  más arriba.
+- [x] **Cada nivel se compara contra el de abajo.** Un portafolio, por programa;
+  una organización, por **portafolio** —antes se comparaba por programa, que se
+  salta un nivel y mezcla programas de carteras distintas en la misma tabla—.
+- [x] El heatmap de salud se pinta también en el nivel nuevo: `heatmap_rows` se
+  llenaba solo para organización y programa, y el portafolio salía sin la tabla,
+  que es la mitad del reporte.
+- [x] El rótulo del heatmap sale de `rows_kind` (`_ETIQUETA_FILAS`) y no de un
+  `if/else` de dos ramas en la plantilla, donde el nivel nuevo quedaba
+  etiquetado «por programa». Una tabla mal rotulada se lee como el nivel
+  equivocado, que es peor que no tenerla.
+- [x] `ReportScope` gana `portfolio_id`, y las peticiones de render y export del
+  builder lo aceptan. Un portafolio **hereda el branding de su organización**:
+  sin eso, un reporte pedido solo con `portfolio_id` sale con el branding por
+  defecto del inquilino en vez del logo del cliente — y es un PDF que alguien
+  manda por correo.
+- [x] Tab "Portafolios" en `/pmo/reports`, con la cascada desde la organización
+  del header. Cambiar de organización limpia el portafolio elegido: uno de otra
+  devolvería un reporte vacío, no un error.
+- [x] `ScopedReportsPanel` acepta el scope `portfolio`. Su `if/else` de dos ramas
+  mandaba el tercer nivel como el de al lado, que es un reporte del scope
+  equivocado y tampoco falla.
+- [x] **Desambiguación de nombres.** `downloadPortfolioStatusReport()` significaba
+  «toda la PMO» y ese nombre dejó de ser inequívoco: pasa a
+  `downloadPmoStatusReport()`, y el nombre bueno queda para la entidad. Los dos
+  reportes existen y agregan cosas distintas; un nombre que sirve para los dos
+  es un error esperando a que alguien elija el otro.
+
+**Test Cases:** `test_us209_reportes_portafolio.py`
+- `TC-209.1` — El portafolio agrega sus programas y sus proyectos directos
+  (700k = 100k + 200k del programa + 400k directo); las carteras no se mezclan;
+  el proyecto sin portafolio no entra en ninguna; una cartera de otro inquilino
+  da 404 y no un reporte vacío.
+- `TC-209.2` — El portafolio se compara por programa y la organización por
+  portafolio, con el rótulo correcto; el heatmap del nivel nuevo se pinta.
+- `TC-209.3` — El endpoint devuelve un PDF con su `Content-Disposition`.
+
+**Estado de integración:** DONE (US-209).
+
+---
+
 ### # ARCHIVED — US-128, US-129 (Nivel 1 y 2 anteriores, modelo viejo)
 
-Los módulos UI separados `/pmo/reports/portfolio` y `/pmo/organizations/{id}/reports` se reemplazan por la arquitectura 4-tabs unificada (Sprint 31-32). El viejo modelo point-and-click de "Nuevo reporte" se reemplaza por generador backend 3-paneles + catálogo plantillas builder integrado.
+Los módulos UI separados `/pmo/reports/portfolio` y `/pmo/organizations/{id}/reports` se reemplazan por la arquitectura de pestañas unificada (Sprint 31-32). **`/pmo/reports/portfolio` se borró en US-209**: quedó huérfana —nada la enlazaba— y su nombre pasó a mentir cuando ADR-037 convirtió «Portafolio» en una entidad, porque esa ruta era el nivel PMO (inquilino entero), no una cartera. Su contenido es la pestaña «PMO». El viejo modelo point-and-click de "Nuevo reporte" se reemplaza por generador backend 3-paneles + catálogo plantillas builder integrado.
 
 ---
 

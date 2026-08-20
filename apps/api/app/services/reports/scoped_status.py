@@ -20,7 +20,7 @@ from app.dominio.moneda import POR_DEFECTO as MONEDA_POR_DEFECTO
 from app.dominio.moneda import resolver as resolver_moneda
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Risk
-from app.models.organization import Organization, Program
+from app.models.organization import Organization, Portfolio, Program
 from app.models.project import Project
 from app.models.user import User
 from app.services.analytics.snapshots import (
@@ -96,6 +96,14 @@ def _project_conditions(tenant_id: str, scope_type: str, scope_id: str) -> list:
     conds = [Project.tenant_id == tenant_id, Project.deleted_at.is_(None)]
     if scope_type == "organization":
         conds.append(Project.organization_id == scope_id)
+    elif scope_type == "portfolio":
+        # US-209 — el portafolio agrega **todos** sus proyectos: los que cuelgan
+        # de un programa suyo y los que cuelgan directo de él (DEC-030). Se
+        # filtra por `portfolio_id` y no por los programas del portafolio,
+        # porque la segunda forma deja fuera exactamente a los segundos y el
+        # reporte sale con un total más chico sin que nada falle. Es la misma
+        # regla que `snapshots._project_conditions` y que TC-201.1.
+        conds.append(Project.portfolio_id == scope_id)
     elif scope_type == "program":
         conds.append(Project.program_id == scope_id)
     return conds
@@ -205,6 +213,17 @@ async def _health_rows_by(
     return sorted(agg.values(), key=lambda r: (-r["red"], -r["total"]))
 
 
+#: Cómo se llama en singular el nivel que agrupa las filas comparativas. Vive
+#: aquí y no en la plantilla porque es vocabulario del dominio, y porque una
+#: tabla mal rotulada se lee como el nivel equivocado.
+_ETIQUETA_FILAS = {
+    "organizations": "organización",
+    "portfolios": "portafolio",
+    "programs": "programa",
+    "projects": "proyecto",
+}
+
+
 async def build_scope_status_context(
     db: AsyncSession,
     tenant_id: UUID | str,
@@ -240,6 +259,21 @@ async def build_scope_status_context(
             raise not_found("Organización")
         scope_label = org.name
         title = f"Reporte de Status — {org.name}"
+    elif scope_type == "portfolio":
+        if not scope_id:
+            raise not_found("Portafolio")
+        scope_id = str(scope_id)
+        pf = (
+            await db.execute(
+                select(Portfolio).where(
+                    Portfolio.id == scope_id, Portfolio.tenant_id == tenant_id
+                )
+            )
+        ).scalar_one_or_none()
+        if pf is None:
+            raise not_found("Portafolio")
+        scope_label = pf.name
+        title = f"Reporte de Status — {pf.name}"
     elif scope_type == "program":
         if not scope_id:
             raise not_found("Programa")
@@ -298,18 +332,37 @@ async def build_scope_status_context(
         )
         rows_kind = "organizations"
     elif scope_type == "organization":
+        # Una organización se compara por **portafolio** desde US-209, no por
+        # programa: el portafolio es el nivel de abajo (ADR-037), y comparar
+        # programas aquí se salta un nivel y mezcla programas de carteras
+        # distintas en la misma tabla.
+        pf_names = {
+            str(i): n for i, n in (
+                await db.execute(
+                    select(Portfolio.id, Portfolio.name).where(
+                        Portfolio.organization_id == scope_id
+                    )
+                )
+            ).all()
+        }
+        rows = await _health_rows_by(
+            db, tenant_id, Project.portfolio_id, pf_names,
+            [Project.organization_id == scope_id, *restrict_conds],
+        )
+        rows_kind = "portfolios"
+    elif scope_type == "portfolio":
         prog_names = {
             str(i): n for i, n in (
                 await db.execute(
                     select(Program.id, Program.name).where(
-                        Program.organization_id == scope_id
+                        Program.portfolio_id == scope_id
                     )
                 )
             ).all()
         }
         rows = await _health_rows_by(
             db, tenant_id, Project.program_id, prog_names,
-            [Project.organization_id == scope_id, *restrict_conds],
+            [Project.portfolio_id == scope_id, *restrict_conds],
         )
         rows_kind = "programs"
     else:  # program → lista de proyectos
@@ -348,7 +401,9 @@ async def build_scope_status_context(
     tenant_name = branding["tenant_name"]
 
     # Heatmap (Org/Programa × Salud) — solo cuando las filas traen breakdown.
-    heatmap_rows = rows if rows_kind in ("organizations", "programs") else []
+    heatmap_rows = (
+        rows if rows_kind in ("organizations", "portfolios", "programs") else []
+    )
     # Treemap (presupuesto × salud).
     if rows_kind == "projects":
         treemap_items = [
@@ -398,5 +453,9 @@ async def build_scope_status_context(
         "rows": rows,
         "rows_kind": rows_kind,
         "heatmap_rows": heatmap_rows,
+        # El rótulo del heatmap, aquí y no en la plantilla: en Jinja era un
+        # `if/else` de dos ramas al que un nivel nuevo no se podía añadir sin
+        # que quedara etiquetado con el de al lado.
+        "heatmap_label": _ETIQUETA_FILAS.get(rows_kind, rows_kind),
         "treemap_svg": treemap_svg(treemap_items),
     }

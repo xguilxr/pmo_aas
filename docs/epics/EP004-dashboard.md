@@ -28,24 +28,26 @@ El dashboard da a Project Managers y PMO Managers una vista única del portafoli
 ### US-020 — KPIs en tarjetas
 
 **Como** PM / PMO Manager
-**Quiero** ver 8 KPIs en tarjetas clickeables
-**Para** entender el estado del portafolio de un vistazo.
+**Quiero** ver los indicadores del portafolio en tarjetas clickeables
+**Para** entender su estado de un vistazo.
 
-**KPIs obligatorios:**
+**Las seis tarjetas** (US-206 las dejó en estas; ver el detalle más abajo):
 
 | KPI | Fuente |
 |---|---|
-| Proyectos Activos | `count(projects WHERE phase IN ('preparacion','ejecucion','hypercare'))` — las tres no terminales, derivadas de `FASES_ACTIVAS` y no escritas a mano en el endpoint |
-| Solicitudes en Revisión | `count(project_requests WHERE status='in_review')` |
-| Riesgos Abiertos | `count(risks WHERE status NOT IN ('closed'))` |
-| Riesgos Severos | `count(risks WHERE severity >= 13 AND status NOT IN ('closed'))` |
-| Cambios en Revisión | `count(change_requests WHERE status='in_review')` |
-| AIDs Abiertos | `count(issues WHERE status IN ('open','in_progress'))` |
-| Presupuesto Total | `sum(projects.budget)` |
-| Avance Promedio | `avg(projects.progress)` |
+| Proyectos activos | `count(projects WHERE phase IN FASES_ACTIVAS)` — las tres no terminales, derivadas de la constante y no escritas a mano en el endpoint. Pie: cuántos en la primera fase |
+| Salud | `count(projects) GROUP BY health_status` — los tres conteos en una tarjeta, con barra proporcional |
+| Avance plan vs real | `progress_avg` (rollup del plan con caída al campo manual, ENH-109) contra `plan_progress_avg` (avance esperado por calendario). Pie: la desviación en puntos |
+| Presupuesto | `sum(projects.budget)` y `sum(projects.actual_budget)`, **agrupados por moneda** (BUG-092). Pie: consumido y restante |
+| Riesgos severos | `count(risks WHERE severity >= 13 AND status != 'resolved')`. Pie: cuántos sin `owner_id` **ni** `owner_actor_id` |
+| Sobreasignados | `count` de recursos con `over_pct > 0` en `/capacity/summary` |
+
+El endpoint sigue devolviendo `requests_in_review`, `open_risks`,
+`change_requests_in_review` y `open_issues`: son el insumo de otras superficies
+y de las instantáneas. Lo que cambió es qué se pinta en el tablero.
 
 **Criterios de aceptación:**
-- [ ] `GET /api/v1/dashboard/kpis` — retorna los 8 valores.
+- [x] `GET /api/v1/dashboard/kpis` — retorna los valores de la tabla de arriba.
 - [ ] Caché Redis 5 min por `(tenant_id, user_id)` (porque respeta permisos).
 - [ ] Respeta filtro por proyectos asignados: user con rol `Viewer` solo ve KPIs de proyectos donde es miembro.
 - [ ] Cada tarjeta tiene `link_to` → navega a vista filtrada.
@@ -454,3 +456,328 @@ veces en la pantalla; con tres serían seis controles para tres filtros.
 **Decisiones:** ADR-037.
 
 **Estado de integración:** DONE (US-201).
+
+---
+
+### US-206 — El tablero ejecutivo en cuatro filas ✅ (2026-08-20)
+
+**Como** PMO Manager / patrocinador
+**Quiero** que el tablero se lea de arriba abajo como una conversación de comité
+**Para** saber cómo va la cartera, qué mirar primero y por qué, sin abrir cinco
+pantallas.
+
+De los mockups aprobados el 2026-08-19, artboard «Dashboard ejecutivo».
+
+**Las cuatro filas:**
+
+1. **Seis tarjetas** — activos, salud, plan vs real, presupuesto, riesgos
+   severos, sobreasignados. Cada una con su pie: el número solo no acciona
+   nada. «7 riesgos severos» es un estado; «7, 2 sin responsable» es una tarea.
+2. **Tres listas cortas** — top en riesgo, top con atraso, top sobrecarga de
+   recursos. Existen porque un agregado dice que algo pasa y una lista dice
+   **dónde**. Cinco filas como máximo: una de veintitrés vuelve a ser la tabla
+   que ya está abajo, y entonces no ordena nada.
+3. **Cuatro distribuciones** — por salud, por fase, por programa, por sponsor.
+   Las dos últimas son nuevas: son las preguntas que un comité hace («¿quién
+   coordina esto?», «¿quién lo pidió?») y que las dos primeras no contestan.
+4. **Tendencia y semáforo consolidado** — las cinco dimensiones de salud 5+1
+   agregadas para la cartera.
+
+**Criterios de aceptación:**
+- [x] `GET /dashboard/kpis` añade `plan_progress_avg`,
+  `budget_consumed_by_currency` y `severe_risks_unassigned`. Los dos avances
+  promedian **el mismo conjunto** de proyectos: la resta de la tarjeta solo
+  significa algo si los dos lados cubren lo mismo.
+- [x] «Sin responsable» son los **dos** campos vacíos —`owner_id` legacy y
+  `owner_actor_id` del catálogo (ENH-079)—. Mirar uno solo cuenta como huérfano
+  lo que tiene dueño.
+- [x] `GET /dashboard/charts` añade `projects_by_program` y
+  `projects_by_sponsor`, con `LEFT JOIN`: los proyectos que cuelgan del
+  portafolio sin programa (DEC-030) son un grupo real y la clave `""` los
+  nombra. Con `INNER JOIN` desaparecían y el gráfico sumaba menos que el total
+  sin que nada fallara.
+- [x] `GET /dashboard/tops` — las dos listas de proyectos, con `limite`
+  (5 por defecto, 20 como techo). El atraso se calcula en el servidor con
+  `_plan_progress_for`, la misma función que usa `plan-vs-actual` fila a fila:
+  derivarlo en el cliente dejaría la definición de «atraso» en dos sitios.
+- [x] Los proyectos **sin fechas** no entran en «top con atraso». Su avance
+  esperado por calendario es 0, así que uno al 90 % saldría como «+90 pts
+  adelantado» contra un plan que no existe.
+- [x] La tercera lista sale de `/capacity/summary`, no de un endpoint nuevo: ya
+  ordena por holgura y conoce los umbrales del inquilino. Y filtra por
+  organización y **no** por portafolio a propósito — una persona está
+  sobreasignada por la suma de todos sus proyectos, no por los de una cartera.
+- [x] **Bug de scoping cerrado**: los conteos de riesgos, cambios y AIDs se
+  filtraban solo ante `organization_id`. Elegir un portafolio con «todas las
+  organizaciones» —el estado más común del switcher del header— dejaba esos
+  tres números contando la cartera entera al lado de un avance que sí era del
+  portafolio.
+- [x] Semáforo consolidado: cada dimensión toma **el peor color que aparece**
+  en la cartera, con el conteo al lado. Un promedio de colores diría «amarillo»
+  de veintidós verdes y un rojo, y eso esconde el rojo detrás de la mayoría; un
+  umbral («rojo si más del 20 %») elige un número que nadie puede defender
+  delante del proyecto que quedó fuera. El conteo no es opcional: sin él la
+  regla vuelve todo rojo y la pantalla no sirve.
+- [x] La tendencia es **semanal** y el rótulo lo dice. El mockup pide
+  bi-semanal; la cadencia se cambia en US-213 y este gráfico lee lo que haya.
+
+**Test Cases:**
+- `TC-206.1` — `portfolio_id` sin `organization_id` filtra los riesgos severos
+  (2 en una cartera, 1 en la otra, 3 sin filtro).
+- `TC-206.2` — Un riesgo con `owner_actor_id` deja de contar como huérfano.
+- `TC-206.3` — Consumido por moneda; y un portafolio vacío devuelve `null` en
+  los dos avances, no `0` (DAT-09/DAT-12).
+- `TC-206.4` — «Por programa» de un portafolio incluye el proyecto sin programa
+  y la distribución suma el total.
+- `TC-206.5` — Las dos listas ordenan, respetan el filtro de portafolio y
+  recortan al límite; «top con atraso» excluye los proyectos sin calendario.
+
+**Nota de alcance.** El desglose de la Fase 2 decía que esta US fusionaba
+`/dashboard` y `/pmo`. El mockup dice lo contrario: su sidebar lleva
+**Dashboard** y **Portafolio** como dos items del grupo Organización. Manda el
+mockup. `/pmo` sigue siendo la vista de portafolio; lo que absorbe sus tablas es
+la vista maestra de US-207.
+
+**Estado de integración:** DONE (US-206).
+
+---
+
+### US-207 — La vista maestra del portafolio (control tower) ✅ (2026-08-20)
+
+**Como** PMO Manager
+**Quiero** una tabla de ancho completo con una fila por proyecto y el estado que
+se revisa en seguimiento
+**Para** contestar «¿qué pasa con ESTE proyecto?» de veintitrés proyectos a la
+vez, que es la pregunta de la reunión.
+
+De los mockups aprobados, artboard «Portafolio — Vista maestra». Vive en `/pmo`.
+
+**Trece de las dieciséis columnas.** Proyecto · Organización · Portafolio ·
+Programa · Tipo · Fase · Prio · Salud · Avance P/R · Presup. P/R · Fin ·
+Riesgos · Issues · Últ. act. Las tres que faltan —«Próximo hito», «Reporte» y
+«Completitud»— no existen como dato: son US-211 y US-210. El configurador de
+columnas las nombra como pendientes en vez de callarlas, porque quien conoce el
+mockup va a buscarlas y no encontrarlas sin explicación se lee como que se
+perdieron.
+
+**Criterios de aceptación:**
+- [x] **Header y primera columna fijos.** Con dieciséis columnas se hace scroll
+  horizontal siempre, y sin la columna del nombre pegada uno pierde de qué fila
+  estaba leyendo. Es el fallo que convierte una tabla ancha en inútil. La celda
+  fija lleva fondo propio: sin él se ve el texto de las columnas de debajo
+  pasando por detrás.
+- [x] **Columnas configurables, recordadas** en `localStorage`. Nadie mira las
+  dieciséis: el PMO de riesgos quiere seis y el de presupuesto, otras seis.
+  Volver a esconder cinco en cada visita es el motivo por el que alguien deja de
+  usar la vista. La selección guardada se filtra contra las columnas que existen
+  hoy, para que una renombrada no deje un hueco ni una casilla fantasma.
+- [x] **XLSX de lo que se ve**, no de las dieciséis: exportar columnas que no
+  están en pantalla entrega algo distinto de lo que se acordó mirar.
+- [x] **Cuatro filtros** —portafolio, programa, fase, salud— en la URL, para que
+  una vista filtrada se pueda enviar por chat. La organización no está: se elige
+  en el header (US-205) y aquí sería el mismo control dos veces.
+- [x] **La columna «Organización» solo cuando el header agrega.** `/pmo` está en
+  `RUTAS_QUE_AGREGAN`, así que puede mostrar cuatro organizaciones a la vez y sin
+  esa columna las filas son indistinguibles. Con una elegida repetiría el mismo
+  valor veintitrés veces. Se enciende por contexto y se puede apagar a mano: es
+  una preferencia de arranque, no un candado.
+- [x] **Edición inline** en salud declarada y prioridad, y el «?» de la columna
+  de salud abre el desglose del cálculo. Van como dos acciones separadas: si un
+  click hiciera las dos, consultar el porqué cambiaría el dato.
+- [x] El orden de la columna de fase sigue el ciclo de vida (`PHASE_ORDER`) y no
+  el alfabeto; el de «Avance P/R» ordena por la **desviación** y no por el
+  avance, porque la pregunta de la columna es «¿va atrasado?» y ordenar por el
+  real pone arriba al que acaba de empezar.
+- [x] `plan-vs-actual` devuelve las trece columnas. Los nombres de organización,
+  portafolio y programa y los conteos de riesgos e issues salen de cinco
+  consultas agrupadas, **no** de una por fila: la tabla tiene veintitrés filas
+  hoy y ninguna razón para no tener doscientas.
+- [x] La ruta **no** se renombró aunque el nombre quedó estrecho: el CSV de
+  exportación se comparte por enlace, y romper los guardados no compra nada que
+  el usuario note.
+
+**Lo que se retiró, y a dónde fue:**
+- La tabla «Plan vs Real» del tablero **es** esta vista: las mismas filas con
+  seis columnas, sin configurador ni export, y con el orden roto en la mitad de
+  sus cabeceras (los getters citaban `project_name` y `end_plan`, campos que el
+  contrato nunca tuvo). El tablero ahora enlaza aquí, con sus filtros puestos.
+- El heatmap, el treemap y las tendencias que `/pmo` dibujaba se fueron al
+  tablero con US-206. Dos pantallas dibujando el mismo treemap es cómo se llega
+  a que digan números distintos.
+- Las tarjetas de organización de `/pmo` se van: su trabajo era navegar, y
+  navegar ya no se hace ahí. No se pierde nada — `/admin/organizations` tiene las
+  mismas tarjetas con su franja de salud (`listOrganizationPanels`), y el
+  drill-down a `/pmo/organizations/[id]` sigue desde el heatmap del tablero.
+
+**Lo que se conservó a propósito:** el status PMO en PDF y el reporte de salud en
+XLSX son entregables que alguien manda por correo, y la matriz salud × dimensión
+con su evaluación 5+1 (US-192) es la única superficie donde se declara salud sin
+abrir cada proyecto. Van debajo de la tabla.
+
+**Test Cases:**
+- `TC-207.1` — La fila lleva los nombres de la jerarquía, y un proyecto sin
+  portafolio ni programa devuelve `null` **sin desaparecer** de la tabla: es lo
+  que un `JOIN` implícito se come sin fallar.
+- `TC-207.2` — Riesgos e issues abiertos por proyecto; `resolved` no cuenta, y
+  cero es `0` y no una clave ausente.
+- `TC-207.3` — Tipo, fase, prioridad, fuente de salud y `updated_at`.
+- `TC-207.4` — El scoping: filtrar por portafolio incluye los proyectos sin
+  programa (regla de TC-201.1) y los conteos de un proyecto no se cuelan en otro.
+
+**Estado de integración:** DONE (US-207).
+
+---
+
+### US-213 — La tendencia por corte de reporte y el historial de cortes ✅ (2026-08-20)
+
+**Como** PMO Manager
+**Quiero** ver la tendencia con la cadencia con la que reportamos, y la tabla de
+los cortes
+**Para** poder decir «al corte del 4 de agosto íbamos al 63 %» y que alguien lo
+pueda comprobar.
+
+De los mockups: «Tendencia bi-semanal — avance y salud» (artboard «Dashboard
+ejecutivo») y «Historial de cortes (snapshot por periodo)» (artboard «Reportes —
+organización»).
+
+**Criterios de aceptación:**
+- [x] **Se muestrea al leer, no al capturar.** Las instantáneas siguen siendo
+  semanales (US-151, lunes 02:00 UTC) y `/trends` acepta `cadencia_dias` para
+  devolver un punto por periodo. Bajar la frecuencia del job sería irreversible:
+  el día que alguien quiera la evolución semanal de un mes concreto —la pregunta
+  normal cuando algo se torció— no habría de dónde sacarla. Es lo que hace un
+  almacén de series temporales: guardar fino, agregar en la consulta. **Sin
+  migración.**
+- [x] **El corte es el último punto del periodo, no el promedio.** Un corte es
+  una foto del estado al cerrar: «al 4 de agosto la cartera iba al 63 %». El
+  promedio de las dos semanas no es ningún estado real, y presentarlo como el
+  corte convierte un dato verificable en uno que nadie puede reproducir abriendo
+  la aplicación ese día.
+- [x] **Los periodos se anclan en hoy**, no en el primer punto de la serie. Con
+  el otro anclaje, añadir un punto viejo al histórico correría todos los límites
+  y la serie entera cambiaría de forma sin que nada hubiera pasado en la cartera.
+- [x] **El default es sin muestrear**, y a propósito: varias superficies consumen
+  `/trends`, y cambiarles la forma de la serie por debajo sería cambiarles el
+  gráfico sin que lo pidieran. `0` es «sin muestrear» explícito; más de 365 se
+  rechaza, porque un año no es una cadencia de reporte.
+- [x] La cadencia viaja con el branding del inquilino
+  (`reporting_cadence_days`), por el mismo motivo que la moneda: la necesitan el
+  rótulo del gráfico, el muestreo y el historial, y ninguno debería ir a pedirla
+  aparte. La fuente es el ajuste de US-211.
+- [x] El rótulo del gráfico dice la cadencia **real** («corte bi-semanal»,
+  «corte semanal», «corte cada 17 días») y no la palabra escrita a mano, que se
+  quedaría vieja el día que el inquilino la cambie.
+- [x] **Historial de cortes**: la misma serie muestreada, en tabla, del corte más
+  reciente al más viejo, con la variación respecto del anterior. Un gráfico
+  contesta «¿va subiendo?» y una tabla contesta «¿cuánto era exactamente al
+  corte del 4 de agosto?», que es la pregunta cuando alguien discute un número
+  en comité. El corte más viejo no tiene variación: es «—» y no «0», que se
+  leería como «no se movió».
+- [x] `limites_del_periodo` nombra los periodos aunque alguno no tenga
+  instantánea: un periodo sin datos es información —el job no corrió— y omitirlo
+  hace que la tabla parezca continua cuando tiene un hueco.
+
+**Test Cases:** `test_us213_cortes.py`
+- `TC-213.1` (unit) — El corte es el último del periodo; un punto por periodo en
+  orden cronológico; los periodos se anclan en hoy (añadir un punto viejo no
+  mueve el corte reciente); cadencia cero devuelve la serie tal cual; los
+  límites son contiguos y terminan hoy.
+- `TC-213.2` — Sin `cadencia_dias` la serie viene completa; con 14 queda un
+  punto por periodo y es el más reciente de cada uno; `0` explícito no muestrea;
+  900 se rechaza con 422.
+- `TC-213.3` — El branding trae la cadencia, por defecto y configurada.
+
+**Estado de integración:** DONE (US-213).
+
+---
+
+### US-219 — Portfolio Board: los proyectos por estatus de reporte ✅ (2026-08-20)
+
+**Como** PMO Manager
+**Quiero** ver los proyectos apilados por si están reportados
+**Para** saber qué persigo esta semana sin leer una columna de veintitrés filas.
+
+Del artboard «Boards». Ruta `/pmo/board`.
+
+**Por qué las columnas son el estatus de reporte.** Porque es el único eje que la
+PMO puede accionar directamente: pedir un reporte es una acción con dueño y
+fecha. La salud no se acciona —se explica—, y la fase avanza por sí sola.
+
+**Criterios de aceptación:**
+- [x] Cuatro columnas en orden de urgencia: **sin reporte · vencido · por vencer
+  · al día**. `sin_reporte` va primero, antes que `vencido`, porque el hueco es
+  más grande: un proyecto que nunca se reportó no incumplió una fecha, no ha
+  empezado. En un onboarding es exactamente la columna que hay que vaciar.
+- [x] **«Con decisiones pendientes» no es una columna**, aunque el mockup la
+  nombre junto a las otras dos. Es otro eje: un proyecto al día también puede
+  tener decisiones esperando, y un kanban no admite que una tarjeta esté en dos
+  columnas a la vez —o se duplica, y entonces los conteos de columna dejan de
+  sumar el total, o se elige una arbitrariamente y se esconde la otra mitad del
+  dato—. Va como **marcador de la tarjeta**, con enlace al RAID.
+- [x] **Los cerrados quedan fuera.** Un proyecto cerrado no se reporta: tenerlo
+  en «sin reporte» para siempre convierte la columna en un cementerio y esconde
+  los vivos.
+- [x] **No se arrastra**, y se dice en la pantalla. El estatus es **derivado** —de
+  la fecha del último reporte contra la cadencia—, así que mover una tarjeta a
+  «al día» no significaría nada: el dato volvería a su sitio en el siguiente
+  refresco. Para cambiarlo hay que generar el reporte, y a eso lleva el enlace de
+  la tarjeta. Un board que acepta un arrastre que no persiste es peor que uno que
+  no lo acepta.
+- [x] Cada columna dice **qué hacer con su pila** («pasaron de su fecha: pide el
+  reporte»). Un board sin verbo es una lista con bordes.
+- [x] La tarjeta trae fase, salud, días de retraso, decisiones pendientes y
+  próximo hito: sin eso hay que abrir el proyecto para saber si es urgente, que
+  es lo que un board viene a evitar.
+- [x] `GET /dashboard/portfolio-board` y **no** derivarlo de `plan-vs-actual`: la
+  fila de la vista maestra trae dieciséis columnas y el board usa cinco. Pedir la
+  tabla entera para agrupar por una columna es traer el acta, el presupuesto y la
+  completitud de veintitrés proyectos para no pintarlos.
+- [x] **Sin migración.** El estatus lo dejó consultable US-211 y las decisiones
+  son `issues` de tipo `decision`.
+
+**Test Cases:** `test_us219_portfolio_board.py`
+- `TC-219.1` — Las cuatro columnas en orden de urgencia, con su etiqueta en
+  español desde el servidor; cada proyecto cae en la suya.
+- `TC-219.2` — Los cerrados quedan fuera del board y del total.
+- `TC-219.3` — Las columnas suman el total: la comprobación que detecta que una
+  tarjeta se duplicó o se perdió.
+- `TC-219.4` — Un proyecto al día con dos decisiones abiertas **sigue** en «al
+  día» con su marcador; la decisión resuelta y el issue no cuentan.
+- `TC-219.5` — La tarjeta trae retraso, hito, salud y fase; el filtro de
+  organización recorta.
+
+#### La segunda mitad — Project Board ✅ (2026-08-20)
+
+El kanban de tareas por estado dentro de un proyecto, en
+`/pmo/projects/{id}/board`. Reusa `raid-kanban.tsx` sin tocarlo: el componente ya
+era genérico —columnas, items y `onMove`—, y el WBS de una tarea hace el papel del
+folio de un riesgo.
+
+**Aquí sí se arrastra, y ahí está la diferencia entre los dos boards.**
+`tasks.status` lo pone una persona: arrastrar una tarjeta a «En curso» es la forma
+más directa de decir lo que ya se podía decir editando la tarea. El estatus de
+reporte de un proyecto se **calcula** de la fecha del último reporte y de la
+cadencia (US-211): arrastrarlo de «vencido» a «al día» pediría al sistema mentir,
+y el siguiente recálculo lo devolvería a su sitio.
+
+**El «corte bi-semanal» del artboard es una marca, no una columna.** Convertirlo
+en columnas daría un tablero de dos ejes —estado × corte— que no se lee. Lo que
+hace falta saber al mirar el board es cuáles de estas tareas caen antes del
+próximo corte, y eso cabe en la tarjeta. El corte es la cadencia del inquilino
+(US-213), no catorce días escritos a mano.
+
+**Las cuatro columnas en orden de avance, con «Detenida» al final.** Una tarea
+detenida no está «casi en curso»: está fuera del flujo, y ponerla en medio haría
+que arrastrar de izquierda a derecha pasara por ella.
+
+**Lo que el board marca y no arregla:** una tarea en «Completada» con avance por
+debajo del 100 %. Es una contradicción que ya puede existir —estado y avance son
+campos separados— y el board la señala en vez de reescribir el avance en
+silencio. Cuál de los dos está mal lo sabe quien conoce la tarea, y un tablero que
+cambia datos que nadie le pidió cambiar es peor que uno que los señala.
+
+El cambio de estado se pinta antes de que el servidor conteste: arrastrar y ver la
+tarjeta volver a su columna medio segundo se lee como que falló. Si falla de
+verdad, se recarga del servidor — el estado real no lo decide este componente.
+
+**Estado de integración:** DONE (US-219, los dos boards).

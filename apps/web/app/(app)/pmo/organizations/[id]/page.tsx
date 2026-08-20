@@ -168,7 +168,7 @@ export default function PmoOrganizationPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4 p-6">
+      <div className="space-y-4 p-6">
         <Skeleton className="h-10 w-1/3" />
         <Skeleton className="h-40 w-full" />
         <Skeleton className="h-64 w-full" />
@@ -177,7 +177,7 @@ export default function PmoOrganizationPage() {
   }
   if (error) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4 p-6">
+      <div className="space-y-4 p-6">
         <Banner variant="danger">{error}</Banner>
       </div>
     );
@@ -185,7 +185,7 @@ export default function PmoOrganizationPage() {
   if (!panel) return null;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       <nav className="text-[11px] text-[var(--text-tertiary)]">
         <Link href="/pmo" className="hover:underline">
           PMO

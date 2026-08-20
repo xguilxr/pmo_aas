@@ -11,13 +11,13 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
-  listOrganizations,
   listPortfolios,
   listPrograms,
   type Organization,
   type Portfolio,
   type Program,
 } from "@/lib/api/organizations";
+import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import {
   createRequest,
   type ProjectRequest,
@@ -128,8 +128,10 @@ export function RequestForm() {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [step, setStep] = useState<StepId>("basics");
-  const [orgs, setOrgs] = useState<Organization[]>([]);
-  const [loadingOrgs, setLoadingOrgs] = useState(true);
+  // US-205 — la organización de una solicitud es un campo (incluso `__new__`,
+  // una que todavía no existe), no un filtro: el select se queda. La lista sale
+  // del header para no volver a pedirla.
+  const { organizaciones: orgs, cargando: loadingOrgs } = useOrganizacionActiva();
   const [portafolios, setPortafolios] = useState<Portfolio[]>([]);
   const [programas, setProgramas] = useState<Program[]>([]);
   const [saving, setSaving] = useState(false);
@@ -143,21 +145,6 @@ export function RequestForm() {
     const prev = loadDraft();
     if (prev) setDraft(prev);
     setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    listOrganizations({ is_active: true })
-      .then((r) => {
-        if (!cancelled) setOrgs(r);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoadingOrgs(false);
-      });
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   // US-200 — portafolios y programas de la organización elegida. Con

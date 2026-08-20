@@ -3,9 +3,12 @@
 - GET /capacity/summary   — saturación individual + por rol/área/equipo.
 - GET /capacity/conflicts — recursos sobreasignados con proyectos en choque
   y recomendación (gobernanza de capacidad).
+- GET /capacity/weekly-load — US-208: carga por persona y semana (% FTE) más
+  capacidad vs demanda, críticos compartidos y sugerencias.
 - GET /projects/{id}/resource-load — carga de los recursos de UN proyecto
   (demanda total de cada recurso en todos sus proyectos).
 """
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -20,6 +23,7 @@ from app.services.capacity import (
     WINDOWS,
     resource_capacity_summary,
     resource_conflicts,
+    weekly_load,
 )
 
 router = APIRouter(prefix="/capacity", tags=["capacity"])
@@ -40,6 +44,20 @@ async def _get_tenant(db: AsyncSession, tenant_id: UUID) -> Tenant | None:
     ).scalar_one_or_none()
 
 
+async def _get_tenant_obligatorio(db: AsyncSession, tenant_id: UUID) -> Tenant:
+    """El inquilino de la sesión, o 403.
+
+    Existe porque `_get_tenant` devuelve `Tenant | None` y los servicios que
+    leen `tenant.settings` necesitan uno de verdad. Que no esté significa que la
+    sesión apunta a un inquilino borrado: no es un caso a tratar con un default,
+    es una sesión que ya no vale.
+    """
+    tenant = await _get_tenant(db, tenant_id)
+    if tenant is None:
+        raise forbidden()
+    return tenant
+
+
 def _window(window: str) -> str:
     return window if window in WINDOWS else "week"
 
@@ -56,6 +74,32 @@ async def capacity_summary(
         db,
         tenant,
         window=_window(window),
+        organization_id=str(organization_id) if organization_id else None,
+    )
+
+
+@router.get("/weekly-load")
+async def capacity_weekly_load(
+    weeks: int = Query(default=12, ge=1, le=52),
+    organization_id: UUID | None = Query(default=None),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-208 — carga por persona y por semana, en % de FTE.
+
+    El heatmap del artboard «Recursos › Capacidad», más los otros tres paneles
+    de la pestaña en la misma respuesta: capacidad vs demanda, recursos críticos
+    compartidos y la lectura de los dos. El porqué de que vayan juntos está en
+    `weekly_load`.
+
+    El techo de 52 semanas es para que nadie pida un heatmap de cinco años: la
+    respuesta lleva una serie por recurso, y el ancho de la serie multiplica.
+    """
+    tenant = await _get_tenant_obligatorio(db, _tenant(cu))
+    return await weekly_load(
+        db,
+        tenant,
+        weeks=weeks,
         organization_id=str(organization_id) if organization_id else None,
     )
 

@@ -89,7 +89,7 @@ flowchart LR
 | # | Frontera | Qué la cruza |
 |---|---|---|
 | **FC-1** | Internet → API | Peticiones sin identidad (7 rutas) |
-| **FC-2** | Usuario autenticado → datos de **su** inquilino | Todo endpoint de negocio |
+| **FC-2** | Usuario autenticado → datos de **su** inquilino | Todo endpoint de negocio; el cambio de inquilino activo (US-214) |
 | **FC-3** | Administrador de inquilino → **nuestra** infraestructura | Configuración BYO, `base_url` |
 | **FC-4** | Superadministrador → todos los inquilinos | `join-as-admin`, paneles de plataforma |
 | **FC-5** | Plataforma → terceros | Datos de proyecto que salen |
@@ -130,6 +130,7 @@ Resumen. El detalle de cada una, abajo.
 | AM-13 | FC-8 | Robo del token desde el navegador | **PARCIAL** |
 | AM-14 | — | Escritura directa a producción | **CERRADA** |
 | AM-15 | FC-2 | Acceso a un proyecto ajeno DENTRO del mismo inquilino | **CONTROLADA** |
+| AM-16 | FC-2 | La membresía en un inquilino se autoriza desde el token, no desde la base | **CONTROLADA** |
 
 ### AM-01 — Peticiones a nuestra red desde la `base_url` del inquilino
 
@@ -211,6 +212,59 @@ por mutación. Incluye el trinquete que impide escribir el décimo resolvedor.
 alcanzable. Quién puede escribir qué **dentro** de un proyecto al que sí se
 tiene acceso lo responde el modelo de capacidades, que es más grueso: cualquier
 usuario autenticado del inquilino puede casi todo (DEC-024).
+
+### AM-16 — La membresía en un inquilino se autoriza desde el token, no desde la base
+
+**FC-2 · STRIDE: elevación de privilegio · Estado: CONTROLADA (US-214)**
+
+Con membresía multi-inquilino, una persona pertenece a varios y cambia entre
+ellos. El JWT lleva `tenant_ids` y `active_tenant_id`, y **hasta US-214 el cambio
+se autorizaba contra el claim**: `switch_tenant` comprobaba
+`body.tenant_id in cu.tenant_ids`, donde `cu.tenant_ids` sale de
+`payload.get("tenant_ids")`.
+
+Mientras cada usuario tenía exactamente un inquilino, la lista era de un elemento
+y el defecto no tenía consecuencia. En cuanto tiene dos, aparece: **revocar una
+membresía no surte efecto hasta que el token caduca**. El token de acceso vive una
+hora (`ACCESS_TOKEN_TTL_SEC = 3600`), así que alguien a quien se le quitó el
+acceso a un cliente sigue entrando a sus datos hasta sesenta minutos después — y
+puede renovar la sesión con el token de refresco, que vive treinta días, si la
+renovación reemite los claims sin volver a mirar la tabla.
+
+El caso concreto que esto protege: un consultor externo trabaja para dos clientes
+del mismo inquilino de plataforma, termina con uno, y el administrador le quita la
+membresía. Con la autorización en el claim, sigue viendo la cartera del cliente
+que ya no es suyo.
+
+**Control (US-214).** Dos comprobaciones, y las dos van contra la tabla
+`user_tenant_memberships`, nunca contra el claim:
+
+1. `POST /auth/switch-tenant` resuelve la membresía en la base antes de emitir el
+   token nuevo. Un claim heredado de una membresía revocada no autoriza nada.
+2. `get_current_user` comprueba en **cada petición** que `active_tenant_id` sigue
+   siendo una membresía viva del usuario. Sin esto, el punto 1 solo cubre el
+   momento del cambio y el token ya emitido sigue valiendo la hora entera.
+
+El precio de la segunda es una consulta por petición. Es el precio de que
+revocar signifique revocar: sin ella, la ventana de una hora existe por diseño y
+no hay control que la cierre. La consulta va por clave primaria compuesta e
+indexada.
+
+**Por qué la membresía la concede un superadministrador y no un administrador de
+inquilino.** El inquilino es la frontera de aislamiento del producto (FC-2). Un
+administrador que pudiera añadir a alguien a otro inquilino podría concederse a
+sí mismo acceso a los datos de otro cliente, que es exactamente lo que la
+frontera existe para impedir. Conceder membresía es, por definición, una
+operación de FC-4.
+
+**Evidencia:** `tests/test_us214_multi_tenant.py` — incluye el caso de
+revocación: se quita la membresía y la siguiente petición con el **mismo** token
+falla, sin esperar la caducidad.
+**Residual:** el `tenant_ids` del claim se sigue usando para pintar el selector.
+Un claim manipulado no da acceso —el activo se comprueba contra la tabla— pero
+podría **mostrar** en el desplegable un inquilino que no es del usuario;
+seleccionarlo falla. Es un defecto cosmético con el token firmado, y deja de
+serlo si algún día la firma se rompe.
 
 ### AM-03 — Instrucciones inyectadas en contenido subido
 

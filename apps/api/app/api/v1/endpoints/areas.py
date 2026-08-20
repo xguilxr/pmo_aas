@@ -895,6 +895,7 @@ async def create_actor(
             else {}
         ),
         fte_cost_rate=body.fte_cost_rate,
+        cost_rate_period=body.cost_rate_period,
     )
     db.add(a)
     await db.commit()

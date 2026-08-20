@@ -16,6 +16,7 @@ from app.core.errors import forbidden, not_found
 from app.db.session import get_db
 from app.dominio.moneda import POR_DEFECTO as MONEDA_POR_DEFECTO
 from app.dominio.moneda import resolver as _resolver_moneda
+from app.dominio.reporte import CADENCIA_POR_DEFECTO_DIAS
 from app.models.tenant import Tenant
 from app.services.audit import write_audit
 from app.services.branding_storage import (
@@ -24,6 +25,7 @@ from app.services.branding_storage import (
     find_logo_file,
     logo_to_data_url,
 )
+from app.services.tenant_settings import get_cadencia_de_reporte
 
 
 def moneda_preferida_de(t: Tenant) -> str:
@@ -155,6 +157,7 @@ async def my_tenant_branding(
             "logo_url": None,
             "primary_color": None,
             "preferred_currency": MONEDA_POR_DEFECTO,
+            "reporting_cadence_days": CADENCIA_POR_DEFECTO_DIAS,
         }
     t = (
         await db.execute(select(Tenant).where(Tenant.id == str(cu.effective_tenant_id)))
@@ -174,4 +177,9 @@ async def my_tenant_branding(
         # necesita y ninguna debería ir a pedir. (Aquí viajaba también el
         # `org_label` de ENH-190, retirado en DEC-032.)
         "preferred_currency": moneda_preferida_de(t),
+        # US-213 — cada cuántos días reporta esta PMO. Viaja por aquí por el
+        # mismo motivo que la moneda: es un dato de presentación que varias
+        # pantallas necesitan —el rótulo de la tendencia, el muestreo de la
+        # serie, el historial de cortes— y ninguna debería ir a pedirlo aparte.
+        "reporting_cadence_days": get_cadencia_de_reporte(t),
     }

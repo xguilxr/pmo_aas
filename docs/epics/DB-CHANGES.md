@@ -1124,3 +1124,167 @@ presentación con default, «ausente» y «restaurado al default» son el mismo
 estado visible. Si hubiera que reponer un inquilino concreto a mano, el
 conteo de la subida está en el registro.
 
+---
+
+## 0112 — `raci` e `is_key_stakeholder` en participaciones (US-217)
+
+Dos columnas en `project_participations` y un índice:
+
+| Columna | Tipo | Nulo | Por qué |
+|---|---|---|---|
+| `raci` | `VARCHAR(1)` | sí | `A`/`R`/`C`/`I`. Nulable porque estar en un proyecto sin papel declarado es el estado normal de la mayoría de las participaciones |
+| `is_key_stakeholder` | `BOOLEAN NOT NULL DEFAULT false` | no | Marca de interés, no de responsabilidad: `false` es una respuesta, no un hueco |
+
+Índice `ix_participations_project_raci` sobre `(project_id, raci)`. La consulta
+que importa es «¿quién es la A de este proyecto?», y se hace una vez por cada
+guardado de papel para validar la unicidad.
+
+**La unicidad de la A no está en el esquema, y es a propósito.** Expresarla
+requeriría un índice único parcial (`UNIQUE (project_id) WHERE raci = 'A'`), que
+Postgres soporta y SQLite no. La suite corre sobre SQLite: una restricción que
+solo existe en producción es una restricción que nadie prueba, y la primera vez
+que se entera alguien es con un 500 en vez de un mensaje. Vive en la frontera de
+la API (`app/dominio/raci.py`), donde además puede nombrar a quien ya la tiene.
+
+**La bajada suelta el índice antes que las columnas.** No es cosmético: en
+Postgres, soltar una columna se lleva en silencio todo índice que dependa de
+ella, así que un `drop_index` después del `drop_column` muere con «index does not
+exist». Es el fallo que la 0109 dejó en el CI del 2026-08-19. Ahora lo vigila un
+trinquete sobre **todas** las revisiones
+(`tests/test_dat_indices_antes_de_columnas.py`), no solo sobre esta.
+
+**Verificada en los dos sentidos** sobre SQLite en memoria antes de pushear —
+subida, fila preexistente con `raci = NULL`, bajada, fila intacta. Usa
+`batch_alter_table` porque SQLite no tiene `ALTER` en sitio.
+
+---
+
+## 0113 — `plan_baselines` y `plan_baseline_tasks` (US-212 / D-6)
+
+Dos tablas nuevas. Cierra la brecha B-1: sin línea base, «desviación»,
+«retraso» y «sobrecosto» son palabras sin referente.
+
+| Tabla | Qué guarda |
+|---|---|
+| `plan_baselines` | La captura: nombre, nota, `captured_at`, quién, y cuántas tareas tenía el plan |
+| `plan_baseline_tasks` | Una fila por tarea retratada: `task_id`, código EDT, nombre, fechas, duración, si era hito |
+
+Índices: `(tenant_id)`, `(project_id)` y `(project_id, captured_at)` en la
+madre —el listado siempre pide «las de este proyecto, la más reciente
+primero»—, y `(baseline_id)` en la hija.
+
+**Dos tablas y no dos columnas en `tasks`.** `baseline_start`/`baseline_end`
+junto a las fechas vivas es más barato y solo aguanta **una** línea base: la
+segunda captura pisa la primera, y con ella el histórico de replanificaciones
+—que es justo lo que un comité de cambios pide ver—.
+
+**`plan_baseline_tasks.task_id` no lleva clave ajena, a propósito.** Una línea
+base es una foto: si la tarea se borra del plan, su fila en la foto tiene que
+seguir ahí. Con `CASCADE` desaparecería y la promesa se encogería
+retroactivamente —parecería que nunca se prometió esa tarea, que es la dirección
+cómoda de mentir—; con `SET NULL` la fila sobreviviría sin emparejamiento y se
+contaría como una promesa anónima. Mismo criterio que `metric_snapshots.scope_id`.
+Por eso también se copian `wbs_code` y `name`: la fila tiene que poder leerse
+cuando lo que retrataba ya no existe.
+
+**`captured_by_user_id` tampoco lleva clave ajena.** Borrar un usuario no puede
+borrar la trazabilidad de una promesa; el nombre se resuelve al leer, si existe,
+y queda en `null` si no.
+
+**No captura ninguna línea base automáticamente**, y es la decisión más
+importante de esta migración. Hacerlo inventaría una promesa que nadie hizo, con
+la fecha de hoy, y todo proyecto aparecería con desviación cero. La ausencia de
+línea base es un estado que la interfaz **dice** (MCS DAT-12), no uno que se
+rellena.
+
+**La bajada** suelta los índices antes que sus tablas y la hija antes que la
+madre. Destruye las capturas: no hay dónde guardarlas, y eso es lo esperable en
+un `downgrade` que retira una entidad. Verificada en los dos sentidos sobre
+SQLite en memoria antes de pushear.
+
+---
+
+## 0114 — costo-snapshot en participaciones + unidad de la tarifa (US-215)
+
+Cuatro columnas en `project_participations` y una en `actors`. Ningún índice.
+
+| Tabla | Columna | Por qué |
+|---|---|---|
+| `project_participations` | `cost_rate_snapshot NUMERIC(12,2)` | La tarifa, copiada del catálogo y nunca recalculada |
+| | `cost_currency VARCHAR(3)` | Un importe sin moneda es una unidad mentida (BUG-092) |
+| | `cost_rate_period VARCHAR(8)` | `hora`/`dia`/`mes`. Sin la unidad de tiempo el número no significa nada |
+| | `cost_rate_captured_at TIMESTAMPTZ` | Distingue la tarifa tomada al asignar de una recongelada después |
+| `actors` | `cost_rate_period VARCHAR(8)` | La unidad de `fte_cost_rate`, que existía sin ella desde US-182 |
+
+**El defecto que arregla.** `actors.fte_cost_rate` guarda la tarifa de hoy. Si
+en marzo alguien la sube, el costo del trabajo de enero cambia solo y el gasto
+acumulado del proyecto se reescribe hacia atrás. Es el mismo problema que la
+0113 resuelve para las fechas: la historia no se mueve.
+
+**Por qué el periodo entra ahora.** Mientras nadie calculaba nada con
+`fte_cost_rate`, su ambigüedad no costaba: era un número que una persona leía y
+sabía interpretar. Al derivar un costo se vuelve el dato más importante del
+cálculo — multiplicar una tarifa mensual por los días de la asignación da un
+número 21 veces mayor que el real, con toda la apariencia de un dato bueno.
+
+**Ninguna columna se rellena, y esa es la decisión.** Sería fácil y sería un
+error en las dos:
+
+- **El periodo con `mes` por defecto** inventaría la unidad de tarifas que
+  alguien capturó pensando en horas.
+- **La tarifa desde el catálogo** —el borrador de W4 lo proponía con la salvedad
+  escrita— fecharía hoy una tarifa que quizá se pactó hace un año, y quedaría
+  registrada como si fuera la del momento de asignar.
+
+Un `NULL` dice «no se congeló», que es la verdad y es accionable: la interfaz
+ofrece congelarla en un clic. Un `NULL` en cualquiera de las cuatro significa
+«no hay costo calculable», no cero (MCS DAT-12), y el total del proyecto viene
+acompañado de cuántas asignaciones quedaron sin tarifa.
+
+**La bajada** suelta las columnas y con ellas las tarifas congeladas. Es
+información nueva sin sitio en el esquema anterior. `actors.fte_cost_rate` no se
+toca: existía antes. Verificada en los dos sentidos sobre SQLite en memoria, con
+filas previas, antes de pushear: sobreviven intactas y las columnas nuevas nacen
+nulas.
+
+---
+
+## 0115 — `user_tenant_memberships` (US-214 / AM-16)
+
+Una tabla y un índice. Es un cambio de **seguridad** antes que de modelo, y el
+análisis de amenazas se escribió antes de la migración (CLAUDE.md §0.3): está en
+`modelo-amenazas.md` como **AM-16**.
+
+| Columna | Por qué |
+|---|---|
+| `user_id`, `tenant_id` | La pareja, con unicidad `(user_id, tenant_id)` **sin importar el estado** |
+| `granted_by_user_id` | Quién la concedió. Sin clave ajena: borrar a quien la concedió no debe borrar la traza |
+| `revoked_at`, `revoked_by_user_id` | Se **marca** en vez de borrar la fila |
+
+Índice `ix_membership_user_tenant` sobre `(user_id, tenant_id)`: es la consulta de
+**cada petición autenticada**.
+
+**Por qué la unicidad ignora el estado.** Dos filas para la misma pareja —una
+revocada y otra viva— obligarían a decidir cuál manda cada vez que se lee, y esa
+es una decisión que no hace falta tomar. Conceder sobre una revocada la reactiva.
+
+**Por qué se marca y no se borra.** «¿Quién tuvo acceso a este cliente y cuándo se
+le quitó?» no se contesta con una fila borrada, y es exactamente la pregunta de
+una auditoría.
+
+**Sí hay relleno, al contrario que en la 0114.** La migración siembra una
+membresía por cada usuario con `tenant_id`. No es inventar un dato: el inquilino
+de origen **es** la membresía, y sin la siembra la tabla diría que nadie pertenece
+a nada — con la comprobación por petición puesta, eso deja a todo el mundo fuera.
+La diferencia con la 0114 es qué se sabe: allí la tarifa del catálogo no era la
+del momento de asignar, así que copiarla fechaba hoy una cifra de hace un año.
+Aquí no hay nada que suponer.
+
+**`users.tenant_id` no se toca.** Sigue siendo el inquilino de origen. La
+membresía añade inquilinos; no reemplaza el de origen.
+
+**La bajada** suelta el índice antes que la tabla y pierde las membresías
+**adicionales**; las de origen siguen en `users.tenant_id`. Verificada en los dos
+sentidos sobre SQLite con usuarios previos: la siembra da dos membresías, el
+usuario sin inquilino no gana ninguna, y al bajar `users.tenant_id` queda intacto.
+

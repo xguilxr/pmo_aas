@@ -66,7 +66,7 @@ export default function PlatformLogsPage() {
   }, [q, action, tenantId, dateFrom, dateTo, page, streaming]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-start gap-3">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)] text-[var(--text-secondary)]">

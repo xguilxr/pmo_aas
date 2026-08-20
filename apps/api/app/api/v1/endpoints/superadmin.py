@@ -25,6 +25,7 @@ from app.schemas.organization import (
     TenantRead,
 )
 from app.services.audit import write_audit
+from app.services.membresia import conceder, inquilinos_de, revocar
 from app.services.notifications import avisa_cambio_de_credencial
 from app.services.seed import SYSTEM_ROLES
 
@@ -970,3 +971,126 @@ async def delete_permission_override(
     from fastapi import Response
 
     return Response(status_code=204)
+
+
+# ---------------------------------------------------------------------------
+# US-214 / AM-16 — membresías multi-inquilino
+# ---------------------------------------------------------------------------
+#
+# Conceder membresía es una operación de **FC-4** y no de FC-2, y por eso vive
+# aquí. El inquilino es la frontera de aislamiento del producto; un administrador
+# de inquilino que pudiera añadir a alguien a otro inquilino podría concederse a
+# sí mismo acceso a los datos de otro cliente, que es exactamente lo que la
+# frontera existe para impedir.
+
+
+class MembresiaBody(BaseModel):
+    user_id: UUID
+    tenant_id: UUID
+
+
+@router.get("/users/{user_id}/tenants")
+async def list_user_tenants(
+    user_id: UUID,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """US-214 — los inquilinos a los que pertenece esta persona."""
+    filas = await inquilinos_de(db, user_id=user_id)
+    return {
+        "user_id": str(user_id),
+        "tenants": [{"id": i, "name": n, "slug": s} for i, n, s in filas],
+    }
+
+
+@router.post("/memberships", status_code=201)
+async def grant_membership(
+    body: MembresiaBody,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """US-214 — da acceso a un inquilino adicional.
+
+    Idempotente: pedirla dos veces devuelve la misma. Y **reactiva** una revocada
+    en lugar de crear otra fila —la unicidad es `(user_id, tenant_id)` sin
+    importar el estado— porque dos filas para la misma pareja obligarían a decidir
+    cuál manda cada vez que se lee.
+    """
+    usuario = (
+        await db.execute(select(User).where(User.id == str(body.user_id)))
+    ).scalar_one_or_none()
+    if usuario is None:
+        raise not_found("Usuario")
+    inquilino = (
+        await db.execute(select(Tenant).where(Tenant.id == str(body.tenant_id)))
+    ).scalar_one_or_none()
+    if inquilino is None:
+        raise not_found("Inquilino")
+    if usuario.is_superadmin:
+        raise business_rule(mensaje(
+            que="Un superadministrador no necesita membresías",
+            porque="Su acceso a cualquier inquilino viene de «entrar como "
+            "administrador», que queda en el registro de auditoría. Una "
+            "membresía le daría el mismo acceso sin ese rastro.",
+            accion="Usa «entrar como administrador» en el inquilino que haga falta.",
+        ))
+    await conceder(
+        db, user_id=body.user_id, tenant_id=body.tenant_id, concedida_por=cu.id
+    )
+    await write_audit(
+        db,
+        tenant_id=body.tenant_id,
+        user_id=cu.id,
+        action="membership.grant",
+        entity_type="user",
+        entity_id=str(body.user_id),
+        details={"tenant_id": str(body.tenant_id)},
+    )
+    await db.commit()
+    return {"granted": True, "user_id": str(body.user_id), "tenant_id": str(body.tenant_id)}
+
+
+@router.delete("/memberships", status_code=204)
+async def revoke_membership(
+    user_id: UUID,
+    tenant_id: UUID,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """US-214 — quita el acceso a un inquilino.
+
+    **Surte efecto en la siguiente petición**, no cuando caduque el token: es lo
+    que la comprobación por petición de `get_current_user` compra (AM-16).
+
+    No se puede revocar la membresía del inquilino de **origen** del usuario. Sin
+    ella la cuenta queda sin ningún sitio donde entrar, que es una baja
+    disfrazada de cambio de permiso — y para dar de baja a alguien está
+    `is_active`, que dice lo que hace.
+    """
+    usuario = (
+        await db.execute(select(User).where(User.id == str(user_id)))
+    ).scalar_one_or_none()
+    if usuario is None:
+        raise not_found("Usuario")
+    if usuario.tenant_id and str(usuario.tenant_id) == str(tenant_id):
+        raise business_rule(mensaje(
+            que="No se puede quitar la organización de origen de esta persona",
+            porque="Es donde se creó su cuenta; sin ella se queda sin ningún "
+            "sitio donde entrar, que es una baja disfrazada de cambio de permiso.",
+            accion="Para darla de baja, desactiva la cuenta.",
+        ))
+    if not await revocar(
+        db, user_id=user_id, tenant_id=tenant_id, revocada_por=cu.id
+    ):
+        raise not_found("Membresía")
+    await write_audit(
+        db,
+        tenant_id=tenant_id,
+        user_id=cu.id,
+        action="membership.revoke",
+        entity_type="user",
+        entity_id=str(user_id),
+        details={"tenant_id": str(tenant_id)},
+    )
+    await db.commit()
+
