@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 from fastapi import Depends, Header, Request
@@ -259,7 +260,7 @@ def require_capability(name: str):
     return _checker
 
 
-def require_authenticated():
+def require_authenticated() -> Callable[..., Awaitable[CurrentUser]]:
     """Cualquier user autenticado del tenant. No chequea capability."""
 
     async def _checker(cu: CurrentUser = Depends(get_current_user)) -> CurrentUser:

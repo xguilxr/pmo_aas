@@ -20,6 +20,20 @@ export type DashboardKpis = {
   /** Un importe por moneda. Vacío cuando no hay presupuesto que sumar. */
   budget_by_currency: Record<string, number>;
   progress_avg: number | null;
+  /**
+   * US-206 — el avance **esperado por calendario** de los mismos proyectos que
+   * `progress_avg`. La tarjeta enfrenta los dos y la resta solo significa algo
+   * porque los dos lados cubren el mismo conjunto. `null` por lo mismo que el
+   * otro: sin proyectos activos no hay avance del que hablar.
+   */
+  plan_progress_avg: number | null;
+  /** US-206 — lo consumido, por moneda. Vacío cuando no hay nada gastado. */
+  budget_consumed_by_currency: Record<string, number>;
+  /**
+   * US-206 — de los severos, los que no tiene nadie: ni `owner_id` ni
+   * `owner_actor_id`. Siete severos es un estado; dos sin dueño es una tarea.
+   */
+  severe_risks_unassigned: number;
 };
 
 export type DashboardCharts = {
@@ -27,6 +41,40 @@ export type DashboardCharts = {
   progress_by_phase: Record<string, number>;
   budget_by_type: Record<string, number>;
   portfolio_health: Record<string, number>;
+  /**
+   * US-206 — las dos distribuciones del mockup que faltaban. La clave `""` es
+   * «sin programa» y «sin sponsor»: la API no manda la etiqueta porque el
+   * rótulo es vocabulario de interfaz, y el grupo existe de verdad — son los
+   * proyectos que cuelgan del portafolio sin que nadie los coordine (DEC-030).
+   */
+  projects_by_program: Record<string, number>;
+  projects_by_sponsor: Record<string, number>;
+};
+
+/** US-206 — un proyecto en la lista «top en riesgo». */
+export type TopPorRiesgo = {
+  project_id: string;
+  folio: string;
+  name: string;
+  health: string | null;
+  severe_risks: number;
+};
+
+/** US-206 — un proyecto en la lista «top con atraso». */
+export type TopPorAtraso = {
+  project_id: string;
+  folio: string;
+  name: string;
+  health: string | null;
+  progress_plan: number;
+  progress_actual: number;
+  /** Negativo: puntos por debajo del avance esperado por calendario. */
+  delta_pts: number;
+};
+
+export type DashboardTops = {
+  by_risk: TopPorRiesgo[];
+  by_delay: TopPorAtraso[];
 };
 
 export type PlanVsActualRow = {
@@ -82,6 +130,19 @@ export function getDashboardCharts(
   params: DashboardFilter = {},
 ): Promise<DashboardCharts> {
   return apiFetch<DashboardCharts>(`/api/v1/dashboard/charts${qs(params)}`);
+}
+
+/**
+ * US-206 — las dos listas cortas del tablero.
+ *
+ * La tercera del mockup —sobrecarga de recursos— no sale de aquí: viene de
+ * `/capacity/summary`, que ya ordena por holgura y conoce los umbrales del
+ * inquilino.
+ */
+export function getDashboardTops(
+  params: DashboardFilter & { limite?: number } = {},
+): Promise<DashboardTops> {
+  return apiFetch<DashboardTops>(`/api/v1/dashboard/tops${qs(params)}`);
 }
 
 export function getPlanVsActual(

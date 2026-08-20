@@ -163,7 +163,7 @@ async def kpis(
     role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
     role_restricted = role_ids is not None
 
-    def scoped_projects():
+    def scoped_projects() -> Select[Any]:
         stmt = _filtro_jerarquia(
             select(Project.id).where(
                 Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
@@ -199,17 +199,23 @@ async def kpis(
     # Conteos de módulos — se calculan si existen las tablas (EP006). Defaults seguros.
     open_risks = 0
     severe_risks = 0
+    severe_risks_unassigned = 0
     change_requests_in_review = 0
     open_issues = 0
     try:
         from app.models.modules import ChangeRequest, Issue, Risk  # type: ignore
 
-        def scope_risks(stmt):
-            if organization_id and scoped_ids:
-                return stmt.where(Risk.project_id.in_(scoped_ids))
-            if organization_id and not scoped_ids:
-                return stmt.where(Risk.project_id.in_(["__none__"]))  # vacío
-            return stmt
+        # US-206 — se filtra ante **cualquier** nivel de la cascada, no solo
+        # ante la organización. Antes, elegir un portafolio con «todas las
+        # organizaciones» dejaba los riesgos sin filtrar: la tarjeta de riesgos
+        # severos contaba la cartera entera junto a un avance que sí era del
+        # portafolio. Un número mayor de lo pedido no falla, se lee.
+        filtrando = bool(organization_id or portfolio_id or program_id)
+
+        def scope_risks(stmt: _Consulta) -> _Consulta:
+            if not filtrando:
+                return stmt
+            return stmt.where(Risk.project_id.in_(scoped_ids or ["__none__"]))
 
         open_risks = await _count(
             db,
@@ -227,12 +233,31 @@ async def kpis(
                 )
             ),
         )
+        # US-206 — de los severos, los que no tiene nadie. El mockup lo pone
+        # como pie de la tarjeta y es el dato que la vuelve accionable: siete
+        # riesgos severos es un estado, dos sin responsable es una tarea.
+        #
+        # Sin responsable son los **dos** campos vacíos: `owner_id` es el
+        # usuario legacy y `owner_actor_id` el actor del catálogo (ENH-079).
+        # Mirar solo uno contaría como huérfano lo que sí tiene dueño.
+        severe_risks_unassigned = await _count(
+            db,
+            scope_risks(
+                select(Risk.id).where(
+                    Risk.tenant_id == tenant_id,
+                    Risk.status != "resolved",
+                    Risk.severity >= 13,
+                    Risk.owner_id.is_(None),
+                    Risk.owner_actor_id.is_(None),
+                )
+            ),
+        )
 
         cr_stmt = select(ChangeRequest.id).where(
             ChangeRequest.tenant_id == tenant_id,
             ChangeRequest.status == "in_review",
         )
-        if organization_id:
+        if filtrando:
             cr_stmt = cr_stmt.where(
                 ChangeRequest.project_id.in_(scoped_ids or ["__none__"])
             )
@@ -242,7 +267,7 @@ async def kpis(
             Issue.tenant_id == tenant_id,
             Issue.status.in_(["open", "in_progress", "on_hold"]),  # US-179
         )
-        if organization_id:
+        if filtrando:
             iss_stmt = iss_stmt.where(Issue.project_id.in_(scoped_ids or ["__none__"]))
         open_issues = await _count(db, iss_stmt)
     except Exception:
@@ -276,6 +301,28 @@ async def kpis(
         for codigo, importe in (await db.execute(budget_stmt)).all()
     )
 
+    # US-206 — lo consumido, para que la tarjeta diga «consumido X · restante
+    # Y» en vez de solo el total. Agrupado por moneda por lo mismo que el
+    # presupuesto (BUG-092): no hay un consumido único cuando hay dos monedas.
+    #
+    # `actual_budget` es lo declarado, no lo derivado de un plan de costos: hoy
+    # es el único dato de gasto que existe. El costo por participación es
+    # US-215, y cuando llegue esta suma se sustituye, no se acompaña.
+    consumido_stmt = _filtro_jerarquia(
+        select(Project.currency, func.sum(Project.actual_budget)).where(
+            Project.tenant_id == tenant_id, Project.deleted_at.is_(None)
+        ).group_by(Project.currency),
+        organization_id=organization_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
+    )
+    if role_restricted:
+        consumido_stmt = consumido_stmt.where(Project.id.in_(role_ids or ["__none__"]))
+    consumido_por_moneda = agregar_por_moneda(
+        (resolver_moneda(codigo, preferida), importe)
+        for codigo, importe in (await db.execute(consumido_stmt)).all()
+    )
+
     # ENH-109 — avance promedio derivado del plan (rollup WBS) con fallback
     # al campo manual para proyectos sin tareas. Se carga el set de proyectos
     # activos del scope y se promedia su avance efectivo en memoria.
@@ -300,6 +347,17 @@ async def kpis(
     # —sin proyectos es «—» y no cero por ciento— vive ahí y no aquí, que es
     # por lo que la instantánea diaria pudo quedarse sin ella.
     progress_avg = avance_de_cartera(list(eff.values()))
+    # US-206 — el avance **esperado por calendario** de los mismos proyectos.
+    # La tarjeta del mockup enfrenta los dos («68% / 61%, −7 pts vs plan») y
+    # la resta solo significa algo si los dos lados cubren el mismo conjunto:
+    # por eso sale de `active_proj_rows` y no de otra consulta.
+    #
+    # `_plan_progress_for` es la definición única del avance por calendario, la
+    # misma que usa `plan-vs-actual` fila a fila. Duplicar la fórmula aquí es
+    # cómo las dos superficies acabarían discrepando en el mismo número.
+    plan_avg = avance_de_cartera(
+        [float(_plan_progress_for(p)) for p in active_proj_rows]
+    )
 
     return {
         "active_projects": active_projects,
@@ -325,6 +383,14 @@ async def kpis(
             else None
         ),
         "progress_avg": float(progress_avg) if progress_avg is not None else None,
+        # US-206 — el par que hace legible el avance. `null` cuando no hay
+        # proyectos activos: «—» y no «0 %», la regla de DAT-09 que vive en
+        # `avance_de_cartera`.
+        "plan_progress_avg": float(plan_avg) if plan_avg is not None else None,
+        "budget_consumed_by_currency": {
+            m: float(v) for m, v in consumido_por_moneda.items()
+        },
+        "severe_risks_unassigned": severe_risks_unassigned,
     }
 
 
@@ -339,7 +405,7 @@ async def charts(
     tenant_id = _tenant(cu)
     role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
 
-    def scoped_where():
+    def scoped_where() -> list[Any]:
         base = [Project.tenant_id == tenant_id, Project.deleted_at.is_(None)]
         base += _condiciones_jerarquia(
             organization_id=organization_id,
@@ -390,11 +456,160 @@ async def charts(
     ).all()
     portfolio_health = dict(rows)
 
+    # US-206 — las otras dos distribuciones del mockup. «Por programa» y «por
+    # sponsor» contestan preguntas que las dos de arriba no: quién coordina
+    # esto y quién lo pidió.
+    #
+    # `LEFT JOIN` y no `JOIN`: los proyectos sin programa son un grupo real
+    # —los que cuelgan del portafolio sin que nadie los coordine (DEC-030)— y
+    # un `INNER JOIN` los haría desaparecer del gráfico sin dejar rastro. El
+    # mockup los pinta como «Sin programa» y por eso la clave es `null`, que la
+    # pantalla rotula; devolver la etiqueta ya traducida metería vocabulario de
+    # interfaz en el contrato.
+    filas_programa = (
+        await db.execute(
+            select(Program.name, func.count(Project.id))
+            .select_from(Project)
+            .outerjoin(Program, Project.program_id == Program.id)
+            .where(*scoped_where())
+            .group_by(Program.name)
+        )
+    ).all()
+    projects_by_program = {(nombre or ""): conteo for nombre, conteo in filas_programa}
+
+    # El sponsor es texto libre en el proyecto, no una entidad: se agrupa por
+    # el valor tal cual. Los vacíos caen en la misma clave `""` que el programa
+    # ausente, y por el mismo motivo.
+    filas_sponsor = (
+        await db.execute(
+            select(Project.sponsor, func.count(Project.id))
+            .where(*scoped_where())
+            .group_by(Project.sponsor)
+        )
+    ).all()
+    projects_by_sponsor = {(nombre or ""): conteo for nombre, conteo in filas_sponsor}
+
     return {
         "projects_by_phase": projects_by_phase,
         "progress_by_phase": progress_by_phase,
         "budget_by_type": budget_by_type,
         "portfolio_health": portfolio_health,
+        "projects_by_program": projects_by_program,
+        "projects_by_sponsor": projects_by_sponsor,
+    }
+
+
+@router.get("/tops")
+async def tops(
+    organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
+    program_id: UUID | None = Query(default=None),
+    limite: int = Query(default=5, ge=1, le=20),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, list[dict[str, Any]]]:
+    """US-206 — los proyectos que hay que mirar primero.
+
+    Dos listas cortas: los que acumulan riesgos severos y los que van más
+    atrasados respecto de su calendario. El mockup las pone al lado de los KPIs
+    porque un número agregado dice que algo pasa y estas dicen **dónde**.
+
+    ## Por qué se calculan aquí y no en la pantalla
+
+    El atraso se podría derivar en el cliente: `plan-vs-actual` ya devuelve
+    `progress_plan` y `progress_actual` por proyecto. Se calcula aquí porque
+    entonces la definición de «atraso» viviría en dos sitios, y la primera vez
+    que alguien cambie el redondeo o el trato de los proyectos sin fechas las
+    dos superficies dirían números distintos del mismo proyecto. Es la misma
+    razón por la que `avance_de_cartera` existe (DAT-09).
+
+    La tercera lista del mockup —sobrecarga de recursos— no está aquí: sale de
+    `/capacity/summary`, que ya devuelve los recursos ordenados por holgura y
+    sabe de umbrales por inquilino. Duplicarla sería reimplementar eso peor.
+    """
+    tenant_id = _tenant(cu)
+    role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
+
+    conds = [
+        Project.tenant_id == tenant_id,
+        Project.deleted_at.is_(None),
+        Project.phase != CERRADO,
+    ]
+    conds += _condiciones_jerarquia(
+        organization_id=organization_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
+    )
+    if role_ids is not None:
+        conds.append(Project.id.in_(role_ids or ["__none__"]))
+    proyectos = list((await db.execute(select(Project).where(*conds))).scalars().all())
+    por_id = {str(p.id): p for p in proyectos}
+
+    # --- por riesgos severos -------------------------------------------------
+    # Solo proyectos activos y del scope: un riesgo severo en un proyecto
+    # cerrado no es una cosa que mirar hoy.
+    severos: dict[str, int] = {}
+    if por_id:
+        filas = (
+            await db.execute(
+                select(Risk.project_id, func.count(Risk.id))
+                .where(
+                    Risk.tenant_id == tenant_id,
+                    Risk.status != "resolved",
+                    Risk.severity >= 13,
+                    Risk.project_id.in_(list(por_id)),
+                )
+                .group_by(Risk.project_id)
+            )
+        ).all()
+        severos = {str(pid): conteo for pid, conteo in filas}
+
+    por_riesgo: list[dict[str, Any]] = [
+        {
+            "project_id": pid,
+            "folio": por_id[pid].folio,
+            "name": por_id[pid].name,
+            "health": por_id[pid].health_status,
+            "severe_risks": conteo,
+        }
+        for pid, conteo in severos.items()
+    ]
+    # Desempate por nombre y no por identificador: dos proyectos con tres
+    # severos cada uno tienen que salir en el mismo orden en cada carga, o la
+    # lista parece cambiar sola entre dos refrescos.
+    por_riesgo.sort(key=lambda r: (-int(r["severe_risks"]), str(r["name"])))
+
+    # --- por atraso ----------------------------------------------------------
+    # El avance real es el del rollup del plan con caída al campo manual
+    # (ENH-109); el de plan es el esperado por calendario. La resta es la
+    # desviación en puntos, negativa cuando va atrasado.
+    eff = await effective_progress_map(db, proyectos)
+    por_atraso: list[dict[str, Any]] = []
+    for p in proyectos:
+        # Sin fechas no hay calendario contra el que comparar, y
+        # `_plan_progress_for` devuelve 0: un proyecto al 40 % sin fechas
+        # saldría como «+40 pts adelantado», que es peor que no decir nada.
+        if not p.start_date or not p.end_date:
+            continue
+        plan = _plan_progress_for(p)
+        real = round_half_up(eff[str(p.id)])
+        por_atraso.append(
+            {
+                "project_id": str(p.id),
+                "folio": p.folio,
+                "name": p.name,
+                "health": p.health_status,
+                "progress_plan": plan,
+                "progress_actual": real,
+                "delta_pts": int(real - plan),
+            }
+        )
+    por_atraso = [r for r in por_atraso if int(r["delta_pts"]) < 0]
+    por_atraso.sort(key=lambda r: (int(r["delta_pts"]), str(r["name"])))
+
+    return {
+        "by_risk": por_riesgo[:limite],
+        "by_delay": por_atraso[:limite],
     }
 
 

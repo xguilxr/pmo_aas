@@ -61,6 +61,12 @@ PRESENTA_NUMEROS = re.compile(rf"KpiCard|<(Bar|Line|Pie|Area|Radial)Chart|{INDIC
 #: con su motivo escrito: la diferencia entre «no aplica» y «se nos pasó» no se
 #: ve desde fuera, y es lo primero que preguntaría un auditor.
 FUERA_DE_ALCANCE: dict[str, str] = {
+    "components/tablero-ejecutivo.tsx": (
+        "Son las piezas del tablero, no la pantalla: la misma tarjeta de salud "
+        "sirve para un dato vivo y para uno de corte, igual que `KpiCard`. El "
+        "periodo lo declara `/dashboard` con su `MarcaDeDatos`, y el semáforo "
+        "recibe además su propio pie de corte por la prop `corte`."
+    ),
     "components/kpi-card.tsx": (
         "Es la tarjeta, no la pantalla. El periodo lo declara la superficie que "
         "la usa: la misma tarjeta sirve para un dato vivo y para uno de corte."

@@ -36,6 +36,13 @@ vean como los mockups con lo que ya hay detrás.
 | **US-204** | Sidebar en tres grupos (ORGANIZACIÓN · TRANSVERSAL · ADMIN); renombres «Documentos → Artefactos» y «Áreas → Recursos» | Main, WArtefactos, WProyectoRecursos |
 | **US-205** | Header con switcher de organización; las páginas sueltan su propio select de org | Header |
 
+**Corrección sobre US-206.** Este desglose decía que US-206 «fusiona `/dashboard`
+y `/pmo`». Al construirla se vio que el mockup dice lo contrario: su sidebar
+lleva **Dashboard** y **Portafolio** como dos items del grupo Organización. Los
+mockups son la especificación, así que US-206 se queda en rehacer `/dashboard`
+y `/pmo` sigue siendo la vista de portafolio. Lo que sí absorbe parte de `/pmo`
+es US-207, cuando la vista maestra reemplace sus tablas.
+
 **Nota sobre US-205.** El mockup del header lleva **dos** switchers. El de
 organización se puede hacer hoy: las orgs asignadas salen de
 `UserScopeAssignment`. El de **tenant** necesita membresía multi-tenant (W2), que
@@ -46,7 +53,7 @@ organización y deja el de tenant declarado como US-214.
 
 | US | Qué | Qué le falta y de dónde sale |
 |---|---|---|
-| **US-206** | Dashboard ejecutivo: fusiona `/dashboard` y `/pmo` en una vista de 4 filas | Tendencias: hoy los snapshots son **semanales**, el mockup pide bi-semanales (US-213). Sale con los semanales y se cambia la cadencia después |
+| **US-206** | Dashboard ejecutivo: `/dashboard` en las 4 filas del mockup | Tendencias: hoy los snapshots son **semanales**, el mockup pide bi-semanales (US-213). Sale con los semanales y se cambia la cadencia después |
 | **US-207** | Vista maestra (control tower): tabla de ancho completo, header y primera columna fijos, columnas configurables, export XLSX | 3 de sus 16 columnas no existen: «Próximo hito», «Reporte» y «Completitud» (US-210, US-211). Sale con 13 |
 | **US-208** | Recursos con dos pestañas: Catálogo y Capacidad (heatmap persona×semana) | El heatmap se apoya en `/capacity/resource-load`, que existe. Costo por recurso es W4 (US-215) |
 | **US-209** | Reportes a nivel organización y portafolio | El nivel portafolio es nuevo; los otros tres existen |

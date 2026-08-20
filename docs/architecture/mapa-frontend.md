@@ -36,7 +36,7 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 
 | Ruta | Qué es |
 |---|---|
-| `/dashboard` | KPIs+charts tenant-wide con cascada org → portafolio → programa en la URL (US-201; → se consolida con /pmo en dashboard ejecutivo) |
+| `/dashboard` | Tablero ejecutivo en 4 filas (US-206): 6 tarjetas · 3 listas «top» · 4 distribuciones · tendencia + semáforo consolidado. Cascada portafolio → programa en la URL (US-201); la organización viene del header (US-205). **No** se fusiona con `/pmo`: el mockup los mantiene separados |
 | `/pmo` | Panel portafolio del tenant (treemap/trends/heatmap, matriz salud, PDF status) |
 | `/pmo/projects` (+`/new`, `[id]/edit`) | Lista maestra + alta/edición (`project-form.tsx`) |
 | `/pmo/projects/[id]` + tabs | Detalle: `plan|tasks|gantt`, `raid`, `areas` (tab «Recursos»), `documents` (tab «Artefactos»), `minutes|ai-minutes`, `reports|builder|tweak`, `changes`, `lessons`, `charter`, `ai-context` |
@@ -70,6 +70,11 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   proyecto desde US-201, con la organización heredada del header desde US-205;
   cada nivel limpia los de abajo). No hay tabla virtualizada ni column-pinning
   (la control tower lo necesitará).
+- **Tablero ejecutivo**: `tablero-ejecutivo.tsx` — `TarjetaDeSalud` (3
+  conteos + barra proporcional), `ListaTop` (las listas «qué mirar primero»),
+  `SemaforoConsolidado` (5 dimensiones, cada una del peor color que aparece,
+  con el conteo al lado). No están en `dashboard-charts.tsx` porque no son
+  gráficos: saben qué significa un rojo.
 - **Gráficos**: `dashboard-charts.tsx` — exporta `Pie, Bars, Gauge,
   TrendLines, RiskMatrix, Heatmap, Treemap, Legend, PALETTE, serieColor`
   (SVG propio). `kpi-card.tsx`.

@@ -28,24 +28,26 @@ El dashboard da a Project Managers y PMO Managers una vista única del portafoli
 ### US-020 — KPIs en tarjetas
 
 **Como** PM / PMO Manager
-**Quiero** ver 8 KPIs en tarjetas clickeables
-**Para** entender el estado del portafolio de un vistazo.
+**Quiero** ver los indicadores del portafolio en tarjetas clickeables
+**Para** entender su estado de un vistazo.
 
-**KPIs obligatorios:**
+**Las seis tarjetas** (US-206 las dejó en estas; ver el detalle más abajo):
 
 | KPI | Fuente |
 |---|---|
-| Proyectos Activos | `count(projects WHERE phase IN ('preparacion','ejecucion','hypercare'))` — las tres no terminales, derivadas de `FASES_ACTIVAS` y no escritas a mano en el endpoint |
-| Solicitudes en Revisión | `count(project_requests WHERE status='in_review')` |
-| Riesgos Abiertos | `count(risks WHERE status NOT IN ('closed'))` |
-| Riesgos Severos | `count(risks WHERE severity >= 13 AND status NOT IN ('closed'))` |
-| Cambios en Revisión | `count(change_requests WHERE status='in_review')` |
-| AIDs Abiertos | `count(issues WHERE status IN ('open','in_progress'))` |
-| Presupuesto Total | `sum(projects.budget)` |
-| Avance Promedio | `avg(projects.progress)` |
+| Proyectos activos | `count(projects WHERE phase IN FASES_ACTIVAS)` — las tres no terminales, derivadas de la constante y no escritas a mano en el endpoint. Pie: cuántos en la primera fase |
+| Salud | `count(projects) GROUP BY health_status` — los tres conteos en una tarjeta, con barra proporcional |
+| Avance plan vs real | `progress_avg` (rollup del plan con caída al campo manual, ENH-109) contra `plan_progress_avg` (avance esperado por calendario). Pie: la desviación en puntos |
+| Presupuesto | `sum(projects.budget)` y `sum(projects.actual_budget)`, **agrupados por moneda** (BUG-092). Pie: consumido y restante |
+| Riesgos severos | `count(risks WHERE severity >= 13 AND status != 'resolved')`. Pie: cuántos sin `owner_id` **ni** `owner_actor_id` |
+| Sobreasignados | `count` de recursos con `over_pct > 0` en `/capacity/summary` |
+
+El endpoint sigue devolviendo `requests_in_review`, `open_risks`,
+`change_requests_in_review` y `open_issues`: son el insumo de otras superficies
+y de las instantáneas. Lo que cambió es qué se pinta en el tablero.
 
 **Criterios de aceptación:**
-- [ ] `GET /api/v1/dashboard/kpis` — retorna los 8 valores.
+- [x] `GET /api/v1/dashboard/kpis` — retorna los valores de la tabla de arriba.
 - [ ] Caché Redis 5 min por `(tenant_id, user_id)` (porque respeta permisos).
 - [ ] Respeta filtro por proyectos asignados: user con rol `Viewer` solo ve KPIs de proyectos donde es miembro.
 - [ ] Cada tarjeta tiene `link_to` → navega a vista filtrada.
@@ -454,3 +456,86 @@ veces en la pantalla; con tres serían seis controles para tres filtros.
 **Decisiones:** ADR-037.
 
 **Estado de integración:** DONE (US-201).
+
+---
+
+### US-206 — El tablero ejecutivo en cuatro filas ✅ (2026-08-20)
+
+**Como** PMO Manager / patrocinador
+**Quiero** que el tablero se lea de arriba abajo como una conversación de comité
+**Para** saber cómo va la cartera, qué mirar primero y por qué, sin abrir cinco
+pantallas.
+
+De los mockups aprobados el 2026-08-19, artboard «Dashboard ejecutivo».
+
+**Las cuatro filas:**
+
+1. **Seis tarjetas** — activos, salud, plan vs real, presupuesto, riesgos
+   severos, sobreasignados. Cada una con su pie: el número solo no acciona
+   nada. «7 riesgos severos» es un estado; «7, 2 sin responsable» es una tarea.
+2. **Tres listas cortas** — top en riesgo, top con atraso, top sobrecarga de
+   recursos. Existen porque un agregado dice que algo pasa y una lista dice
+   **dónde**. Cinco filas como máximo: una de veintitrés vuelve a ser la tabla
+   que ya está abajo, y entonces no ordena nada.
+3. **Cuatro distribuciones** — por salud, por fase, por programa, por sponsor.
+   Las dos últimas son nuevas: son las preguntas que un comité hace («¿quién
+   coordina esto?», «¿quién lo pidió?») y que las dos primeras no contestan.
+4. **Tendencia y semáforo consolidado** — las cinco dimensiones de salud 5+1
+   agregadas para la cartera.
+
+**Criterios de aceptación:**
+- [x] `GET /dashboard/kpis` añade `plan_progress_avg`,
+  `budget_consumed_by_currency` y `severe_risks_unassigned`. Los dos avances
+  promedian **el mismo conjunto** de proyectos: la resta de la tarjeta solo
+  significa algo si los dos lados cubren lo mismo.
+- [x] «Sin responsable» son los **dos** campos vacíos —`owner_id` legacy y
+  `owner_actor_id` del catálogo (ENH-079)—. Mirar uno solo cuenta como huérfano
+  lo que tiene dueño.
+- [x] `GET /dashboard/charts` añade `projects_by_program` y
+  `projects_by_sponsor`, con `LEFT JOIN`: los proyectos que cuelgan del
+  portafolio sin programa (DEC-030) son un grupo real y la clave `""` los
+  nombra. Con `INNER JOIN` desaparecían y el gráfico sumaba menos que el total
+  sin que nada fallara.
+- [x] `GET /dashboard/tops` — las dos listas de proyectos, con `limite`
+  (5 por defecto, 20 como techo). El atraso se calcula en el servidor con
+  `_plan_progress_for`, la misma función que usa `plan-vs-actual` fila a fila:
+  derivarlo en el cliente dejaría la definición de «atraso» en dos sitios.
+- [x] Los proyectos **sin fechas** no entran en «top con atraso». Su avance
+  esperado por calendario es 0, así que uno al 90 % saldría como «+90 pts
+  adelantado» contra un plan que no existe.
+- [x] La tercera lista sale de `/capacity/summary`, no de un endpoint nuevo: ya
+  ordena por holgura y conoce los umbrales del inquilino. Y filtra por
+  organización y **no** por portafolio a propósito — una persona está
+  sobreasignada por la suma de todos sus proyectos, no por los de una cartera.
+- [x] **Bug de scoping cerrado**: los conteos de riesgos, cambios y AIDs se
+  filtraban solo ante `organization_id`. Elegir un portafolio con «todas las
+  organizaciones» —el estado más común del switcher del header— dejaba esos
+  tres números contando la cartera entera al lado de un avance que sí era del
+  portafolio.
+- [x] Semáforo consolidado: cada dimensión toma **el peor color que aparece**
+  en la cartera, con el conteo al lado. Un promedio de colores diría «amarillo»
+  de veintidós verdes y un rojo, y eso esconde el rojo detrás de la mayoría; un
+  umbral («rojo si más del 20 %») elige un número que nadie puede defender
+  delante del proyecto que quedó fuera. El conteo no es opcional: sin él la
+  regla vuelve todo rojo y la pantalla no sirve.
+- [x] La tendencia es **semanal** y el rótulo lo dice. El mockup pide
+  bi-semanal; la cadencia se cambia en US-213 y este gráfico lee lo que haya.
+
+**Test Cases:**
+- `TC-206.1` — `portfolio_id` sin `organization_id` filtra los riesgos severos
+  (2 en una cartera, 1 en la otra, 3 sin filtro).
+- `TC-206.2` — Un riesgo con `owner_actor_id` deja de contar como huérfano.
+- `TC-206.3` — Consumido por moneda; y un portafolio vacío devuelve `null` en
+  los dos avances, no `0` (DAT-09/DAT-12).
+- `TC-206.4` — «Por programa» de un portafolio incluye el proyecto sin programa
+  y la distribución suma el total.
+- `TC-206.5` — Las dos listas ordenan, respetan el filtro de portafolio y
+  recortan al límite; «top con atraso» excluye los proyectos sin calendario.
+
+**Nota de alcance.** El desglose de la Fase 2 decía que esta US fusionaba
+`/dashboard` y `/pmo`. El mockup dice lo contrario: su sidebar lleva
+**Dashboard** y **Portafolio** como dos items del grupo Organización. Manda el
+mockup. `/pmo` sigue siendo la vista de portafolio; lo que absorbe sus tablas es
+la vista maestra de US-207.
+
+**Estado de integración:** DONE (US-206).

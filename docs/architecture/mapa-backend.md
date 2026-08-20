@@ -67,8 +67,9 @@ docs/lessons/minutas + convert-agreement) · risk_actions · change_approvals
 MPP/XML/XLSX/CSV** con preview/IA — base de importación masiva) · areas
 (áreas→equipos→actores, sync-users) · project_directory (project_roles +
 participations + eligible-actors) · capacity (/summary /conflicts
-/resource-load) + organigrama · dashboard (kpis, charts, trends, heatmap,
-risk/health-matrix, treemap, **snapshots/capture**, reports/portfolio) ·
+/resource-load) + organigrama · dashboard (kpis, charts, **tops**, trends,
+heatmap, risk/health-matrix, treemap, plan-vs-actual (+CSV),
+**snapshots/capture**, reports/portfolio) ·
 tenant_cross (RAID/cambios/minutas/reportes cross con filtros) · reports +
 report_templates/sections + report_builder (+ai-chat) + scheduled_* · ai
 (minutas IA, drafts, jobs) + assistant (chat) + ai_context · superadmin +

@@ -5,15 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   AlertOctagon,
-  AlertTriangle,
   BarChart3,
   Briefcase,
   CircleDollarSign,
-  ClipboardList,
   Download,
-  FileWarning,
-  GitPullRequest,
   TrendingUp,
+  Users,
 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
@@ -36,12 +33,22 @@ import { ApiError } from "@/lib/api";
 import {
   getDashboardCharts,
   getDashboardKpis,
+  getDashboardTops,
   getPlanVsActual,
   planVsActualCsvUrl,
   type DashboardCharts as ChartsData,
   type DashboardKpis,
+  type DashboardTops,
   type PlanVsActualRow,
 } from "@/lib/api/dashboard";
+import { getCapacitySummary, type CapacitySummaryResponse } from "@/lib/api/capacity";
+import {
+  ListaTop,
+  SemaforoConsolidado,
+  TarjetaDeSalud,
+  type FilaTop,
+} from "@/components/tablero-ejecutivo";
+import { getHealthMatrix, type HealthMatrixResponse } from "@/lib/api/analytics";
 import {
   captureSnapshots,
   getHeatmap,
@@ -174,6 +181,12 @@ function DashboardInner() {
   const [heatmap, setHeatmap] = useState<HeatmapResponse | null>(null);
   const [treemap, setTreemap] = useState<TreemapResponse | null>(null);
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
+  // US-206 — las tres piezas del mockup que no venían de aquí: las listas
+  // «top», la carga de recursos y el semáforo por dimensión.
+  const [tops, setTops] = useState<DashboardTops | null>(null);
+  const [capacidad, setCapacidad] = useState<CapacitySummaryResponse | null>(null);
+  const [semaforo, setSemaforo] = useState<HealthMatrixResponse | null>(null);
+  const [cargandoEjecutivo, setCargandoEjecutivo] = useState(true);
   // El heatmap/treemap/trends agregados son admin-equivalente; si la primera
   // llamada 403ea, ocultamos esas secciones (detección por capacidad).
   const [isAdminView, setIsAdminView] = useState(false);
@@ -229,10 +242,32 @@ function DashboardInner() {
       .then((r) => !cancelled && setTrends(r))
       .catch(() => !cancelled && setTrends(null));
 
+    // US-206 — las tres del tablero ejecutivo. Se cargan juntas y con un solo
+    // indicador de carga: el mockup las presenta como una fila, y tres esqueletos
+    // apareciendo en momentos distintos se lee como que algo va mal.
+    setCargandoEjecutivo(true);
+    void Promise.allSettled([
+      getDashboardTops(jerarquia).then((r) => !cancelled && setTops(r)),
+      // La capacidad no conoce la cascada: filtra por organización y nada más.
+      // Con un portafolio elegido devuelve los recursos de toda la organización,
+      // y eso es correcto —una persona sobreasignada lo está por la suma de
+      // TODOS sus proyectos, no por los de una cartera—. Es la misma razón por
+      // la que `/projects/{id}/resource-load` mira todos los proyectos del
+      // recurso y no solo ese.
+      getCapacitySummary({ window: "week", organization_id: orgFilter || undefined })
+        .then((r) => !cancelled && setCapacidad(r))
+        .catch(() => !cancelled && setCapacidad(null)),
+      getHealthMatrix(jerarquia)
+        .then((r) => !cancelled && setSemaforo(r))
+        .catch(() => !cancelled && setSemaforo(null)),
+    ]).finally(() => {
+      if (!cancelled) setCargandoEjecutivo(false);
+    });
+
     return () => {
       cancelled = true;
     };
-  }, [analyticsScope, analyticsId, jerarquia]);
+  }, [analyticsScope, analyticsId, jerarquia, orgFilter]);
 
   async function handleCapture() {
     setCapturing(true);
@@ -421,6 +456,144 @@ function DashboardInner() {
     }));
   }, [charts]);
 
+  // US-206 — las dos distribuciones nuevas. La clave vacía que manda la API es
+  // «sin programa» / «sin sponsor», y se rotula aquí: el contrato no lleva
+  // vocabulario de interfaz. El grupo es real —los proyectos que cuelgan del
+  // portafolio sin coordinación (DEC-030)— y por eso se pinta en vez de
+  // esconderse.
+  const programData = useMemo(() => {
+    const entries = charts ? toEntries(charts.projects_by_program) : [];
+    return entries
+      .map(([k, v]) => ({
+        label: k || "Sin programa",
+        value: Number(v) || 0,
+        color: k ? PALETTE.accent : "var(--color-tertiary)",
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [charts]);
+
+  const sponsorData = useMemo(() => {
+    const entries = charts ? toEntries(charts.projects_by_sponsor) : [];
+    return entries
+      .map(([k, v]) => ({
+        label: k || "Sin sponsor",
+        value: Number(v) || 0,
+        color: k ? PALETTE.accent : "var(--color-tertiary)",
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [charts]);
+
+  // ---------------------------------------------------------------------------
+  // US-206 — los pies de las seis tarjetas y las tres listas «top».
+  // ---------------------------------------------------------------------------
+
+  /** «N en preparación»: el pie que el mockup pone bajo los activos. */
+  const enPreparacion = useMemo(() => {
+    // `PHASE_ORDER[0]` y no `"preparacion"`: US-202 dejó el catálogo de fases
+    // en un solo sitio, y un literal aquí es la copia que sobrevive a un
+    // renombre. El orden del ciclo de vida empieza donde empieza un proyecto.
+    const primeraFase = PHASE_ORDER[0];
+    const n = charts?.projects_by_phase?.[primeraFase];
+    if (!n) return undefined;
+    return `${n} en ${etiquetaFase(primeraFase).toLowerCase()}`;
+  }, [charts]);
+
+  /**
+   * La desviación en puntos: real − plan. `null` cuando falta cualquiera de los
+   * dos, y eso NO es cero: sin plan no hay desviación que calcular, y escribir
+   * «0 pts» diría que va justo (DAT-12).
+   */
+  const desviacionDePlan = useMemo(() => {
+    if (kpis?.progress_avg == null || kpis?.plan_progress_avg == null) return null;
+    return Math.round(kpis.progress_avg - kpis.plan_progress_avg);
+  }, [kpis]);
+
+  const pieDePlan = useMemo(() => {
+    if (kpis?.plan_progress_avg == null) return undefined;
+    const plan = `plan ${Math.round(kpis.plan_progress_avg)}%`;
+    if (desviacionDePlan === null) return plan;
+    const signo = desviacionDePlan > 0 ? "+" : "−";
+    return `${plan} · ${signo}${Math.abs(desviacionDePlan)} pts`;
+  }, [kpis, desviacionDePlan]);
+
+  const pieDePresupuesto = useMemo(() => {
+    const gastado = kpis?.budget_consumed_by_currency ?? {};
+    const total = kpis?.budget_by_currency ?? {};
+    const moneda = monedaUnica(total);
+    // Con varias monedas no hay un consumido único, igual que no hay un total:
+    // se pinta el desglose de lo presupuestado y se calla lo demás. Inventar
+    // un «restante» sumando monedas distintas es el bug de BUG-092.
+    if (!moneda) return formatearDesglose(total);
+    const consumido = Number(gastado[moneda] ?? 0);
+    const presupuestado = Number(total[moneda] ?? 0);
+    if (!presupuestado && !consumido) return undefined;
+    return `consumido ${formatearImporte(consumido, moneda)} · restante ${formatearImporte(presupuestado - consumido, moneda)}`;
+  }, [kpis]);
+
+  const pieDeRiesgos = useMemo(() => {
+    const n = kpis?.severe_risks_unassigned ?? 0;
+    if (!kpis?.severe_risks) return undefined;
+    // Cero sin responsable es una buena noticia y se dice, en vez de dejar la
+    // tarjeta sin pie: la ausencia de pie se lee como que el dato falta.
+    return n > 0 ? `${n} sin responsable` : "todos con responsable";
+  }, [kpis]);
+
+  /**
+   * Los recursos por encima de su capacidad. `over_pct` es demanda − capacidad
+   * ya recortada a cero, así que «> 0» es exactamente «sobreasignado», sin
+   * volver a elegir un umbral que el inquilino ya configuró.
+   */
+  const recursosSobrecargados = useMemo(
+    () => (capacidad?.resources ?? []).filter((r) => r.over_pct > 0),
+    [capacidad],
+  );
+  const sobreasignados = capacidad ? recursosSobrecargados.length : undefined;
+
+  const topRiesgo = useMemo<FilaTop[]>(
+    () =>
+      (tops?.by_risk ?? []).map((p) => ({
+        id: p.project_id,
+        titulo: p.name,
+        cifra: String(p.severe_risks),
+        detalle: p.severe_risks === 1 ? "severo" : "severos",
+        color: colorSalud(p.health),
+        href: `/pmo/projects/${p.project_id}/raid`,
+      })),
+    [tops],
+  );
+
+  const topAtraso = useMemo<FilaTop[]>(
+    () =>
+      (tops?.by_delay ?? []).map((p) => ({
+        id: p.project_id,
+        titulo: p.name,
+        // El signo menos tipográfico, no el guion: es un número negativo.
+        cifra: `−${Math.abs(p.delta_pts)} pts`,
+        detalle: `real ${p.progress_actual}% · plan ${p.progress_plan}%`,
+        color: colorSalud(p.health),
+        href: `/pmo/projects/${p.project_id}/plan`,
+      })),
+    [tops],
+  );
+
+  const topSobrecarga = useMemo<FilaTop[]>(
+    () =>
+      [...recursosSobrecargados]
+        .sort((a, b) => b.over_pct - a.over_pct)
+        .slice(0, 5)
+        .map((r) => ({
+          id: r.actor_id,
+          titulo: r.discipline ? `${r.name} — ${r.discipline}` : r.name,
+          cifra: `${Math.round(r.demand_pct)}%`,
+          detalle: `${r.projects_count} ${r.projects_count === 1 ? "proyecto" : "proyectos"}`,
+          // `CapacityColor` usa las mismas tres claves que la salud, así que
+          // `colorSalud` sirve tal cual: no hay traducción que escribir.
+          color: colorSalud(r.color),
+          href: "/pmo/resources",
+        })),
+    [recursosSobrecargados],
+  );
+
   // US-201 — el rastro de la cascada, para que la cabecera diga qué se está
   // mirando. Se nombran los dos niveles y no solo el más específico: «Programa
   // Alfa» a secas no dice de qué cartera es, y hay nombres repetidos.
@@ -452,7 +625,7 @@ function DashboardInner() {
           <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
             Tablero, {user?.full_name || user?.username || "usuario"}
           </h1>
-          {leido && <MarcaDeDatos periodo="vivo" detalle="las tendencias vienen de instantáneas diarias" actualizado={leido} />}
+          {leido && <MarcaDeDatos periodo="vivo" detalle="las tendencias vienen de la instantánea semanal (lunes)" actualizado={leido} />}
           <p className="mt-1 text-sm text-[var(--color-tertiary)]">
             KPIs, salud del portafolio y Plan vs Real.
             {rastro ? ` · Filtrando por: ${rastro}` : ""}
@@ -558,29 +731,48 @@ function DashboardInner() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {captureMsg ? <Banner variant="info">{captureMsg}</Banner> : null}
 
-      <section aria-label="Indicadores" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* US-206 · fila 1 — las seis tarjetas del mockup «Dashboard ejecutivo».
+          Reemplazan a ocho que contaban ítems por módulo (solicitudes en
+          revisión, riesgos abiertos, cambios, AIDs). No se perdieron: cada una
+          de esas cifras vive en su pantalla del grupo Transversal, que es donde
+          se actúa sobre ella. Este tablero contesta «cómo va la cartera», y
+          para eso el par plan/real, lo consumido y los recursos sobreasignados
+          dicen más que cuántos ítems hay abiertos en cada bandeja. */}
+      <section aria-label="Indicadores" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard
           label="Proyectos activos"
           value={kpis?.active_projects}
           loading={loadingKpis}
           icon={<Briefcase className="h-4 w-4" aria-hidden />}
           tone="accent"
+          hint={enPreparacion}
           href="/pmo/projects?phase=preparacion&phase=ejecucion&phase=hypercare"
         />
-        <KpiCard
-          label="Solicitudes en revisión"
-          value={kpis?.requests_in_review}
-          loading={loadingKpis}
-          icon={<ClipboardList className="h-4 w-4" aria-hidden />}
-          href="/pmo/requests"
+        <TarjetaDeSalud
+          conteos={charts?.portfolio_health ?? {}}
+          cargando={loadingCharts}
+          href="/pmo/projects"
         />
         <KpiCard
-          label="Riesgos abiertos"
-          value={kpis?.open_risks}
+          label="Avance plan vs real"
+          value={kpis?.progress_avg}
           loading={loadingKpis}
-          icon={<AlertTriangle className="h-4 w-4" aria-hidden />}
-          tone="warning"
-          href="/pmo/raid?kind=risks"
+          format="percent"
+          icon={<TrendingUp className="h-4 w-4" aria-hidden />}
+          tone={desviacionDePlan !== null && desviacionDePlan < 0 ? "warning" : "success"}
+          hint={pieDePlan}
+        />
+        {/* BUG-092 — con una sola moneda se pinta el importe. Con varias NO hay
+            un total, así que se pinta el desglose: sumar pesos y euros para dar
+            un número redondo es inventarlo. */}
+        <KpiCard
+          label="Presupuesto"
+          value={kpis?.budget_total}
+          loading={loadingKpis}
+          format="currency"
+          moneda={monedaUnica(kpis?.budget_by_currency ?? {}) ?? undefined}
+          hint={pieDePresupuesto}
+          icon={<CircleDollarSign className="h-4 w-4" aria-hidden />}
         />
         <KpiCard
           label="Riesgos severos"
@@ -588,65 +780,73 @@ function DashboardInner() {
           loading={loadingKpis}
           icon={<AlertOctagon className="h-4 w-4" aria-hidden />}
           tone="danger"
+          hint={pieDeRiesgos}
           href="/pmo/raid?kind=risks&severity_min=13"
         />
         <KpiCard
-          label="Cambios en revisión"
-          value={kpis?.change_requests_in_review}
-          loading={loadingKpis}
-          icon={<GitPullRequest className="h-4 w-4" aria-hidden />}
-          href="/pmo/changes?status=in_review"
-        />
-        <KpiCard
-          label="AIDs abiertos"
-          value={kpis?.open_issues}
-          loading={loadingKpis}
-          icon={<FileWarning className="h-4 w-4" aria-hidden />}
-          href="/pmo/raid?kind=issues"
-        />
-        {/* BUG-092 — con una sola moneda se pinta la tarjeta de siempre. Con
-            varias NO hay un total, así que se pinta el desglose: sumar pesos y
-            euros para dar un número redondo es inventarlo. */}
-        <KpiCard
-          label="Presupuesto total"
-          value={kpis?.budget_total}
-          loading={loadingKpis}
-          format="currency"
-          moneda={monedaUnica(kpis?.budget_by_currency ?? {}) ?? undefined}
-          hint={
-            monedaUnica(kpis?.budget_by_currency ?? {})
-              ? undefined
-              : formatearDesglose(kpis?.budget_by_currency ?? {})
-          }
-          icon={<CircleDollarSign className="h-4 w-4" aria-hidden />}
-        />
-        <KpiCard
-          label="Avance promedio"
-          value={kpis?.progress_avg}
-          loading={loadingKpis}
-          format="percent"
-          icon={<TrendingUp className="h-4 w-4" aria-hidden />}
-          tone="success"
+          label="Sobreasignados"
+          value={sobreasignados}
+          loading={cargandoEjecutivo}
+          icon={<Users className="h-4 w-4" aria-hidden />}
+          tone={sobreasignados ? "warning" : undefined}
+          hint="recursos por encima de su capacidad"
+          href="/pmo/resources"
         />
       </section>
 
-      <section aria-label="Gráficos" className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Proyectos por fase" loading={loadingCharts}>
+      {/* US-206 · fila 2 — las tres listas cortas. Un agregado dice que algo
+          pasa; estas dicen dónde. */}
+      <section aria-label="Qué mirar primero" className="grid gap-4 lg:grid-cols-3">
+        <ListaTop
+          titulo="Top en riesgo"
+          filas={topRiesgo}
+          cargando={cargandoEjecutivo}
+          vacio="Ningún proyecto acumula riesgos severos abiertos."
+        />
+        <ListaTop
+          titulo="Top con atraso"
+          filas={topAtraso}
+          cargando={cargandoEjecutivo}
+          vacio="Ningún proyecto con calendario va por detrás de su plan."
+        />
+        <ListaTop
+          titulo="Top sobrecarga de recursos"
+          filas={topSobrecarga}
+          cargando={cargandoEjecutivo}
+          vacio="Nadie está asignado por encima de su capacidad."
+        />
+      </section>
+
+      {/* US-206 · fila 3 — las cuatro distribuciones del mockup. «Por salud» y
+          «por fase» dicen en qué estado está la cartera; «por programa» y «por
+          sponsor», quién la coordina y quién la pidió. Las dos últimas son
+          nuevas: son las preguntas que un comité hace y que las otras dos no
+          contestan. */}
+      <section aria-label="Distribuciones" className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+        <ChartCard title="Por salud" loading={loadingCharts}>
           <div className="flex items-center gap-4">
-            <Pie data={phasesData} ariaLabel="Proyectos por fase" />
-            <div className="flex-1">
-              <Legend data={phasesData} />
-            </div>
-          </div>
-        </ChartCard>
-        <ChartCard title="Salud del portafolio" loading={loadingCharts}>
-          <div className="flex items-center gap-4">
-            <Pie data={healthData} ariaLabel="Salud del portafolio" />
+            <Pie data={healthData} ariaLabel="Proyectos por salud" />
             <div className="flex-1">
               <Legend data={healthData} />
             </div>
           </div>
         </ChartCard>
+        <ChartCard title="Por fase" loading={loadingCharts}>
+          <Bars data={phasesData} ariaLabel="Proyectos por fase" />
+        </ChartCard>
+        <ChartCard title="Por programa" loading={loadingCharts}>
+          <Bars data={programData} ariaLabel="Proyectos por programa" />
+        </ChartCard>
+        <ChartCard title="Por sponsor" loading={loadingCharts}>
+          <Bars data={sponsorData} ariaLabel="Proyectos por sponsor" />
+        </ChartCard>
+      </section>
+
+      {/* Lo que el mockup no pinta pero sí existe: avance por fase, presupuesto
+          por tipo y la matriz de riesgos. No entran en las cuatro filas porque
+          no son la lectura ejecutiva, y borrarlas sería perder capacidad que
+          alguien usa. Van debajo, que es su altura. */}
+      <section aria-label="Detalle de la cartera" className="grid gap-4 lg:grid-cols-3">
         <ChartCard title="Avance promedio por fase" loading={loadingCharts}>
           <Bars
             data={progressData}
@@ -661,9 +861,6 @@ function DashboardInner() {
             valueFormat={(n) => formatearImporte(n, monedaDeCartera)}
           />
         </ChartCard>
-      </section>
-
-      <section aria-label="Riesgos y salud" className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Matriz de riesgos (probabilidad × impacto)">
           {riskMatrix && riskMatrix.total > 0 ? (
             <RiskMatrix cells={riskMatrix.cells} ariaLabel="Matriz de riesgos" />
@@ -672,6 +869,24 @@ function DashboardInner() {
               Sin riesgos abiertos con probabilidad e impacto definidos.
             </p>
           )}
+        </ChartCard>
+      </section>
+
+      {/* US-206 · fila 4 — tendencias y el semáforo consolidado.
+          El mockup pide la tendencia **bi-semanal**; hoy las instantáneas son
+          semanales y por eso el rótulo dice semanas. La cadencia se cambia en
+          US-213 y este gráfico no se toca: lee lo que haya. */}
+      <section aria-label="Tendencia y semáforo" className="grid gap-4 lg:grid-cols-2">
+        <ChartCard title="Semáforo consolidado">
+          <SemaforoConsolidado
+            filas={semaforo?.rows ?? []}
+            cargando={cargandoEjecutivo}
+            corte={
+              leido
+                ? `Corte de hoy · ${leido} · el color de cada dimensión es el peor que aparece en la cartera`
+                : undefined
+            }
+          />
         </ChartCard>
         {isAdminView ? (
           <ChartCard title="Salud por organización">
