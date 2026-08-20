@@ -1,7 +1,7 @@
 ---
 tipo: epica
 responsable: propietario
-estado: borrador
+estado: vigente
 revisado: 2026-08-20
 revisar_cada: 30d
 ---
@@ -14,7 +14,7 @@ revisar_cada: 30d
 | **Prioridad** | P1 (el artboard la marca así) |
 | **Dependencias** | EP008 (IA viva en producción), EP007 (admin), modelo de amenazas AM-03/AM-04 |
 | **Módulo** | `apps/api/app/services/ai/`, `/admin/ai` |
-| **Estado** | **BORRADOR — necesita decisión del owner antes de implementar** |
+| **Estado** | **Decidido** — las cuatro preguntas contestadas por el owner el 2026-08-20 |
 | **Origen** | Artboard «Admin — IA» de los mockups aprobados el 2026-08-19 |
 
 ## Por qué esto es una epic y no la US-220
@@ -35,9 +35,10 @@ catálogos con su modelo de datos, más un segundo modelo de permisos. Escribirl
 en un commit sería inventar el producto, y quedaría como si alguien lo hubiera
 decidido.
 
-**Lo que hace falta del owner no es aprobación, son definiciones.** Abajo están
-las preguntas, cada una con lo que ya se sabe del código, para que contestarlas
-sea corto.
+**Lo que hacía falta del owner no era aprobación, eran definiciones.** Abajo
+están las cuatro preguntas con lo que se sabía del código y, bajo cada una, la
+respuesta del owner del 2026-08-20. Las cuatro salieron en su forma acotada, así
+que US-223 a US-226 quedan desbloqueadas y los workflows siguen fuera.
 
 ## Lo que ya existe, y por eso no hay que rehacerlo
 
@@ -56,7 +57,7 @@ Verificado contra el código el 2026-08-20:
 la fila «Consumo / alertas» del artboard es trabajo pequeño y **no** depende de
 las decisiones de abajo. Puede salir sola.
 
-## Las cuatro preguntas que bloquean
+## Las cuatro preguntas, contestadas el 2026-08-20
 
 ### 1. Un «prompt» editable choca con el contrato de salida
 
@@ -82,6 +83,19 @@ Así que «catálogo de prompts» puede querer decir tres cosas muy distintas:
 el conjunto de evaluación —¿se evalúa el prompt del inquilino al guardarlo?— y qué
 se le muestra cuando su prompt rompe la salida.
 
+**Respuesta del owner (2026-08-20): (b) y (c), nunca (a).**
+
+No son excluyentes y por eso son dos US distintas: (b) es un bloque de contexto
+que **se añade** al prompt del sistema —vocabulario, tono, nombres propios— y (c)
+es un catálogo de variantes que trae el producto, de solo lectura con selección.
+El contrato de salida lo sigue fijando el producto en los dos casos.
+
+(a) queda descartada por lo que le hace al conjunto de evaluación, no por lo que
+le hace al parser. Un inquilino reescribe la instrucción, el JSON de seis
+secciones deja de pedirse, el parser se queda sin nada — y `evaluacion-ia` sigue
+en verde, porque mide los prompts del producto y no el del inquilino. Un gate que
+no puede ver el fallo que le toca ver es peor que no tener gate: da por
+contenido lo que no lo está. Desbloquea **US-223** y **US-224**.
 ### 2. Qué es una «tool», y qué puede tocar
 
 Una herramienta que el modelo puede invocar es, en la práctica, **una puerta
@@ -94,6 +108,16 @@ una inyección en una escritura.
 Si escriben, esta epic arranca por el modelo de amenazas (§0.3) y no por el
 esquema.
 
+**Respuesta del owner (2026-08-20): solo leen.**
+
+Una herramienta que escribe convierte AM-03 —instrucciones inyectadas en
+contenido subido— en una escritura, y con eso el atacante deja de necesitar a una
+persona en el medio. Las herramientas de lectura con la frontera de AM-04 delante
+son **US-226** y se pueden construir con el modelo de amenazas que ya existe.
+
+Las de escritura no son «lo mismo pero más»: son otra amenaza, y si algún día se
+piden, esta epic arranca por `docs/architecture/modelo-amenazas.md` y no por el
+esquema (§0.3).
 ### 3. Qué es un «workflow», y quién lo ejecuta
 
 Un encadenado de pasos puede ser: una plantilla de secuencia que una persona
@@ -104,6 +128,19 @@ gasto y una respuesta a «qué pasa si el paso 3 falla después de que el 2 escr
 **Pregunta:** ¿asistido por una persona, o autónomo? Si es autónomo, ¿con qué
 techo de gasto y sobre qué disparadores?
 
+**Respuesta del owner (2026-08-20): asistido por una persona; lo autónomo se
+difiere.**
+
+Una plantilla de secuencia que alguien dispara y confirma paso a paso. La
+ejecución autónoma necesita cola, reintentos, techo de gasto y una respuesta a
+«qué pasa si el paso 3 falla después de que el 2 escribió» — eso es un subsistema,
+no una variante de interfaz.
+
+**Aun así, los workflows no entran en esta oleada.** Ni siquiera el asistido: no
+hay US para ellos abajo y no se escribe esquema todavía. Es deliberado — la
+pregunta 2 fija que las herramientas solo leen, y un encadenado de pasos que solo
+lee tiene bastante menos que orquestar de lo que el artboard supone. Se replantea
+cuando US-226 esté viva y se sepa qué encadenar.
 ### 4. «Roles de agente, separado del RBAC» es un segundo sistema de permisos
 
 Es la decisión más cara del artboard, en una frase de cinco palabras. Hoy hay un
@@ -124,20 +161,23 @@ Dos formas de hacerlo, y solo la segunda es barata:
 **Pregunta:** ¿la segunda forma cubre lo que el artboard quiere? Si de verdad hace
 falta la primera, el modelo de amenazas va antes del código y esta epic crece.
 
-## Lo que se propone construir, si las respuestas son las acotadas
+## Lo que se va a construir
+
+Las respuestas fueron las acotadas, así que esto deja de ser una propuesta.
 
 Orden por lo que desbloquea, y cada bloque es una US:
 
 | # | Qué | Depende de |
 |---|---|---|
 | **US-222** ✅ | Consumo de IA por inquilino: trabajos, tokens y reparto por modelo, seis meses. `GET /admin/ai/usage` + panel en `/admin/ai`. **Sin dinero, a propósito** (ver abajo) | Nada — `AIJob` ya lo tenía |
-| **US-223** | Catálogo de **contexto** por inquilino: bloques de vocabulario que se añaden al prompt del sistema sin tocar el contrato de salida | Respuesta (b) a la pregunta 1 |
-| **US-224** | Catálogo de **plantillas de operación** (las variantes que el producto trae), de solo lectura con selección | Respuesta (c) a la pregunta 1 |
-| **US-225** | Roles de agente como **personalidad + techo**, actuando en nombre de una persona | Respuesta 2 a la pregunta 4 |
-| **US-226** | Herramientas de **lectura** invocables, con la frontera de AM-04 delante | Respuesta «solo leen» a la pregunta 2 |
+| **US-223** | Catálogo de **contexto** por inquilino: bloques de vocabulario que se añaden al prompt del sistema sin tocar el contrato de salida | ✅ P1 = (b) |
+| **US-224** | Catálogo de **plantillas de operación** (las variantes que el producto trae), de solo lectura con selección | ✅ P1 = (c) |
+| **US-225** | Roles de agente como **personalidad + techo**, actuando en nombre de una persona | ✅ P4 = en nombre de una persona (DEC-033) |
+| **US-226** | Herramientas de **lectura** invocables, con la frontera de AM-04 delante | ✅ P2 = solo leen |
 
-**Workflows queda fuera de esta propuesta a propósito.** Con las preguntas 2 y 3
-sin contestar, cualquier esquema que se escriba hoy se va a rehacer.
+**Workflows sigue fuera a propósito**, ahora por una razón distinta: contestada
+la pregunta 2, un encadenado que solo lee tiene mucho menos que orquestar de lo
+que el artboard supone. Se replantea con US-226 viva, no antes.
 
 ### US-222 — entregada el 2026-08-20
 
@@ -184,7 +224,7 @@ tokens; el reparto por modelo ordenado y acotado al mes en curso; un modelo nulo
 los fallidos junto al total; **que la respuesta no contenga dinero**; aislamiento
 por inquilino; lo anterior a la ventana no entra.
 
-## Lo que NO se va a hacer sin decisión escrita
+## Lo que sigue sin hacerse, y ahora por decisión escrita
 
 - Prompts de sistema editables como texto libre (pregunta 1a) sin resolver qué
   pasa con el contrato de salida y con el conjunto de evaluación.
@@ -194,9 +234,11 @@ por inquilino; lo anterior a la ventana no entra.
 - Un modelo de permisos separado del RBAC (pregunta 4) sin la amenaza escrita y
   su control.
 
-Las cuatro tienen la misma forma: son decisiones de producto o de seguridad
-disfrazadas de trabajo de implementación. Tomarlas desde el código las deja sin
-que nadie las haya tomado.
+Las cuatro tenían la misma forma: decisiones de producto o de seguridad
+disfrazadas de trabajo de implementación. Ya están tomadas, y las cuatro se
+tomaron por la opción acotada — así que esta lista deja de ser un bloqueo y pasa
+a ser el límite del alcance. Reabrir cualquiera de ellas es trabajo nuevo con su
+modelo de amenazas delante, no un ajuste.
 
 ## Notas
 
@@ -204,3 +246,17 @@ que nadie las haya tomado.
   listaba US-220 como una US de la oleada 2C. Al implementarla se separó en esta
   epic: son cinco entregables y uno de ellos es un sistema de autorización.
   El resto de la oleada 2C quedó cerrado (US-210 a US-219, US-221).
+
+**Respuesta del owner (2026-08-20): el agente actúa siempre en nombre de una
+persona.**
+
+Lleva las capacidades y el alcance de esa persona (`user_scope_assignments`,
+AM-15). Lo «propio» del rol es la **personalidad** —tono, formato, qué mira— y un
+**techo**; nunca un permiso que la persona no tenga. No hay segundo sistema: hay
+un límite sobre el que ya existe, y un límite sobre un modelo de permisos se
+puede razonar; dos modelos de permisos, no.
+
+Lo que se evita es concreto: con dos sitios donde se decide «¿puede esto tocar
+aquello?», el día que alguien tape un agujero en uno, el otro sigue abierto — y
+nada en el código señala que había dos. Es **US-225**, y queda como **DEC-033**
+porque es una decisión de arquitectura, no de alcance.

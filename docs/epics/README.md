@@ -42,7 +42,7 @@ revisar_cada: 90d
 | [EP018](./EP018-documents-artifacts.md) | Documentos y artefactos de proyecto | v1.3 | EP005, EP006 |
 | [EP019](./EP019-changes-approval.md) | Gestión de cambios + flujo de aprobación | v1.4 | EP005, EP006 |
 | [EP020](./EP020-report-builder.md) | Report Builder (Niveles 1, 2, 4) + catálogo 22 secciones | v1.5 | EP005, EP006, EP007, EP008, EP014, EP018 |
-| [EP021](./EP021-catalogo-de-ia.md) | Catálogo de IA y roles de agente (borrador) | v2.0 | EP008 |
+| [EP021](./EP021-catalogo-de-ia.md) | Catálogo de IA y roles de agente (4 decisiones tomadas; US-223–226 listas) | v2.0 | EP008 |
 
 El estado vigente del sprint y los issues abiertos:
 `docs/project-management/SPRINT.md`.
