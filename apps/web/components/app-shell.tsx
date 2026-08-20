@@ -11,6 +11,7 @@ import {
   Bell,
   ClipboardCheck,
   ClipboardList,
+  Columns3,
   FolderKanban,
   Gauge,
   GitBranch,
@@ -94,6 +95,15 @@ const GRUPOS_NAV: GrupoNav[] = [
         icon: <Boxes className="h-4 w-4" aria-hidden />,
         href: "/pmo",
         match: (p) => p === "/pmo",
+      },
+      {
+        // US-219 — el board contesta «¿qué persigo esta semana?». Va junto a
+        // Portafolio porque es la misma cartera vista por otro eje.
+        id: "board",
+        label: "Board",
+        icon: <Columns3 className="h-4 w-4" aria-hidden />,
+        href: "/pmo/board",
+        match: (p) => p.startsWith("/pmo/board"),
       },
       {
         id: "projects",

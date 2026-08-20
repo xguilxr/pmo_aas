@@ -80,6 +80,54 @@ async def _hitos_abiertos_por_proyecto(
     return salida
 
 
+async def _decisiones_pendientes_por_proyecto(
+    db: AsyncSession, project_ids: list[str]
+) -> dict[str, int]:
+    """`project_id → decisiones abiertas`.
+
+    Una decisión pendiente es un `Issue` de tipo `decision` sin resolver. Es el
+    tercer cubo que el artboard «Boards» nombra para el Portfolio Board, y no
+    puede ser una columna: un proyecto al día **también** puede tener decisiones
+    esperando, y un kanban no admite que una tarjeta esté en dos columnas. Va
+    como marcador de la tarjeta.
+
+    Los módulos son de EP006 y pueden no existir: el `try` deja el conteo en
+    cero, que es lo que había antes de que existieran.
+    """
+    if not project_ids:
+        return {}
+    try:
+        from app.models.modules import Issue
+
+        filas = (
+            await db.execute(
+                select(Issue.project_id, func.count(Issue.id))
+                .where(
+                    # El alcance lo pone `project_ids`: son los proyectos
+                    # visibles que el llamador ya filtró por inquilino y por
+                    # permisos. Un `tenant_id` aquí sería redundante, y una
+                    # condición redundante invita a creer que es la que protege.
+                    Issue.type == "decision",
+                    Issue.status.in_(["open", "in_progress", "on_hold"]),
+                    Issue.project_id.in_(project_ids),
+                )
+                .group_by(Issue.project_id)
+            )
+        ).all()
+        return {str(pid): n for pid, n in filas}
+    except Exception:
+        return {}
+
+
+async def decisiones_pendientes_de(
+    db: AsyncSession, proyectos: list[Project]
+) -> dict[str, int]:
+    """El marcador de decisiones del Portfolio Board, en una consulta."""
+    return await _decisiones_pendientes_por_proyecto(
+        db, [str(p.id) for p in proyectos]
+    )
+
+
 async def estado_de_reporte_de(
     db: AsyncSession,
     proyectos: list[Project],

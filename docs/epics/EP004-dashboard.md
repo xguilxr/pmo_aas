@@ -688,3 +688,67 @@ organización»).
 - `TC-213.3` — El branding trae la cadencia, por defecto y configurada.
 
 **Estado de integración:** DONE (US-213).
+
+---
+
+### US-219 — Portfolio Board: los proyectos por estatus de reporte ✅ (2026-08-20)
+
+**Como** PMO Manager
+**Quiero** ver los proyectos apilados por si están reportados
+**Para** saber qué persigo esta semana sin leer una columna de veintitrés filas.
+
+Del artboard «Boards». Ruta `/pmo/board`.
+
+**Por qué las columnas son el estatus de reporte.** Porque es el único eje que la
+PMO puede accionar directamente: pedir un reporte es una acción con dueño y
+fecha. La salud no se acciona —se explica—, y la fase avanza por sí sola.
+
+**Criterios de aceptación:**
+- [x] Cuatro columnas en orden de urgencia: **sin reporte · vencido · por vencer
+  · al día**. `sin_reporte` va primero, antes que `vencido`, porque el hueco es
+  más grande: un proyecto que nunca se reportó no incumplió una fecha, no ha
+  empezado. En un onboarding es exactamente la columna que hay que vaciar.
+- [x] **«Con decisiones pendientes» no es una columna**, aunque el mockup la
+  nombre junto a las otras dos. Es otro eje: un proyecto al día también puede
+  tener decisiones esperando, y un kanban no admite que una tarjeta esté en dos
+  columnas a la vez —o se duplica, y entonces los conteos de columna dejan de
+  sumar el total, o se elige una arbitrariamente y se esconde la otra mitad del
+  dato—. Va como **marcador de la tarjeta**, con enlace al RAID.
+- [x] **Los cerrados quedan fuera.** Un proyecto cerrado no se reporta: tenerlo
+  en «sin reporte» para siempre convierte la columna en un cementerio y esconde
+  los vivos.
+- [x] **No se arrastra**, y se dice en la pantalla. El estatus es **derivado** —de
+  la fecha del último reporte contra la cadencia—, así que mover una tarjeta a
+  «al día» no significaría nada: el dato volvería a su sitio en el siguiente
+  refresco. Para cambiarlo hay que generar el reporte, y a eso lleva el enlace de
+  la tarjeta. Un board que acepta un arrastre que no persiste es peor que uno que
+  no lo acepta.
+- [x] Cada columna dice **qué hacer con su pila** («pasaron de su fecha: pide el
+  reporte»). Un board sin verbo es una lista con bordes.
+- [x] La tarjeta trae fase, salud, días de retraso, decisiones pendientes y
+  próximo hito: sin eso hay que abrir el proyecto para saber si es urgente, que
+  es lo que un board viene a evitar.
+- [x] `GET /dashboard/portfolio-board` y **no** derivarlo de `plan-vs-actual`: la
+  fila de la vista maestra trae dieciséis columnas y el board usa cinco. Pedir la
+  tabla entera para agrupar por una columna es traer el acta, el presupuesto y la
+  completitud de veintitrés proyectos para no pintarlos.
+- [x] **Sin migración.** El estatus lo dejó consultable US-211 y las decisiones
+  son `issues` de tipo `decision`.
+
+**Test Cases:** `test_us219_portfolio_board.py`
+- `TC-219.1` — Las cuatro columnas en orden de urgencia, con su etiqueta en
+  español desde el servidor; cada proyecto cae en la suya.
+- `TC-219.2` — Los cerrados quedan fuera del board y del total.
+- `TC-219.3` — Las columnas suman el total: la comprobación que detecta que una
+  tarjeta se duplicó o se perdió.
+- `TC-219.4` — Un proyecto al día con dos decisiones abiertas **sigue** en «al
+  día» con su marcador; la decisión resuelta y el issue no cuentan.
+- `TC-219.5` — La tarjeta trae retraso, hito, salud y fase; el filtro de
+  organización recorta.
+
+**Lo que queda del artboard:** el **Project Board** (kanban de tareas por estado
+dentro de un proyecto). Ahí sí se arrastra, porque `tasks.status` es un dato
+declarado y no derivado, y `raid-kanban.tsx` ya tiene el mecanismo. Queda como
+ENH sobre esta US.
+
+**Estado de integración:** DONE (US-219, Portfolio Board).

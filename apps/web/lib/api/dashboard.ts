@@ -217,6 +217,43 @@ export function getDashboardCharts(
  * `/capacity/summary`, que ya ordena por holgura y conoce los umbrales del
  * inquilino.
  */
+// --- US-219: Portfolio Board -----------------------------------------------
+
+export type TarjetaDeBoard = {
+  project_id: string;
+  folio: string;
+  name: string;
+  health: string | null;
+  phase: string;
+  report_days_late: number;
+  /**
+   * Decisiones abiertas del proyecto. Es un **marcador** y no una columna: un
+   * proyecto al día también puede tener decisiones esperando, y un kanban no
+   * admite que una tarjeta esté en dos columnas —o se duplica y los conteos
+   * dejan de sumar el total, o se elige una y se esconde la otra mitad—.
+   */
+  pending_decisions: number;
+  next_milestone: { name: string; date: string; overdue: boolean } | null;
+};
+
+export type ColumnaDeBoard = {
+  status: "sin_reporte" | "vencido" | "por_vencer" | "al_dia";
+  label: string;
+  projects: TarjetaDeBoard[];
+};
+
+export type PortfolioBoard = {
+  columns: ColumnaDeBoard[];
+  total: number;
+};
+
+/** US-219 — los proyectos por estatus de reporte, en orden de urgencia. */
+export function getPortfolioBoard(
+  params: DashboardFilter = {},
+): Promise<PortfolioBoard> {
+  return apiFetch<PortfolioBoard>(`/api/v1/dashboard/portfolio-board${qs(params)}`);
+}
+
 export function getDashboardTops(
   params: DashboardFilter & { limite?: number } = {},
 ): Promise<DashboardTops> {

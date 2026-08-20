@@ -185,6 +185,7 @@ flowchart LR
     subgraph ORG ["ORGANIZACIÓN - todos"]
         N1["Dashboard<br/>/dashboard"]
         N2["Portafolio<br/>/pmo<br/>(vista maestra)"]
+        N2b["Board<br/>/pmo/board"]
         N3["Proyectos<br/>/pmo/projects"]
         N4["Solicitudes<br/>/pmo/requests"]
         N5["Recursos<br/>/pmo/resources"]
@@ -284,7 +285,8 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 
 | URL | Propósito |
 |---|---|
-| `/pmo` | Vista maestra del portafolio: una fila por proyecto, 13 columnas, header y primera columna fijos, columnas configurables y XLSX (US-207). |
+| `/pmo` | Vista maestra del portafolio: una fila por proyecto con las 16 columnas del mockup, header y primera columna fijos, columnas configurables y XLSX (US-207, US-210, US-211). |
+| `/pmo/board` | Portfolio Board: los proyectos por estatus de reporte, en cuatro columnas de urgencia (US-219). |
 | `/pmo/organizations/[id]` | Detalle de organización: programas + proyectos + reportes. |
 | `/pmo/organizations/[id]/reports` | Reportes scope organización. |
 | `/pmo/programs/[id]` | Detalle de programa. |

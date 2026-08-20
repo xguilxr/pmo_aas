@@ -15,6 +15,7 @@ from app.core.unidades import razon_a_pct
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.dominio.cortes import cortes_por_periodo
+from app.dominio.reporte import ETIQUETAS as ETIQUETAS_DE_REPORTE
 from app.dominio.moneda import agregar as agregar_por_moneda
 from app.dominio.moneda import resolver as resolver_moneda
 from app.dominio.proyecto import CERRADO, FASES_ACTIVAS
@@ -33,7 +34,10 @@ from app.services.analytics.snapshots import (
 from app.services.completitud import a_json as completitud_a_json
 from app.services.completitud import completitud_de
 from app.services.estado_de_reporte import a_json as reporte_a_json
-from app.services.estado_de_reporte import estado_de_reporte_de
+from app.services.estado_de_reporte import (
+    decisiones_pendientes_de,
+    estado_de_reporte_de,
+)
 from app.services.indicadores import avance_de_cartera
 from app.services.moneda_tenant import preferida as moneda_preferida
 from app.services.pdf_renderer import render_pdf
@@ -43,6 +47,13 @@ from app.services.reports.scoped_status import build_scope_status_context
 from app.services.tenant_settings import get_cadencia_de_reporte
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+#: El orden de las columnas del Portfolio Board (US-219): por urgencia.
+#:
+#: `sin_reporte` va primero, antes que `vencido`, porque el hueco es más grande:
+#: un proyecto que nunca se reportó no incumplió una fecha, no ha empezado. En un
+#: onboarding es exactamente la columna que hay que vaciar.
+ORDEN_DEL_BOARD: tuple[str, ...] = ("sin_reporte", "vencido", "por_vencer", "al_dia")
 
 #: US-201 — `portfolio` entra entre organización y programa. El orden de la
 #: tupla es el de la jerarquía, no alfabético: lo consumen los desplegables.
@@ -617,6 +628,105 @@ async def tops(
     return {
         "by_risk": por_riesgo[:limite],
         "by_delay": por_atraso[:limite],
+    }
+
+
+@router.get("/portfolio-board")
+async def portfolio_board(
+    organization_id: UUID | None = Query(default=None),
+    portfolio_id: UUID | None = Query(default=None),
+    program_id: UUID | None = Query(default=None),
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-219 — los proyectos agrupados por estatus de reporte.
+
+    El Portfolio Board del artboard «Boards». Las columnas son los cuatro
+    estados que US-211 volvió consultables, en orden de urgencia.
+
+    ## Por qué «con decisiones pendientes» no es una columna
+
+    El mockup nombra tres cubos: «al día / vencido / con decisiones pendientes».
+    Los dos primeros son estados de reporte y se excluyen entre sí; el tercero es
+    otro eje. Un proyecto al día **también** puede tener decisiones esperando, y
+    un kanban no admite que una tarjeta esté en dos columnas a la vez: o se
+    duplica —y entonces los conteos de columna dejan de sumar el total— o se
+    elige una arbitrariamente y se esconde la otra mitad del dato.
+
+    Va como **marcador de la tarjeta**, que es lo que permite ver las dos cosas
+    del mismo proyecto sin mentir en ninguna.
+
+    ## Por qué un endpoint y no derivarlo de `plan-vs-actual`
+
+    Porque la fila de la vista maestra trae dieciséis columnas y el board usa
+    cinco. Pedir la tabla entera para agrupar por una columna es traer el acta,
+    el presupuesto y la completitud de veintitrés proyectos para no pintarlos.
+    """
+    tenant_id = _tenant(cu)
+    role_ids = await scoped_project_ids(cu, db, tenant_id, organization_id)
+
+    conds = [
+        Project.tenant_id == tenant_id,
+        Project.deleted_at.is_(None),
+        # Un proyecto cerrado no se reporta: tenerlo en «sin reporte» para
+        # siempre convierte la columna en un cementerio y esconde los vivos.
+        Project.phase != CERRADO,
+    ]
+    conds += _condiciones_jerarquia(
+        organization_id=organization_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
+    )
+    if role_ids is not None:
+        conds.append(Project.id.in_(role_ids or ["__none__"]))
+    proyectos = list(
+        (await db.execute(select(Project).where(*conds).order_by(Project.name)))
+        .scalars()
+        .all()
+    )
+
+    inquilino = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    estados = await estado_de_reporte_de(
+        db, proyectos, cadencia_dias=get_cadencia_de_reporte(inquilino)
+    )
+    decisiones = await decisiones_pendientes_de(db, proyectos)
+
+    columnas: dict[str, list[dict[str, Any]]] = {e: [] for e in ORDEN_DEL_BOARD}
+    for p in proyectos:
+        par = estados.get(str(p.id))
+        if par is None:
+            continue
+        reporte, hito = par
+        columnas[reporte.estado].append(
+            {
+                "project_id": str(p.id),
+                "folio": p.folio,
+                "name": p.name,
+                "health": p.health_status,
+                "phase": p.phase,
+                "report_days_late": reporte.dias_de_retraso,
+                "pending_decisions": decisiones.get(str(p.id), 0),
+                "next_milestone": (
+                    {"name": hito.nombre, "date": hito.fecha.isoformat(),
+                     "overdue": hito.vencido}
+                    if hito
+                    else None
+                ),
+            }
+        )
+
+    return {
+        "columns": [
+            {
+                "status": estado,
+                "label": ETIQUETAS_DE_REPORTE[estado],
+                "projects": columnas[estado],
+            }
+            for estado in ORDEN_DEL_BOARD
+        ],
+        "total": len(proyectos),
     }
 
 
