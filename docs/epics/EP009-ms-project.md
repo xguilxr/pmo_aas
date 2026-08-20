@@ -384,6 +384,86 @@ nunca se implementó.
 
 ---
 
+## US-218 — Dependencias entre tareas de proyectos distintos ✅ (2026-08-20)
+
+**Como** PMO Manager
+**Quiero** encadenar una tarea de mi plan con una de otro proyecto
+**Para** que el cronograma diga que esto no puede empezar hasta que aquello
+cierre.
+
+Del artboard «Proyecto — Plan»: «Gantt (baseline vs actual, ruta crítica,
+**dependencias inter-proyecto**)».
+
+**Sin migración.** `task_dependencies` enlaza por identificador y ya podía
+guardar el enlace; hasta ahora solo lo llenaba el importador de MS Project, y
+solo dentro de un proyecto. Lo que faltaba era la API, el guardarraíl y la forma
+de verlo. Dentro de un proyecto las dependencias siguen en `Task.predecessors`
+por código WBS (US-090) — un WBS no sirve para cruzar proyectos porque el `1.2`
+de uno no es el `1.2` de otro.
+
+**Criterios de aceptación:**
+- [x] `GET/POST/DELETE /projects/{id}/external-dependencies`. Se puede quitar
+  desde **cualquiera** de los dos proyectos: los dos planes están encadenados y
+  los dos dueños pueden desligarlos.
+- [x] **La validación de ciclos es a nivel de TAREA, no de proyecto.** La
+  respuesta fácil —«si A depende de B, prohíbe que B dependa de A»— bloquearía
+  un caso normal: «les entregamos el ambiente en la fase 1 y ellos nos devuelven
+  la certificación en la fase 3». Eso es A→B y B→A a nivel de proyecto y no hay
+  ningún ciclo real: son dos cadenas que no se tocan.
+- [x] **El recorrido cruza las dos clases de arista**: las internas por WBS
+  (`predecessors`/`successors`) y las externas por identificador. Mirar solo una
+  deja pasar el ciclo que alterna entre ambas, que es el que un plan grande
+  produce sin que nadie lo vea venir.
+- [x] Las tareas se cargan **por proyecto y a demanda**: un plan entra de golpe
+  porque sus aristas internas están en sus propias filas, y solo se abre otro
+  proyecto si una arista externa lleva hasta él. Sin tope artificial — un tope
+  convertiría un ciclo real en un «no encontré ninguno», y aceptar la arista es
+  peor que tardar.
+- [x] **Una dependencia dentro del mismo proyecto se rechaza** con el motivo
+  escrito: tener dos mecanismos para lo mismo es cómo empiezan a discrepar.
+- [x] Los cuatro vínculos de MS Project (`FS`/`SS`/`FF`/`SF`) se aceptan: el
+  importador ya los escribe, y rechazarlos aquí haría que una dependencia
+  importada no se pudiera recrear a mano.
+- [x] Repetir la misma dependencia es **idempotente**: quien la vuelve a pedir
+  quiere que exista, y ya existe.
+- [x] **`task_dependencies` no lleva `tenant_id`** —enlaza por identificador—,
+  así que el recorrido filtra por inquilino con un `join` a la tarea
+  predecesora, y el borrado comprueba que la dependencia toca a una tarea de
+  **este** proyecto. Sin eso, un identificador adivinado tocaría la dependencia
+  de otro cliente.
+- [x] Una tarea de otro inquilino da **404 y no 422**: desde fuera no se
+  distingue «no existe» de «es de otro inquilino», y decirlo confirmaría que
+  existe.
+- [x] Las dependencias internas que el importador escribió en
+  `task_dependencies` **no** se listan como externas: duplicarían lo que ya dice
+  `predecessors`.
+
+**Un panel, no flechas en el Gantt.** Una flecha necesita dos extremos en
+pantalla, y la tarea del otro proyecto está en otro plan con otras fechas y otra
+escala: la flecha saldría del borde apuntando a la nada, lo que obliga a adivinar
+a dónde va. Lo que sí comunica es nombrar el otro extremo con su proyecto y su
+fecha: «esto no puede empezar hasta que PRJ-2026-004 cierre su corte de
+servicios, previsto el 12 de septiembre».
+
+**Entrantes y salientes van separadas** porque significan cosas distintas: una
+entrante es algo que este proyecto **espera** y que puede retrasarlo; una
+saliente es alguien esperándonos, y a quien hay que avisar si nos movemos.
+Mezcladas obligan a leer el sentido en cada fila.
+
+**Test Cases:** `test_us218_dependencias_externas.py`
+- `TC-218.1` — Crear, idempotencia, auto-dependencia, mismo proyecto, tipo
+  inventado, los cuatro vínculos válidos.
+- `TC-218.2` — El ciclo directo se rechaza; **el que alterna aristas internas y
+  externas también**; la ida y la vuelta en cadenas disjuntas se permiten (el
+  caso que un guardarraíl a nivel de proyecto bloquearía).
+- `TC-218.3` — Entrantes y salientes separadas; el otro extremo trae su
+  proyecto; se quita desde cualquiera de los dos; no desde un tercero; una tarea
+  de otro inquilino da 404; las internas del importador no se listan.
+
+**Estado de integración:** DONE (US-218).
+
+---
+
 ## Notas técnicas
 
 - **Librería Python para XML/XLSX**: `openpyxl` (xlsx) más parsers
@@ -411,6 +491,9 @@ PATCH  /api/v1/tasks/{id}
 DELETE /api/v1/tasks/{id}
 POST   /api/v1/tasks/{id}/dependencies
 DELETE /api/v1/task-dependencies/{id}
+GET    /api/v1/projects/{id}/external-dependencies              (US-218)
+POST   /api/v1/projects/{id}/external-dependencies              (US-218)
+DELETE /api/v1/projects/{id}/external-dependencies/{dep_id}     (US-218)
 POST   /api/v1/projects/{id}/tasks/recalculate
 GET    /api/v1/projects/{id}/tasks/export
 GET    /api/v1/projects/{id}/plan/download              (ENH-193, 2026-07-18)

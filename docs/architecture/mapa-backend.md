@@ -64,7 +64,8 @@ project_requests (CRUD + review + create-project; clasifica con portfolio/progra
 (exports plan/raid/changes/lessons/organigrama) · modules (CRUD RAID/cambios/
 docs/lessons/minutas + convert-agreement) · risk_actions · change_approvals
 (token público JWT) · stakeholders · tasks (CRUD + renumber-wbs + **import
-MPP/XML/XLSX/CSV** con preview/IA — base de importación masiva) · areas
+MPP/XML/XLSX/CSV** con preview/IA — base de importación masiva; **dependencias
+entre proyectos** US-218, con ciclos validados a nivel de tarea) · areas
 (áreas→equipos→actores, sync-users) · project_directory (project_roles +
 participations + eligible-actors) · capacity (/summary /conflicts
 **/weekly-load** /resource-load) + organigrama · dashboard (kpis, charts, **tops**, trends (+`cadencia_dias`: un punto por corte, US-213),

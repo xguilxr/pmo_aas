@@ -15,10 +15,10 @@ from app.core.unidades import razon_a_pct
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
 from app.dominio.cortes import cortes_por_periodo
-from app.dominio.reporte import ETIQUETAS as ETIQUETAS_DE_REPORTE
 from app.dominio.moneda import agregar as agregar_por_moneda
 from app.dominio.moneda import resolver as resolver_moneda
 from app.dominio.proyecto import CERRADO, FASES_ACTIVAS
+from app.dominio.reporte import ETIQUETAS as ETIQUETAS_DE_REPORTE
 from app.models.metric_snapshot import MetricSnapshot
 from app.models.modules import Risk
 from app.models.organization import Organization, Portfolio, Program

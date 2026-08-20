@@ -93,7 +93,9 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   `HealthDimensionMatrix` 5+1, `HealthWhyPanel`),
   `health-evaluation-modal.tsx`.
 - **Plan**: `gantt-view.tsx`, `import-wizard.tsx`, `lib/plan-template.ts`
-  (XLSX).
+  (XLSX), `dependencias-externas.tsx` (US-218: las dependencias con otros
+  proyectos, en panel y no como flechas del Gantt — una flecha necesita dos
+  extremos en pantalla y el otro está en otro plan).
 - **Boards**: `raid-kanban.tsx` (kanban DnD nativo, columnas=estados —
   base de project/portfolio boards).
 - **Directory**: `directory/` (PersonPicker, ProjectAreaPicker,

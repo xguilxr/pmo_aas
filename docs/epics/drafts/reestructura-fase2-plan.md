@@ -81,7 +81,7 @@ migración.
 | **US-215** | Costo-snapshot en participaciones (W4) | WProyectoRecursos · costo en el catálogo |
 | **US-216** | Importación masiva: proyectos, planes y recursos (B5) | WImportacion — la carga inicial sin captura manual |
 | **US-217** | RACI y stakeholders clave del proyecto | WProyectoRecursos |
-| **US-218** | Dependencias entre proyectos en el Gantt | WPlan |
+| **US-218** ✅ | Dependencias entre tareas de proyectos distintos. **Sin migración**: `task_dependencies` ya enlazaba por id. Ciclos validados a nivel de tarea cruzando las dos clases de arista | WPlan |
 | **US-219** ◐ | Boards. **Portfolio Board hecho** (por estatus de reporte, sin migración); el Project Board —kanban de tareas, donde sí se arrastra porque `tasks.status` es declarado— queda como ENH | WBoards |
 | **US-220** | Catálogo de IA (skills · tools · prompts · workflows) + roles de agente | WAdminIA |
 | **US-221** | Plan de suscripción: tier, límites y consumo (solo lectura) | WAdminPlan |

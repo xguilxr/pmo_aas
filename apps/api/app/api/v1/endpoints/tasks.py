@@ -1,5 +1,5 @@
 from datetime import UTC, date, datetime, timedelta
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, UploadFile
@@ -21,6 +21,10 @@ from app.schemas.modules import UserMini
 from app.services.ai.tenant_ai import load_tenant_ai
 from app.services.audit import write_audit
 from app.services.csv_task_parser import parse_csv
+from app.services.dependencias_externas import (
+    crear_dependencia_externa,
+    externas_de_proyecto,
+)
 from app.services.import_ai import (
     ai_match_resources,
     ai_normalize_statuses,
@@ -309,6 +313,121 @@ async def _attach_owners(db: AsyncSession, tasks: list[Task]) -> None:
             )
         else:
             t.owner = None  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
+# US-218 — dependencias entre tareas de proyectos distintos
+# ---------------------------------------------------------------------------
+
+
+class DependenciaExternaCreate(BaseModel):
+    """Una dependencia hacia o desde una tarea de **otro** proyecto.
+
+    Dentro de un proyecto las dependencias van en `predecessors` de la tarea, por
+    código WBS. Aquí se enlaza por identificador porque un WBS es del proyecto:
+    el `1.2` de uno no es el `1.2` de otro.
+    """
+
+    predecessor_task_id: UUID
+    successor_task_id: UUID
+    type: str = "FS"
+    lag_days: int = 0
+
+
+@router.get("/projects/{project_id}/external-dependencies")
+async def list_external_dependencies(
+    project_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-218 — las dependencias de este proyecto con otros.
+
+    Separadas en `entrantes` y `salientes` porque significan cosas distintas
+    para quien mira el plan: una entrante es algo que este proyecto **espera** —y
+    que puede retrasarlo—, y una saliente es alguien esperándonos. Una lista sola
+    obligaría a leer el sentido en cada fila.
+    """
+    await proyecto_autorizado(db, project_id, cu)
+    return await externas_de_proyecto(db, _tenant(cu), project_id)
+
+
+@router.post("/projects/{project_id}/external-dependencies", status_code=201)
+async def create_external_dependency(
+    project_id: UUID,
+    body: DependenciaExternaCreate,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """US-218 — enlaza una tarea de este proyecto con una de otro.
+
+    El guardarraíl es `proyecto_autorizado`, como el resto de escrituras de
+    tareas: comprueba que el proyecto existe, es del inquilino y está en el
+    alcance del usuario. La tarea del otro extremo se valida aparte contra el
+    mismo inquilino, en el servicio.
+
+    Rechaza el ciclo recorriendo **las dos** clases de arista, las internas por
+    WBS y las externas por identificador: mirar solo una deja pasar el ciclo que
+    alterna entre ambas. El porqué está en `services/dependencias_externas.py`.
+    """
+    await proyecto_autorizado(db, project_id, cu)
+    dep = await crear_dependencia_externa(
+        db,
+        _tenant(cu),
+        predecessor_id=body.predecessor_task_id,
+        successor_id=body.successor_task_id,
+        tipo=body.type,
+        lag_days=body.lag_days,
+    )
+    await db.commit()
+    return {
+        "id": str(dep.id),
+        "predecessor_task_id": str(dep.predecessor_id),
+        "successor_task_id": str(dep.successor_id),
+        "type": dep.type,
+        "lag_days": dep.lag_days,
+    }
+
+
+@router.delete(
+    "/projects/{project_id}/external-dependencies/{dependency_id}", status_code=204
+)
+async def delete_external_dependency(
+    project_id: UUID,
+    dependency_id: UUID,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Quita la dependencia, si toca a una tarea de este proyecto.
+
+    La comprobación de que toca al proyecto no es ceremonia: `task_dependencies`
+    no lleva `tenant_id` —enlaza por identificador—, así que sin ella un
+    identificador adivinado borraría la dependencia de otro cliente.
+    """
+    await proyecto_autorizado(db, project_id, cu)
+    mias = {
+        str(i)
+        for i in (
+            await db.execute(
+                select(Task.id).where(
+                    Task.tenant_id == _tenant(cu),
+                    Task.project_id == str(project_id),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    }
+    dep = (
+        await db.execute(
+            select(TaskDependency).where(TaskDependency.id == str(dependency_id))
+        )
+    ).scalar_one_or_none()
+    if dep is None or (
+        str(dep.predecessor_id) not in mias and str(dep.successor_id) not in mias
+    ):
+        raise not_found("Dependencia")
+    await db.delete(dep)
+    await db.commit()
 
 
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskRead])

@@ -19,13 +19,13 @@ from app.dominio.moneda import resolver as _resolver_moneda
 from app.dominio.reporte import CADENCIA_POR_DEFECTO_DIAS
 from app.models.tenant import Tenant
 from app.services.audit import write_audit
-from app.services.tenant_settings import get_cadencia_de_reporte
 from app.services.branding_storage import (
     ALLOWED_LOGO_MIMES,
     delete_logo,
     find_logo_file,
     logo_to_data_url,
 )
+from app.services.tenant_settings import get_cadencia_de_reporte
 
 
 def moneda_preferida_de(t: Tenant) -> str:

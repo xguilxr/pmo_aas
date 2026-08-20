@@ -114,6 +114,75 @@ export type GanttData = {
   dependencies: GanttDependency[];
 };
 
+// --- US-218: dependencias entre tareas de proyectos distintos --------------
+
+/** El extremo de una dependencia externa: la tarea y de qué proyecto es. */
+export type ExtremoExterno = {
+  task_id: string;
+  task_name?: string;
+  wbs_code?: string;
+  end_date?: string | null;
+  status?: string;
+  project_id?: string;
+  project_folio?: string;
+  project_name?: string;
+};
+
+export type DependenciaExterna = {
+  id: string;
+  /** El vínculo de MS Project: FS, SS, FF o SF. */
+  type: string;
+  lag_days: number;
+  predecessor: ExtremoExterno;
+  successor: ExtremoExterno;
+};
+
+/**
+ * Las dependencias externas de un proyecto, en las dos direcciones.
+ *
+ * Separadas porque significan cosas distintas para quien mira el plan: una
+ * **entrante** es algo que este proyecto espera —y que puede retrasarlo—, y una
+ * **saliente** es alguien esperándonos. Una lista sola obligaría a leer el
+ * sentido en cada fila.
+ */
+export type DependenciasExternas = {
+  entrantes: DependenciaExterna[];
+  salientes: DependenciaExterna[];
+};
+
+export function listExternalDependencies(
+  projectId: string,
+): Promise<DependenciasExternas> {
+  return apiFetch<DependenciasExternas>(
+    `/api/v1/projects/${projectId}/external-dependencies`,
+  );
+}
+
+export function createExternalDependency(
+  projectId: string,
+  body: {
+    predecessor_task_id: string;
+    successor_task_id: string;
+    type?: string;
+    lag_days?: number;
+  },
+): Promise<{ id: string }> {
+  return apiFetch(`/api/v1/projects/${projectId}/external-dependencies`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function deleteExternalDependency(
+  projectId: string,
+  dependencyId: string,
+): Promise<void> {
+  return apiFetch(
+    `/api/v1/projects/${projectId}/external-dependencies/${dependencyId}`,
+    { method: "DELETE" },
+  );
+}
+
 export function listTasks(projectId: string): Promise<Task[]> {
   return apiFetch<Task[]>(`/api/v1/projects/${projectId}/tasks`);
 }
