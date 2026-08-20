@@ -183,6 +183,117 @@ export function deleteExternalDependency(
   );
 }
 
+// ---------------------------------------------------------------------------
+// US-212 / D-6 — línea base del plan
+// ---------------------------------------------------------------------------
+
+export type LineaBase = {
+  id: string;
+  project_id: string;
+  name: string;
+  note: string | null;
+  captured_at: string | null;
+  captured_by_user_id: string | null;
+  captured_by_name: string | null;
+  task_count: number;
+};
+
+// Qué le pasó a una tarea entre la promesa y el plan de hoy. `nueva` y
+// `retirada` son alcance, no atraso: mezclarlos con las corridas pierde la
+// conversación sobre el alcance.
+export type EstadoBaseline =
+  | "sin_cambio"
+  | "corrida"
+  | "adelantada"
+  | "nueva"
+  | "retirada";
+
+export const ESTADO_BASELINE_LABEL: Record<EstadoBaseline, string> = {
+  sin_cambio: "En fecha base",
+  corrida: "Corrida",
+  adelantada: "Adelantada",
+  nueva: "Nueva",
+  retirada: "Retirada",
+};
+
+export type FilaBaseline = {
+  task_id: string;
+  wbs_code: string | null;
+  name: string;
+  baseline_start: string | null;
+  baseline_end: string | null;
+  plan_start: string | null;
+  plan_end: string | null;
+  // Días entre el fin del plan y el prometido. `null` cuando falta una de las
+  // dos fechas — no 0, que se leería como «en fecha» (DAT-12).
+  slip_days: number | null;
+  // El cierre real contra lo prometido. Esta no se puede reescribir.
+  actual_slip_days: number | null;
+  progress: number | null;
+  is_milestone: boolean;
+  state: EstadoBaseline;
+};
+
+export type ResumenBaseline = {
+  tasks_in_baseline: number;
+  tasks_in_plan: number;
+  slipped: number;
+  pulled_in: number;
+  unchanged: number;
+  added: number;
+  removed: number;
+  project_slip_days: number | null;
+  baseline_finish: string | null;
+  plan_finish: string | null;
+  worst_slip_days: number | null;
+  worst_slip_task_id: string | null;
+};
+
+export type ComparacionBaseline = {
+  // `false` significa «no hay promesa contra la que medir», que no es lo mismo
+  // que «no se desvió». La interfaz tiene que decirlo con esas palabras.
+  has_baseline: boolean;
+  baseline: LineaBase | null;
+  baseline_count: number;
+  summary: ResumenBaseline | null;
+  rows: FilaBaseline[];
+};
+
+export function listPlanBaselines(
+  projectId: string,
+): Promise<{ baselines: LineaBase[] }> {
+  return apiFetch(`/api/v1/projects/${projectId}/plan/baselines`);
+}
+
+export function capturePlanBaseline(
+  projectId: string,
+  body: { name: string; note?: string | null },
+): Promise<LineaBase> {
+  return apiFetch(`/api/v1/projects/${projectId}/plan/baselines`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function deletePlanBaseline(
+  projectId: string,
+  baselineId: string,
+): Promise<void> {
+  return apiFetch(`/api/v1/projects/${projectId}/plan/baselines/${baselineId}`, {
+    method: "DELETE",
+  });
+}
+
+export function getBaselineComparison(
+  projectId: string,
+  baselineId?: string,
+): Promise<ComparacionBaseline> {
+  const qs = baselineId ? `?baseline_id=${baselineId}` : "";
+  return apiFetch(
+    `/api/v1/projects/${projectId}/plan/baseline-comparison${qs}`,
+  );
+}
+
 export function listTasks(projectId: string): Promise<Task[]> {
   return apiFetch<Task[]>(`/api/v1/projects/${projectId}/tasks`);
 }

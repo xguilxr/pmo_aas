@@ -75,7 +75,7 @@ migración.
 |---|---|---|
 | **US-210** ✅ | Completitud de datos por proyecto (campos mínimos + checklist de onboarding). **Derivada, sin migración** | Columna del control tower · WProyectoResumen · WImportacion |
 | **US-211** ✅ | Próximo hito y estatus de reporte como datos consultables. **Sin migración**: los hitos ya son `tasks.is_milestone` y la cadencia es un ajuste del inquilino | Dos columnas del control tower · Portfolio Board |
-| **US-212** | Línea base del plan (D-6) + comparación plan/base/real | WPlan · «desviación» deja de no tener referente |
+| **US-212** ✅ | Línea base del plan (D-6) + comparación plan/base/real. **Migración `0113`**: dos tablas, sin clave ajena a `tasks` para que borrar una tarea no encoja la promesa. Sin línea base la respuesta es «no hay», no un cero. Barras de base dentro del Gantt SVG diferidas | WPlan · «desviación» deja de no tener referente |
 | **US-213** ✅ | Tendencia por corte + historial de cortes. **Sin migración**: se muestrea al leer, no al capturar — bajar la frecuencia del job sería irreversible | Tendencias del dashboard · WReportesOrg · boards |
 | **US-214** | Membresía multi-tenant + switcher de tenant (W2) | Header completo · WAdminUsuarios |
 | **US-215** | Costo-snapshot en participaciones (W4) | WProyectoRecursos · costo en el catálogo |

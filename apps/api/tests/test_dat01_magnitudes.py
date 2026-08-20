@@ -101,6 +101,8 @@ POR_NOMBRE: dict[str, str] = {
     "MetricSnapshot.milestones_due_14": "conteo",
     "MetricSnapshot.milestones_due_30": "conteo",
     "User.failed_login_attempts": "conteo",
+    # US-212: cuántas tareas tenía el plan al capturar la línea base.
+    "PlanBaseline.task_count": "conteo",
     # ASVS 4.3.1 — intentos gastados de un código de segundo factor.
     "AdminOtpCode.intentos": "conteo",
     # Ordinales: ordenan, no miden.

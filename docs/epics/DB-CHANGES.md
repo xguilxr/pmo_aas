@@ -1156,3 +1156,48 @@ trinquete sobre **todas** las revisiones
 **Verificada en los dos sentidos** sobre SQLite en memoria antes de pushear —
 subida, fila preexistente con `raci = NULL`, bajada, fila intacta. Usa
 `batch_alter_table` porque SQLite no tiene `ALTER` en sitio.
+
+---
+
+## 0113 — `plan_baselines` y `plan_baseline_tasks` (US-212 / D-6)
+
+Dos tablas nuevas. Cierra la brecha B-1: sin línea base, «desviación»,
+«retraso» y «sobrecosto» son palabras sin referente.
+
+| Tabla | Qué guarda |
+|---|---|
+| `plan_baselines` | La captura: nombre, nota, `captured_at`, quién, y cuántas tareas tenía el plan |
+| `plan_baseline_tasks` | Una fila por tarea retratada: `task_id`, código EDT, nombre, fechas, duración, si era hito |
+
+Índices: `(tenant_id)`, `(project_id)` y `(project_id, captured_at)` en la
+madre —el listado siempre pide «las de este proyecto, la más reciente
+primero»—, y `(baseline_id)` en la hija.
+
+**Dos tablas y no dos columnas en `tasks`.** `baseline_start`/`baseline_end`
+junto a las fechas vivas es más barato y solo aguanta **una** línea base: la
+segunda captura pisa la primera, y con ella el histórico de replanificaciones
+—que es justo lo que un comité de cambios pide ver—.
+
+**`plan_baseline_tasks.task_id` no lleva clave ajena, a propósito.** Una línea
+base es una foto: si la tarea se borra del plan, su fila en la foto tiene que
+seguir ahí. Con `CASCADE` desaparecería y la promesa se encogería
+retroactivamente —parecería que nunca se prometió esa tarea, que es la dirección
+cómoda de mentir—; con `SET NULL` la fila sobreviviría sin emparejamiento y se
+contaría como una promesa anónima. Mismo criterio que `metric_snapshots.scope_id`.
+Por eso también se copian `wbs_code` y `name`: la fila tiene que poder leerse
+cuando lo que retrataba ya no existe.
+
+**`captured_by_user_id` tampoco lleva clave ajena.** Borrar un usuario no puede
+borrar la trazabilidad de una promesa; el nombre se resuelve al leer, si existe,
+y queda en `null` si no.
+
+**No captura ninguna línea base automáticamente**, y es la decisión más
+importante de esta migración. Hacerlo inventaría una promesa que nadie hizo, con
+la fecha de hoy, y todo proyecto aparecería con desviación cero. La ausencia de
+línea base es un estado que la interfaz **dice** (MCS DAT-12), no uno que se
+rellena.
+
+**La bajada** suelta los índices antes que sus tablas y la hija antes que la
+madre. Destruye las capturas: no hay dónde guardarlas, y eso es lo esperable en
+un `downgrade` que retira una entidad. Verificada en los dos sentidos sobre
+SQLite en memoria antes de pushear.

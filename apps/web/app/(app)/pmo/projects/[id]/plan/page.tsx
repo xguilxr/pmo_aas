@@ -29,6 +29,7 @@ import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DependenciasExternasPanel } from "@/components/dependencias-externas";
+import { LineaBasePlan } from "@/components/linea-base-plan";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { GanttView } from "@/components/gantt-view";
 import { ImportWizard } from "@/components/import-wizard";
@@ -2767,6 +2768,14 @@ function PlanInner() {
           </div>
         ) : null}
       </Modal>
+
+      {/* US-212 — la línea base. Va aquí y no al final porque es el marco con el
+          que se lee todo lo de abajo: sin ella, ninguna de las fechas del plan
+          es una desviación de nada. El estado vacío lo dice con esas palabras
+          en vez de mostrar un cero (DAT-12); el porqué está en el componente. */}
+      <div className="mt-4">
+        <LineaBasePlan projectId={id} puedeEditar={puedeEditarPlan} />
+      </div>
 
       {/* US-218 — las dependencias con otros proyectos. Van en un panel y no
           como flechas del Gantt: una flecha necesita dos extremos en pantalla, y

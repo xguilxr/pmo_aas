@@ -95,7 +95,10 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 - **Plan**: `gantt-view.tsx`, `import-wizard.tsx`, `lib/plan-template.ts`
   (XLSX), `dependencias-externas.tsx` (US-218: las dependencias con otros
   proyectos, en panel y no como flechas del Gantt — una flecha necesita dos
-  extremos en pantalla y el otro está en otro plan).
+  extremos en pantalla y el otro está en otro plan),
+  `linea-base-plan.tsx` (US-212: capturar/comparar; sin línea base dice «la
+  desviación es desconocida», no cero, y muestra las dos derivas — la del plan
+  se puede reescribir, la real no).
 - **Boards**: `raid-kanban.tsx` (kanban DnD nativo, columnas=estados —
   base de project/portfolio boards).
 - **Directory**: `directory/` (PersonPicker, ProjectAreaPicker,

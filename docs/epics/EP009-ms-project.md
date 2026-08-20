@@ -464,6 +464,100 @@ Mezcladas obligan a leer el sentido en cada fila.
 
 ---
 
+## US-212 / D-6 — Línea base del plan ✅ (2026-08-20)
+
+Del artboard «Proyecto — Plan» de los mockups aprobados el 2026-08-19:
+«Baseline (capturar / comparar)», marcado como nuevo, y un Gantt «baseline vs
+actual». Cierra la brecha **B-1** del diagnóstico y la decisión **D-6** del
+glosario.
+
+**Como** PM
+**Quiero** guardar el plan acordado como promesa y comparar el de hoy contra él
+**Para** que «desviación», «retraso» y «sobrecosto» dejen de ser palabras sin
+referente.
+
+**El problema que resuelve, dicho sin rodeos.** Un Gantt que se mueve solo no
+está atrasado respecto de nada. Hasta ahora la plataforma usaba las tres
+palabras —en reportes, en el tablero, en el semáforo de salud— midiendo contra
+el plan de hoy, que es el que acaba de cambiar. Es como medir un retraso contra
+el reloj que ya se adelantó.
+
+**Dos tablas y no dos columnas en `tasks`.** `baseline_start` /
+`baseline_end` junto a las fechas vivas es más barato y solo aguanta **una**
+línea base: la segunda captura pisa la primera, y con ella el histórico de
+replanificaciones — que es justo lo que un comité de cambios pide ver
+(«¿cuántas veces se movió esta fecha?»). Con dos tablas, un proyecto tiene
+tantas líneas base como veces haya vuelto a prometer, cada una con quién la
+capturó y por qué.
+
+**Se emparejan por identificador, no por código EDT.** El código parece la clave
+natural y no lo es: el propio plan tiene un botón que lo renumera
+(`renumber-wbs`). Emparejar por código haría que una renumeración —que no mueve
+ninguna fecha— apareciera como «todas las tareas retiradas y otras tantas
+nuevas».
+
+**Se devuelven dos derivas por tarea, y esa es la parte que importa.** La del
+**plan** (`slip_days`) se puede hacer desaparecer reescribiendo fechas; la
+**real** (`actual_slip_days`, el cierre contra el fin prometido) no. Un tablero
+que solo mira la primera premia replanificar, que es lo contrario de lo que una
+línea base sirve para vigilar.
+
+**Criterios de aceptación:**
+- [x] `POST /projects/{id}/plan/baselines` — copia el plan de hoy. Las capturas
+  se **apilan**: no sustituyen a la anterior. Nombre obligatorio («Línea base 3»
+  no dice contra qué se compara), nota opcional (exigir justificación cada vez
+  acaba llenándose de «replan»).
+- [x] `GET /projects/{id}/plan/baselines` — el listado, la más reciente primero,
+  con el nombre de quien capturó resuelto en una sola consulta.
+- [x] `GET /projects/{id}/plan/baseline-comparison?baseline_id=` — la
+  comparación contra la vigente o contra cualquier captura anterior.
+- [x] **Sin línea base devuelve `has_baseline: false` y nada más**, no una
+  comparación de ceros. Es la diferencia entre «no se desvió» y «no sabemos si
+  se desvió porque nadie prometió nada» (MCS DAT-12), y la interfaz lo dice con
+  esas palabras: «su desviación no es cero: es desconocida».
+- [x] Una tarea sin fecha de fin tiene deriva `null`, no 0. Decir 0 la contaría
+  como «en fecha», que es la lectura opuesta a la verdad.
+- [x] Alcance agregado (`nueva`) y quitado (`retirada`) se cuentan **aparte** de
+  las corridas. Un proyecto puede tener cero tareas corridas y treinta nuevas:
+  eso no es un plan que se cumple, es un plan que creció.
+- [x] **Borrar una tarea no encoge la promesa.** La fila de la foto sobrevive —
+  `plan_baseline_tasks.task_id` no lleva clave ajena a propósito—, o la
+  comparación mentiría en la dirección cómoda.
+- [x] El resumen da la **peor** deriva, no el promedio: veinte tareas en fecha y
+  una corrida cuatro meses dan un promedio tranquilizador. Y sin ninguna tarea
+  corrida no hay «peor» — devolver la menos adelantada bajo ese nombre haría
+  leer un adelanto como un atraso.
+- [x] `DELETE` de una línea base capturada por error. **No hay forma de
+  editarla**: cambiarle las fechas sería falsificar la promesa contra la que se
+  mide el plan.
+- [x] Un proyecto en fase `cerrado` no admite captura nueva. Un plan vacío sí —
+  capturar antes de detallar es una secuencia legítima, y la comparación dirá
+  que todo el plan es alcance nuevo, que es lo que pasó.
+- [x] Las dos operaciones de escritura quedan en la auditoría.
+
+**Tests (`tests/test_us212_linea_base.py`, 22):**
+- `TC-212.1` — La regla sin base de datos (MCS DEV-02, 12 casos): sin cambio,
+  corrida, adelantada, deriva `None` sin fecha, alcance nuevo y retirado,
+  emparejamiento por id tras renumerar el EDT, deriva real ≠ deriva del plan,
+  conteos por separado, peor deriva y no promedio, sin corridas no hay peor,
+  deriva del proyecto por el fin más tardío.
+- `TC-212.2` — Contra la API (10 casos): sin línea base la respuesta lo dice;
+  capturar copia el plan; mover una fecha aparece como corrida con los días
+  exactos; una tarea agregada después es alcance nuevo; borrar una tarea deja su
+  fila en la foto; las capturas se apilan y se puede comparar contra una vieja;
+  borrado; plan vacío capturable; una línea base de otro proyecto da 404; el
+  nombre es obligatorio (422).
+
+**Diferido (no bloqueante):** las barras de línea base **dentro** del Gantt SVG.
+El artboard las pide, y el panel de comparación ya contesta la pregunta
+(«¿qué se movió y cuánto?») con números exactos en vez de con dos barras a
+escala. Dibujarlas es trabajo del componente `gantt-view.tsx` y no del modelo,
+que es lo que esta US tenía que resolver.
+
+**Estado de integración:** DONE (US-212).
+
+---
+
 ## Notas técnicas
 
 - **Librería Python para XML/XLSX**: `openpyxl` (xlsx) más parsers
@@ -497,6 +591,10 @@ DELETE /api/v1/projects/{id}/external-dependencies/{dep_id}     (US-218)
 POST   /api/v1/projects/{id}/tasks/recalculate
 GET    /api/v1/projects/{id}/tasks/export
 GET    /api/v1/projects/{id}/plan/download              (ENH-193, 2026-07-18)
+GET    /api/v1/projects/{id}/plan/baselines                      (US-212)
+POST   /api/v1/projects/{id}/plan/baselines                      (US-212)
+DELETE /api/v1/projects/{id}/plan/baselines/{baseline_id}        (US-212)
+GET    /api/v1/projects/{id}/plan/baseline-comparison            (US-212)
 POST   /api/v1/projects/{id}/tasks/renumber-wbs          (no se usa en UI; ENH-180, 2026-06-29)
 POST   /api/v1/tasks/{id}/move                           (no se usa en UI; ENH-180, 2026-06-29)
 ```

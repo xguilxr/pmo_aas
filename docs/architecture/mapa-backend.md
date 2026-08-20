@@ -38,7 +38,8 @@ apps/api/app/
 | `tenant_permission.py` | tenant_role_permission_overrides | overrides capability×tenant (DEC-021) |
 | `project.py` | projects (**portfolio_id nullable** US-198, sin business_unit_id/department_id desde 0109; **phase/type en español** US-202, default `preparacion`; health_status/source/reason US-180; manually_edited_fields US-084), project_health_evaluations (US-191: 5+1 dimensiones, histórico) | |
 | `project_request.py` / `project_charter.py` | project_requests (+**portfolio_id/program_id** 0109; `business_unit`/`department` siguen como texto libre del solicitante), project_charters (+portfolio_id/program_id) | folios SOL- via folio_sequences |
-| `task.py` | tasks (wbs_code, parent_id, is_milestone, position US-176, predecessors JSON), task_dependencies (FS/SS/FF/SF + lag) | baseline y hito clave: W6 |
+| `task.py` | tasks (wbs_code, parent_id, is_milestone, position US-176, predecessors JSON), task_dependencies (FS/SS/FF/SF + lag) | hito clave: W6 |
+| `plan_baseline.py` | plan_baselines (captura con autor y nota), plan_baseline_tasks (**sin FK a tasks**: una foto no gobierna el ciclo de vida de lo que retrata, US-212) | derivas en `dominio/linea_base.py`; barras de base en el Gantt SVG: diferido |
 | `modules.py` | risks, issues (type action/issue/decision), change_requests, documents†, lessons, meeting_minutes (raid_suggestions JSON → flujo minuta→RAID ya existe) | † legacy, fusionar en project_artifacts (W8) |
 | `project_artifact.py` | project_artifacts | el "Artefactos" nuevo ya es esta tabla |
 | `area.py` | areas (org nullable), teams, actors (**el resource pool**: nominal/project_capacity_pct, fte_cost_rate, skills_tags, user_id?), area_assignments (cascada org/program/project) | actors.organization_id → NOT NULL + costo-snapshot (W4) |
@@ -65,7 +66,9 @@ project_requests (CRUD + review + create-project; clasifica con portfolio/progra
 docs/lessons/minutas + convert-agreement) · risk_actions · change_approvals
 (token público JWT) · stakeholders · tasks (CRUD + renumber-wbs + **import
 MPP/XML/XLSX/CSV** con preview/IA — base de importación masiva; **dependencias
-entre proyectos** US-218, con ciclos validados a nivel de tarea) · areas
+entre proyectos** US-218, con ciclos validados a nivel de tarea; **línea base**
+US-212: `plan/baselines` + `plan/baseline-comparison`, sin base devuelve
+`has_baseline: false` y no ceros) · areas
 (áreas→equipos→actores, sync-users) · project_directory (project_roles +
 participations + eligible-actors) · capacity (/summary /conflicts
 **/weekly-load** /resource-load) + organigrama · dashboard (kpis, charts, **tops**, trends (+`cadencia_dias`: un punto por corte, US-213),
