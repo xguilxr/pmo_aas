@@ -36,6 +36,13 @@ export type TrendsResponse = {
   scope: ScopeType;
   scope_id: string;
   metric: string | null;
+  /**
+   * US-213 — la cadencia con la que se muestreó, o `0` si viene sin muestrear.
+   * La devuelve el servidor para que el gráfico rotule la cadencia real en vez
+   * de escribir «bi-semanal» a mano y quedarse viejo cuando el inquilino la
+   * cambie.
+   */
+  cadencia_dias?: number;
   series: TrendPoint[];
 };
 
@@ -108,7 +115,12 @@ function qs(params: Record<string, unknown>): string {
 }
 
 export function getTrends(
-  params: ScopeParams & { metric?: string; weeks?: number } = {},
+  params: ScopeParams & {
+    metric?: string;
+    weeks?: number;
+    /** US-213 — un punto por periodo de reporte. `0` u omitido: sin muestrear. */
+    cadencia_dias?: number;
+  } = {},
 ): Promise<TrendsResponse> {
   return apiFetch<TrendsResponse>(`/api/v1/dashboard/trends${qs(params)}`);
 }

@@ -76,6 +76,7 @@ import { cn } from "@/lib/cn";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { formatearDesglose, formatearImporte, monedaUnica } from "@/lib/moneda";
 import { useMonedaPreferida } from "@/lib/moneda-tenant";
+import { etiquetaDeCadencia, useCadenciaDeReporte } from "@/lib/cadencia-tenant";
 
 // ADR-023: la fase es ORDINAL —preparación → ejecución → hypercare → cerrado
 // es una secuencia—, así que va con la rampa de un solo tono, no con cuatro
@@ -140,6 +141,10 @@ function DashboardInner() {
   // BUG-092 — para lo que NO cuelga de un proyecto: gráficos de cartera y
   // filas agregadas. Un importe de proyecto trae la suya, ya resuelta.
   const monedaDeCartera = useMonedaPreferida();
+  // US-213 — la tendencia se muestrea a la cadencia con la que esta PMO
+  // reporta. El mockup pide bi-semanal, que es el default; si el inquilino
+  // reporta cada semana o cada mes, el gráfico lo sigue sin tocar nada.
+  const cadenciaDeReporte = useCadenciaDeReporte();
   const user = getStoredUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -226,7 +231,7 @@ function DashboardInner() {
     getTreemap(scopeParams)
       .then((r) => !cancelled && setTreemap(r))
       .catch(() => !cancelled && setTreemap(null));
-    getTrends({ ...scopeParams, weeks: 12 })
+    getTrends({ ...scopeParams, weeks: 12, cadencia_dias: cadenciaDeReporte })
       .then((r) => !cancelled && setTrends(r))
       .catch(() => !cancelled && setTrends(null));
 
@@ -255,7 +260,7 @@ function DashboardInner() {
     return () => {
       cancelled = true;
     };
-  }, [analyticsScope, analyticsId, jerarquia, orgFilter]);
+  }, [analyticsScope, analyticsId, jerarquia, orgFilter, cadenciaDeReporte]);
 
   async function handleCapture() {
     setCapturing(true);
@@ -877,7 +882,9 @@ function DashboardInner() {
 
       {isAdminView ? (
         <section aria-label="Tendencias y portafolio" className="grid gap-4 lg:grid-cols-2">
-          <ChartCard title="Tendencias (últimas 12 semanas)">
+          <ChartCard
+            title={`Tendencias — corte ${etiquetaDeCadencia(cadenciaDeReporte)} (12 semanas)`}
+          >
             {(trends?.series.length ?? 0) > 0 ? (
               <div className="grid gap-4 sm:grid-cols-3">
                 <TrendMini
@@ -903,13 +910,101 @@ function DashboardInner() {
             ) : (
               <p className="py-6 text-center text-sm text-[var(--color-tertiary)]">
                 Aún no hay historia. Usa “Capturar snapshot” para sembrar el primer
-                punto; el job semanal llena el resto.
+                punto; el job semanal llena el resto: se
+                captura cada semana y se muestra por corte, así que bajar la
+                cadencia de reporte no borra historia.
               </p>
             )}
           </ChartCard>
           <ChartCard title="Portafolio (presupuesto × salud)">
             <Treemap tree={treemap?.tree ?? []} ariaLabel="Treemap del portafolio" moneda={monedaDeCartera} />
           </ChartCard>
+        </section>
+      ) : null}
+
+      {/* US-213 — el historial de cortes. Es la misma serie muestreada que el
+          gráfico de arriba, en tabla: un gráfico contesta «¿va subiendo?» y una
+          tabla contesta «¿cuánto era exactamente al corte del 4 de agosto?»,
+          que es la pregunta cuando alguien discute un número en comité. */}
+      {isAdminView && (trends?.series.length ?? 0) > 0 ? (
+        <section
+          aria-label="Historial de cortes"
+          className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]"
+        >
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-default)] p-4">
+            <h2 className="text-base font-semibold text-[var(--color-primary)]">
+              Historial de cortes
+            </h2>
+            <p className="text-xs text-[var(--color-tertiary)]">
+              Un corte {etiquetaDeCadencia(cadenciaDeReporte)} · el valor al
+              cerrar el periodo, no el promedio
+            </p>
+          </header>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-max text-[13px]">
+              <thead>
+                <tr className="border-b border-[var(--border-default)] text-left text-[11px] uppercase tracking-wide text-[var(--color-tertiary)]">
+                  <th className="px-4 py-2 font-medium">Corte</th>
+                  <th className="px-4 py-2 text-right font-medium">Avance</th>
+                  <th className="px-4 py-2 text-right font-medium">Activos</th>
+                  <th className="px-4 py-2 text-right font-medium">Riesgos abiertos</th>
+                  <th className="px-4 py-2 text-right font-medium">Δ avance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Del más reciente al más viejo: la pregunta empieza por el
+                    último corte, no por el de hace tres meses. */}
+                {[...(trends?.series ?? [])].reverse().map((punto, i, filas) => {
+                  const anterior = filas[i + 1];
+                  const avance = Number(punto.avg_progress ?? 0);
+                  const delta =
+                    anterior === undefined
+                      ? null
+                      : Math.round(avance - Number(anterior.avg_progress ?? 0));
+                  return (
+                    <tr
+                      key={punto.snapshot_date}
+                      className="border-b border-[var(--border-subtle)]"
+                    >
+                      <td className="px-4 py-2 tabular-nums">
+                        {punto.snapshot_date}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {Math.round(avance)}%
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {Math.round(Number(punto.projects_active ?? 0))}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {Math.round(Number(punto.open_risks ?? 0))}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {/* El corte más viejo no tiene delta: es «—» y no
+                            «0», que se leería como «no se movió». */}
+                        {delta === null ? (
+                          <span className="text-[var(--color-tertiary)]">—</span>
+                        ) : (
+                          <span
+                            style={{
+                              color:
+                                delta > 0
+                                  ? "var(--color-success-fg)"
+                                  : delta < 0
+                                    ? "var(--color-danger-fg)"
+                                    : "var(--color-tertiary)",
+                            }}
+                          >
+                            {delta > 0 ? "+" : delta < 0 ? "−" : ""}
+                            {Math.abs(delta)}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
       ) : null}
 

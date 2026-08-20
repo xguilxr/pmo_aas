@@ -625,3 +625,66 @@ abrir cada proyecto. Van debajo de la tabla.
   programa (regla de TC-201.1) y los conteos de un proyecto no se cuelan en otro.
 
 **Estado de integración:** DONE (US-207).
+
+---
+
+### US-213 — La tendencia por corte de reporte y el historial de cortes ✅ (2026-08-20)
+
+**Como** PMO Manager
+**Quiero** ver la tendencia con la cadencia con la que reportamos, y la tabla de
+los cortes
+**Para** poder decir «al corte del 4 de agosto íbamos al 63 %» y que alguien lo
+pueda comprobar.
+
+De los mockups: «Tendencia bi-semanal — avance y salud» (artboard «Dashboard
+ejecutivo») y «Historial de cortes (snapshot por periodo)» (artboard «Reportes —
+organización»).
+
+**Criterios de aceptación:**
+- [x] **Se muestrea al leer, no al capturar.** Las instantáneas siguen siendo
+  semanales (US-151, lunes 02:00 UTC) y `/trends` acepta `cadencia_dias` para
+  devolver un punto por periodo. Bajar la frecuencia del job sería irreversible:
+  el día que alguien quiera la evolución semanal de un mes concreto —la pregunta
+  normal cuando algo se torció— no habría de dónde sacarla. Es lo que hace un
+  almacén de series temporales: guardar fino, agregar en la consulta. **Sin
+  migración.**
+- [x] **El corte es el último punto del periodo, no el promedio.** Un corte es
+  una foto del estado al cerrar: «al 4 de agosto la cartera iba al 63 %». El
+  promedio de las dos semanas no es ningún estado real, y presentarlo como el
+  corte convierte un dato verificable en uno que nadie puede reproducir abriendo
+  la aplicación ese día.
+- [x] **Los periodos se anclan en hoy**, no en el primer punto de la serie. Con
+  el otro anclaje, añadir un punto viejo al histórico correría todos los límites
+  y la serie entera cambiaría de forma sin que nada hubiera pasado en la cartera.
+- [x] **El default es sin muestrear**, y a propósito: varias superficies consumen
+  `/trends`, y cambiarles la forma de la serie por debajo sería cambiarles el
+  gráfico sin que lo pidieran. `0` es «sin muestrear» explícito; más de 365 se
+  rechaza, porque un año no es una cadencia de reporte.
+- [x] La cadencia viaja con el branding del inquilino
+  (`reporting_cadence_days`), por el mismo motivo que la moneda: la necesitan el
+  rótulo del gráfico, el muestreo y el historial, y ninguno debería ir a pedirla
+  aparte. La fuente es el ajuste de US-211.
+- [x] El rótulo del gráfico dice la cadencia **real** («corte bi-semanal»,
+  «corte semanal», «corte cada 17 días») y no la palabra escrita a mano, que se
+  quedaría vieja el día que el inquilino la cambie.
+- [x] **Historial de cortes**: la misma serie muestreada, en tabla, del corte más
+  reciente al más viejo, con la variación respecto del anterior. Un gráfico
+  contesta «¿va subiendo?» y una tabla contesta «¿cuánto era exactamente al
+  corte del 4 de agosto?», que es la pregunta cuando alguien discute un número
+  en comité. El corte más viejo no tiene variación: es «—» y no «0», que se
+  leería como «no se movió».
+- [x] `limites_del_periodo` nombra los periodos aunque alguno no tenga
+  instantánea: un periodo sin datos es información —el job no corrió— y omitirlo
+  hace que la tabla parezca continua cuando tiene un hueco.
+
+**Test Cases:** `test_us213_cortes.py`
+- `TC-213.1` (unit) — El corte es el último del periodo; un punto por periodo en
+  orden cronológico; los periodos se anclan en hoy (añadir un punto viejo no
+  mueve el corte reciente); cadencia cero devuelve la serie tal cual; los
+  límites son contiguos y terminan hoy.
+- `TC-213.2` — Sin `cadencia_dias` la serie viene completa; con 14 queda un
+  punto por periodo y es el más reciente de cada uno; `0` explícito no muestrea;
+  900 se rechaza con 422.
+- `TC-213.3` — El branding trae la cadencia, por defecto y configurada.
+
+**Estado de integración:** DONE (US-213).

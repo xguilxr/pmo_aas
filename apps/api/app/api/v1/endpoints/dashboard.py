@@ -14,6 +14,7 @@ from app.core.errors import forbidden, mensaje, validation_error
 from app.core.unidades import razon_a_pct
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
+from app.dominio.cortes import cortes_por_periodo
 from app.dominio.moneda import agregar as agregar_por_moneda
 from app.dominio.moneda import resolver as resolver_moneda
 from app.dominio.proyecto import CERRADO, FASES_ACTIVAS
@@ -955,13 +956,31 @@ async def trends(
     id: UUID | None = Query(default=None),
     metric: str | None = Query(default=None),
     weeks: int = Query(default=12, ge=1, le=104),
+    # US-213 — un punto por periodo de reporte en vez de uno por captura.
+    cadencia_dias: int | None = Query(default=None, ge=0, le=365),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
     """Serie histórica de un scope leída de `metric_snapshots` (US-151).
 
     Admin: serie precomputada del scope. No-admin: serie agregada desde los
-    snapshots de los proyectos que el usuario ve dentro del scope (US-162)."""
+    snapshots de los proyectos que el usuario ve dentro del scope (US-162).
+
+    ## `cadencia_dias` (US-213)
+
+    Los mockups piden una tendencia **bi-semanal**; las instantáneas se capturan
+    semanalmente. Con `cadencia_dias` la serie se muestrea a un punto por
+    periodo —el **último** de cada uno, que es el corte—.
+
+    Se muestrea al **leer** y no al capturar porque bajar la frecuencia de
+    captura es irreversible: el día que alguien quiera la evolución semanal de un
+    mes concreto —la pregunta normal cuando algo se torció— no habría de dónde
+    sacarla.
+
+    El default es **sin muestrear**, y a propósito: este endpoint lo consumen
+    varias superficies y cambiarles la forma de la serie por debajo sería
+    cambiarles el gráfico sin que lo pidieran. Quien quiere la cadencia de la
+    PMO la pide; `0` es «sin muestrear» explícito."""
     tenant_id = _tenant(cu)
     scope_type, scope_id = _resolve_scope(scope, id, tenant_id)
     if metric and metric not in METRIC_FIELDS:
@@ -998,10 +1017,24 @@ async def trends(
             val = getattr(r, f)
             point[f] = float(val) if val is not None else 0
         series.append(point)
+    # US-213 — el muestreo va al final, sobre los puntos ya serializados: así la
+    # regla es la misma para la serie precomputada del admin y para la agregada
+    # del no-admin, que llegan por caminos distintos.
+    if cadencia_dias:
+        series = cortes_por_periodo(
+            series,
+            fecha_de=lambda p: date.fromisoformat(str(p["snapshot_date"])),
+            cadencia_dias=cadencia_dias,
+            hoy=date.today(),
+        )
     return {
         "scope": scope_type,
         "scope_id": scope_id,
         "metric": metric,
+        # Se devuelve para que la pantalla pueda rotular el gráfico con la
+        # cadencia real en vez de escribir «bi-semanal» a mano y quedarse vieja
+        # el día que el inquilino la cambie.
+        "cadencia_dias": cadencia_dias or 0,
         "series": series,
     }
 

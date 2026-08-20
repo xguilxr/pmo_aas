@@ -67,7 +67,7 @@ docs/lessons/minutas + convert-agreement) · risk_actions · change_approvals
 MPP/XML/XLSX/CSV** con preview/IA — base de importación masiva) · areas
 (áreas→equipos→actores, sync-users) · project_directory (project_roles +
 participations + eligible-actors) · capacity (/summary /conflicts
-**/weekly-load** /resource-load) + organigrama · dashboard (kpis, charts, **tops**, trends,
+**/weekly-load** /resource-load) + organigrama · dashboard (kpis, charts, **tops**, trends (+`cadencia_dias`: un punto por corte, US-213),
 heatmap, risk/health-matrix, treemap, plan-vs-actual (+CSV; la fila de la vista maestra: 16 columnas, con completitud derivada US-210 y estatus de reporte US-211),
 **snapshots/capture**, reports/portfolio) ·
 tenant_cross (RAID/cambios/minutas/reportes cross con filtros) · reports +
