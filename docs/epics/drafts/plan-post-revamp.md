@@ -41,13 +41,18 @@ revisar_cada: 30d
 ## Orden de ejecución sugerido
 
 ```
-R1 (observabilidad superadmin)  →  R2 (monetización, tras DEC de billing)
+R1 (observabilidad superadmin)  →  R2 (monetización — DEC-034, desbloqueado)
 O  (operación eficiente)        →  G  (reportes HTML + minutas)
 R3 (dark theme) y R4 (deuda visual) — cuando quepan, sin dependencias
 ```
 
 R1 y O pueden correr en paralelo (lanes sin migraciones compartidas). G
-depende de O (usa sus tools). R2 espera la decisión de billing del owner.
+depende de O (usa sus tools). R2 quedó desbloqueado el 2026-08-27:
+**DEC-034** (facturación manual primero; Stripe después sobre el mismo
+modelo). Adiciones del mismo día en `-especificaciones.md`: **US-239**
+(clave de proyecto estilo Jira en la URL, migración 0120) y el bloque
+**QA-iPad** (BUG-093+ reservados; gate: la lista de bugs visuales que el
+owner está levantando en iPad/PC).
 
 ---
 
