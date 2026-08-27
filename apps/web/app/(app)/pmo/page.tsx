@@ -33,11 +33,11 @@
  */
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Download, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Select } from "@/components/ui/select";
 import { HealthDimensionMatrix } from "@/components/health-panel";
 import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
@@ -356,11 +356,11 @@ export default function PortafolioVistaMaestra() {
     <div className="space-y-5 p-4">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
             Portafolio — vista maestra
           </h1>
           {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
-          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+          <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
             Una fila por proyecto, con el estado que se revisa en seguimiento. La
             gestión (alta, edición, archivado) vive en{" "}
             <Link
@@ -379,10 +379,10 @@ export default function PortafolioVistaMaestra() {
               variant="secondary"
               size="sm"
               onClick={handleDownloadReport}
-              disabled={downloading}
+              loading={downloading}
             >
-              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
-              {downloading ? "Generando…" : "Status PMO (PDF)"}
+              <Icono nombre="download" size={14} />
+              Status PMO (PDF)
             </Button>
           ) : null}
           {canCreate("programs") ? (
@@ -392,14 +392,14 @@ export default function PortafolioVistaMaestra() {
               onClick={() => setShowProgramModal(true)}
               disabled={permsLoading}
             >
-              <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+              <Icono nombre="plus" size={14} />
               Nuevo programa
             </Button>
           ) : null}
           {canCreate("projects") ? (
             <Link href="/pmo/projects/new">
               <Button variant="primary" size="sm">
-                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+                <Icono nombre="plus" size={14} />
                 Nuevo proyecto
               </Button>
             </Link>
@@ -423,7 +423,7 @@ export default function PortafolioVistaMaestra() {
           header (US-205) y aquí sería el mismo control dos veces. */}
       <section
         aria-label="Filtros"
-        className="flex flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-3"
+        className="flex flex-wrap items-center gap-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-3 shadow-[var(--relieve-isla)]"
       >
         <Select
           aria-label="Filtrar por portafolio"
@@ -527,10 +527,10 @@ export default function PortafolioVistaMaestra() {
       {esVistaAdmin ? (
         <section
           aria-label="Salud por dimensión"
-          className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]"
+          className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]"
         >
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">
               Salud por dimensión (proyectos activos)
             </h2>
             <Button
@@ -538,10 +538,11 @@ export default function PortafolioVistaMaestra() {
               variant="secondary"
               size="sm"
               onClick={downloadHealthReport}
-              disabled={healthReportBusy || !healthMatrix}
+              disabled={!healthMatrix}
+              loading={healthReportBusy}
             >
-              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
-              {healthReportBusy ? "Generando…" : "Reporte de salud (XLSX)"}
+              <Icono nombre="download" size={14} />
+              Reporte de salud (XLSX)
             </Button>
           </div>
           <HealthDimensionMatrix

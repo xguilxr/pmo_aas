@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Eye, LayoutGrid, List as ListIcon, Shield } from "lucide-react";
 
 import { ItemPreviewModal } from "@/components/item-preview-modal";
 import {
@@ -12,6 +11,7 @@ import {
 } from "@/components/tenant-cross-filters";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Icono } from "@/components/ui/icono";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
@@ -21,6 +21,7 @@ import { SortableTh } from "@/components/ui/sortable-th";
 import {
   ISSUE_STATUS_LABEL,
   ISSUE_TYPE_LABEL,
+  RAID_STATUS_BADGE,
   RISK_STATUS_LABEL,
   type Issue,
   type IssueStatus,
@@ -143,16 +144,10 @@ function TenantRaidInner() {
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="flex items-center gap-3">
-            <Shield
-              className="h-6 w-6 text-[var(--color-tertiary)]"
-              aria-hidden
-            />
-            <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
-              RAID · Tenant
-            </h1>
-          </div>
-          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+            RAID · Tenant
+          </h1>
+          <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
             Vista consolidada de Riesgos · Acciones · Incidentes · Decisiones de
             todos los proyectos accesibles.
           </p>
@@ -170,7 +165,7 @@ function TenantRaidInner() {
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
             )}
           >
-            <ListIcon className="h-3.5 w-3.5" aria-hidden /> Lista
+            <Icono nombre="list-check" size={14} /> Lista
           </button>
           <button
             type="button"
@@ -183,14 +178,14 @@ function TenantRaidInner() {
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
             )}
           >
-            <LayoutGrid className="h-3.5 w-3.5" aria-hidden /> Kanban
+            <Icono nombre="grid-2x2" size={14} /> Kanban
           </button>
         </div>
       </header>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+      <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]">
         {/* ENH-017: orden horizontal Tipo → Proyecto → Programa → Organización. */}
         <TenantCrossFilters
           value={filter}
@@ -263,7 +258,7 @@ function TenantRaidInner() {
 
       <section
         className={cn(
-          "rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]",
+          "rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]",
           view === "list" ? "overflow-hidden" : "",
         )}
       >
@@ -274,7 +269,7 @@ function TenantRaidInner() {
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <div className="p-10 text-center text-sm text-[var(--color-tertiary)]">
+          <div className="p-10 text-center text-sm text-[var(--text-tertiary)]">
             Sin registros para los filtros actuales.
           </div>
         ) : view === "board" ? (
@@ -358,82 +353,95 @@ function RiskTable({
 }) {
   const { sortedRows, ctrl } = useSortableRows<TenantRisk>(rows);
   return (
-    <table className="w-full text-sm">
-      <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-        <tr>
-          <th className="w-10 px-3 py-2" />
-          <SortableTh<TenantRisk> sortKey="folio" getter={(r) => r.folio} ctrl={ctrl}>Folio</SortableTh>
-          <SortableTh<TenantRisk> sortKey="title" getter={(r) => r.title} ctrl={ctrl}>Título</SortableTh>
-          <SortableTh<TenantRisk> sortKey="area" getter={(r) => r.area?.name ?? ""} ctrl={ctrl}>Área</SortableTh>
-          <SortableTh<TenantRisk> sortKey="severity" getter={(r) => r.severity ?? 0} ctrl={ctrl}>Severidad</SortableTh>
-          <SortableTh<TenantRisk> sortKey="status" getter={(r) => r.status} ctrl={ctrl}>Estado</SortableTh>
-          <SortableTh<TenantRisk> sortKey="identified" getter={(r) => r.identified_at ?? ""} ctrl={ctrl}>F. Creación</SortableTh>
-          <SortableTh<TenantRisk> sortKey="due" getter={(r) => r.due_date ?? ""} ctrl={ctrl}>F. Compromiso</SortableTh>
-          <SortableTh<TenantRisk> sortKey="project" getter={(r) => (r as any).project_name ?? r.project_id} ctrl={ctrl}>Proyecto</SortableTh>
-        </tr>
-      </thead>
-      <tbody>
-        {sortedRows.map((r) => (
-          <tr key={r.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]">
-            <td className="px-3 py-2">
-              <button
-                type="button"
-                onClick={() => onPreview(r)}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
-                aria-label="Preview"
-              >
-                <Eye className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </td>
-            <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
-              <Link
-                href={`/pmo/raid/risk/${r.id}`}
-                className="hover:text-[var(--color-accent)] hover:underline"
-              >
-                {r.folio}
-              </Link>
-            </td>
-            <td className="px-3 py-2">
-              <Link
-                href={`/pmo/raid/risk/${r.id}`}
-                className="text-[var(--color-primary)] hover:underline"
-              >
-                {r.title}
-              </Link>
-            </td>
-            <td className="px-3 py-2 text-[var(--color-secondary)]">
-              {r.area?.name ?? "—"}
-            </td>
-            <td className="px-3 py-2">
-              <Badge variant={(r.severity ?? 0) >= 13 ? "danger" : (r.severity ?? 0) >= 6 ? "warning" : "success"}>
-                {r.severity ?? "—"}
-              </Badge>
-            </td>
-            <td className="px-3 py-2 text-[var(--color-secondary)]">
-              {RISK_STATUS_LABEL[r.status] ?? r.status}
-            </td>
-            <td className="px-3 py-2 text-[var(--color-secondary)]">
-              {r.identified_at ?? "—"}
-            </td>
-            <td className="px-3 py-2 text-[var(--color-secondary)]">
-              {r.due_date ?? "—"}
-            </td>
-            <td className="px-3 py-2">
-              <Link
-                href={`/pmo/projects/${r.project_id}`}
-                className="text-xs text-[var(--color-accent)] hover:underline"
-                title={r.project_name}
-              >
-                <span className="font-mono">{r.project_folio}</span>
-                <span className="ml-1 text-[var(--color-secondary)]">
-                  — {r.project_name}
-                </span>
-              </Link>
-            </td>
+    <div className="overflow-x-auto">
+      <table className="w-full table-fixed text-[13px]">
+        <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
+          <tr>
+            <th className="h-8.5 w-10 px-3" />
+            <SortableTh<TenantRisk> sortKey="folio" getter={(r) => r.folio} ctrl={ctrl} className="h-8.5 w-24">Folio</SortableTh>
+            <SortableTh<TenantRisk> sortKey="title" getter={(r) => r.title} ctrl={ctrl} className="h-8.5">Título</SortableTh>
+            <SortableTh<TenantRisk> sortKey="area" getter={(r) => r.area?.name ?? ""} ctrl={ctrl} className="h-8.5 w-28">Área</SortableTh>
+            <SortableTh<TenantRisk> sortKey="severity" getter={(r) => r.severity ?? 0} ctrl={ctrl} align="center" className="h-8.5 w-24">Severidad</SortableTh>
+            <SortableTh<TenantRisk> sortKey="status" getter={(r) => r.status} ctrl={ctrl} className="h-8.5 w-32">Estado</SortableTh>
+            <SortableTh<TenantRisk> sortKey="identified" getter={(r) => r.identified_at ?? ""} ctrl={ctrl} className="h-8.5 w-24">F. Creación</SortableTh>
+            <SortableTh<TenantRisk> sortKey="due" getter={(r) => r.due_date ?? ""} ctrl={ctrl} className="h-8.5 w-24">F. Compromiso</SortableTh>
+            <SortableTh<TenantRisk> sortKey="project" getter={(r) => (r as any).project_name ?? r.project_id} ctrl={ctrl} className="h-8.5 w-56">Proyecto</SortableTh>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {sortedRows.map((r) => (
+            <tr key={r.id} className="border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]">
+              <td className="h-11 px-3 align-middle">
+                <button
+                  type="button"
+                  onClick={() => onPreview(r)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
+                  aria-label="Preview"
+                >
+                  <Icono nombre="eye" size={15} />
+                </button>
+              </td>
+              <td className="h-11 px-3 align-middle">
+                <Link
+                  href={`/pmo/raid/risk/${r.id}`}
+                  className="text-[12px] tracking-[0.01em] text-[var(--text-tertiary)] hover:text-[var(--color-accent)] hover:underline"
+                >
+                  {r.folio}
+                </Link>
+              </td>
+              <td className="h-11 px-3 align-middle">
+                <Link
+                  href={`/pmo/raid/risk/${r.id}`}
+                  className="block overflow-hidden text-ellipsis whitespace-nowrap text-[var(--text-primary)] hover:underline"
+                  title={r.title}
+                >
+                  {r.title}
+                </Link>
+              </td>
+              <td className="h-11 px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-[var(--text-secondary)]">
+                {r.area?.name ?? "—"}
+              </td>
+              <td className="h-11 px-3 align-middle text-center">
+                <SeverityBadge severity={r.severity} />
+              </td>
+              <td className="h-11 px-3 align-middle">
+                <Badge variant="neutral" className={RAID_STATUS_BADGE[r.status] ?? ""}>
+                  {RISK_STATUS_LABEL[r.status] ?? r.status}
+                </Badge>
+              </td>
+              <td className="h-11 px-3 align-middle text-[12.5px] text-[var(--text-secondary)]">
+                {r.identified_at ?? "—"}
+              </td>
+              <td className="h-11 px-3 align-middle text-[12.5px] text-[var(--text-secondary)]">
+                {r.due_date ?? "—"}
+              </td>
+              <td className="h-11 px-3 align-middle">
+                <Link
+                  href={`/pmo/projects/${r.project_id}`}
+                  className="block overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--color-accent)] hover:underline"
+                  title={r.project_name}
+                >
+                  <span className="text-[12px] tracking-[0.01em]">{r.project_folio}</span>
+                  <span className="ml-1 text-[var(--text-secondary)]">
+                    — {r.project_name}
+                  </span>
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** El mismo mapa de tonos que `SeverityBadge` del RAID de proyecto. */
+function SeverityBadge({ severity }: { severity: number | null }) {
+  if (severity === null) return <span className="text-[12.5px] text-[var(--text-faint)]">—</span>;
+  return (
+    <Badge variant={severity >= 13 ? "danger" : severity >= 6 ? "warning" : "success"}>
+      {severity}
+    </Badge>
   );
 }
 
@@ -457,72 +465,79 @@ function IssueTable({
   );
   const { sortedRows, ctrl } = useSortableRows<TenantIssue>(rows);
   return (
-    <table className="w-full text-sm">
-      <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-        <tr>
-          <th className="w-10 px-3 py-2" />
-          <SortableTh<TenantIssue> sortKey="folio" getter={(r) => r.folio} ctrl={ctrl}>Folio</SortableTh>
-          <SortableTh<TenantIssue> sortKey="title" getter={(r) => r.title} ctrl={ctrl}>Título</SortableTh>
-          <SortableTh<TenantIssue> sortKey="area" getter={(r) => r.area?.name ?? ""} ctrl={ctrl}>Área</SortableTh>
-          <SortableTh<TenantIssue> sortKey="type" getter={(r) => r.type ?? ""} ctrl={ctrl}>Tipo</SortableTh>
-          <SortableTh<TenantIssue> sortKey="status" getter={(r) => r.status} ctrl={ctrl}>Estado</SortableTh>
-          <SortableTh<TenantIssue> sortKey="due" getter={(r) => r.committed_date ?? ""} ctrl={ctrl}>F. Compromiso</SortableTh>
-          <SortableTh<TenantIssue> sortKey="project" getter={(r) => (r as any).project_name ?? r.project_id} ctrl={ctrl}>Proyecto</SortableTh>
-        </tr>
-      </thead>
-      <tbody>
-        {sortedRows.map((r) => (
-          <tr key={r.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]">
-            <td className="px-3 py-2">
-              <button
-                type="button"
-                onClick={() => onPreview(r)}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
-                aria-label="Preview"
-              >
-                <Eye className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </td>
-            <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
-              <Link
-                href={`/pmo/raid/${kind === "actions" ? "action" : kind === "decisions" ? "decision" : "incident"}/${r.id}`}
-                className="hover:text-[var(--color-accent)] hover:underline"
-              >
-                {r.folio}
-              </Link>
-            </td>
-            <td className="px-3 py-2">
-              <Link
-                href={`/pmo/raid/${kind === "actions" ? "action" : kind === "decisions" ? "decision" : "incident"}/${r.id}`}
-                className="text-[var(--color-primary)] hover:underline"
-              >
-                {r.title}
-              </Link>
-            </td>
-            <td className="px-3 py-2 text-[var(--color-secondary)]">
-              {r.area?.name ?? "—"}
-            </td>
-            <td className="px-3 py-2 text-[var(--color-secondary)]">{typeLabel}</td>
-            <td className="px-3 py-2 text-[var(--color-secondary)]">{r.status}</td>
-            <td className="px-3 py-2 text-[var(--color-secondary)]">
-              {r.committed_date ?? "—"}
-            </td>
-            <td className="px-3 py-2">
-              <Link
-                href={`/pmo/projects/${r.project_id}`}
-                className="text-xs text-[var(--color-accent)] hover:underline"
-                title={r.project_name}
-              >
-                <span className="font-mono">{r.project_folio}</span>
-                <span className="ml-1 text-[var(--color-secondary)]">
-                  — {r.project_name}
-                </span>
-              </Link>
-            </td>
+    <div className="overflow-x-auto">
+      <table className="w-full table-fixed text-[13px]">
+        <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
+          <tr>
+            <th className="h-8.5 w-10 px-3" />
+            <SortableTh<TenantIssue> sortKey="folio" getter={(r) => r.folio} ctrl={ctrl} className="h-8.5 w-24">Folio</SortableTh>
+            <SortableTh<TenantIssue> sortKey="title" getter={(r) => r.title} ctrl={ctrl} className="h-8.5">Título</SortableTh>
+            <SortableTh<TenantIssue> sortKey="area" getter={(r) => r.area?.name ?? ""} ctrl={ctrl} className="h-8.5 w-28">Área</SortableTh>
+            <SortableTh<TenantIssue> sortKey="type" getter={(r) => r.type ?? ""} ctrl={ctrl} className="h-8.5 w-24">Tipo</SortableTh>
+            <SortableTh<TenantIssue> sortKey="status" getter={(r) => r.status} ctrl={ctrl} className="h-8.5 w-32">Estado</SortableTh>
+            <SortableTh<TenantIssue> sortKey="due" getter={(r) => r.committed_date ?? ""} ctrl={ctrl} className="h-8.5 w-28">F. Compromiso</SortableTh>
+            <SortableTh<TenantIssue> sortKey="project" getter={(r) => (r as any).project_name ?? r.project_id} ctrl={ctrl} className="h-8.5 w-56">Proyecto</SortableTh>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {sortedRows.map((r) => (
+            <tr key={r.id} className="border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]">
+              <td className="h-11 px-3 align-middle">
+                <button
+                  type="button"
+                  onClick={() => onPreview(r)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
+                  aria-label="Preview"
+                >
+                  <Icono nombre="eye" size={15} />
+                </button>
+              </td>
+              <td className="h-11 px-3 align-middle">
+                <Link
+                  href={`/pmo/raid/${kind === "actions" ? "action" : kind === "decisions" ? "decision" : "incident"}/${r.id}`}
+                  className="text-[12px] tracking-[0.01em] text-[var(--text-tertiary)] hover:text-[var(--color-accent)] hover:underline"
+                >
+                  {r.folio}
+                </Link>
+              </td>
+              <td className="h-11 px-3 align-middle">
+                <Link
+                  href={`/pmo/raid/${kind === "actions" ? "action" : kind === "decisions" ? "decision" : "incident"}/${r.id}`}
+                  className="block overflow-hidden text-ellipsis whitespace-nowrap text-[var(--text-primary)] hover:underline"
+                  title={r.title}
+                >
+                  {r.title}
+                </Link>
+              </td>
+              <td className="h-11 px-3 align-middle overflow-hidden text-ellipsis whitespace-nowrap text-[var(--text-secondary)]">
+                {r.area?.name ?? "—"}
+              </td>
+              <td className="h-11 px-3 align-middle text-[12.5px] text-[var(--text-secondary)]">{typeLabel}</td>
+              <td className="h-11 px-3 align-middle">
+                <Badge variant="neutral" className={RAID_STATUS_BADGE[r.status] ?? ""}>
+                  {ISSUE_STATUS_LABEL[r.status] ?? r.status}
+                </Badge>
+              </td>
+              <td className="h-11 px-3 align-middle text-[12.5px] text-[var(--text-secondary)]">
+                {r.committed_date ?? "—"}
+              </td>
+              <td className="h-11 px-3 align-middle">
+                <Link
+                  href={`/pmo/projects/${r.project_id}`}
+                  className="block overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--color-accent)] hover:underline"
+                  title={r.project_name}
+                >
+                  <span className="text-[12px] tracking-[0.01em]">{r.project_folio}</span>
+                  <span className="ml-1 text-[var(--text-secondary)]">
+                    — {r.project_name}
+                  </span>
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -560,7 +575,7 @@ function BoardColumn({
   return (
     <div className="flex min-w-[240px] flex-1 flex-col rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)]">
       <header className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-3 py-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-secondary)]">
+        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
           {title}
         </span>
         <Badge variant="neutral">{count}</Badge>
@@ -599,7 +614,7 @@ function RiskBoard({
             count={items.length}
           >
             {items.length === 0 ? (
-              <p className="px-2 py-3 text-center text-[11px] text-[var(--color-tertiary)]">
+              <p className="px-2 py-3 text-center text-[11px] text-[var(--text-tertiary)]">
                 Sin ítems
               </p>
             ) : (
@@ -608,10 +623,10 @@ function RiskBoard({
                   key={r.id}
                   type="button"
                   onClick={() => onPreview(r)}
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-2 text-left shadow-[var(--shadow-sm)] hover:border-[var(--color-accent)]"
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-2 text-left shadow-[var(--relieve-control)] hover:border-[var(--color-accent)]"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-mono text-[11px] text-[var(--color-tertiary)]">
+                    <span className="text-[11px] tracking-[0.01em] text-[var(--text-tertiary)]">
                       {r.folio}
                     </span>
                     <Badge
@@ -626,10 +641,10 @@ function RiskBoard({
                       {r.severity ?? "—"}
                     </Badge>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-[13px] text-[var(--color-primary)]">
+                  <p className="mt-1 line-clamp-2 text-[13px] text-[var(--text-primary)]">
                     {r.title}
                   </p>
-                  <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+                  <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
                     {r.project_folio} — {r.project_name}
                   </p>
                 </button>
@@ -675,7 +690,7 @@ function IssueBoard({
             count={items.length}
           >
             {items.length === 0 ? (
-              <p className="px-2 py-3 text-center text-[11px] text-[var(--color-tertiary)]">
+              <p className="px-2 py-3 text-center text-[11px] text-[var(--text-tertiary)]">
                 Sin ítems
               </p>
             ) : (
@@ -684,10 +699,10 @@ function IssueBoard({
                   key={r.id}
                   type="button"
                   onClick={() => onPreview(r)}
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-2 text-left shadow-[var(--shadow-sm)] hover:border-[var(--color-accent)]"
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-2 text-left shadow-[var(--relieve-control)] hover:border-[var(--color-accent)]"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-mono text-[11px] text-[var(--color-tertiary)]">
+                    <span className="text-[11px] tracking-[0.01em] text-[var(--text-tertiary)]">
                       {r.folio}
                     </span>
                     {r.priority ? (
@@ -704,10 +719,10 @@ function IssueBoard({
                       </Badge>
                     ) : null}
                   </div>
-                  <p className="mt-1 line-clamp-2 text-[13px] text-[var(--color-primary)]">
+                  <p className="mt-1 line-clamp-2 text-[13px] text-[var(--text-primary)]">
                     {r.title}
                   </p>
-                  <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+                  <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
                     {r.project_folio} — {r.project_name}
                   </p>
                 </button>
@@ -722,7 +737,7 @@ function IssueBoard({
 
 export default function TenantRaidPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-[var(--color-tertiary)]">Cargando…</div>}>
+    <Suspense fallback={<div className="p-8 text-sm text-[var(--text-tertiary)]">Cargando…</div>}>
       <TenantRaidInner />
     </Suspense>
   );
