@@ -14,7 +14,7 @@ const VARIANTS: Record<Variant, string> = {
   primary:
     "bg-[var(--color-primary)] text-[var(--color-inverse)] hover:bg-[var(--color-secondary)] disabled:bg-[var(--color-disabled)]",
   secondary:
-    "bg-[var(--color-surface)] text-[var(--color-primary)] border border-[var(--border-strong)] hover:bg-[var(--color-subtle)]",
+    "bg-[var(--color-surface)] text-[var(--color-primary)] border border-[var(--border-strong)] shadow-[var(--relieve-control)] hover:bg-[var(--color-subtle)]",
   ghost:
     "bg-transparent text-[var(--color-secondary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]",
   danger:
@@ -22,9 +22,9 @@ const VARIANTS: Record<Variant, string> = {
 };
 
 const SIZES: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm rounded-[var(--radius-sm)]",
-  md: "h-10 px-4 text-sm rounded-[var(--radius-md)]",
-  lg: "h-11 px-5 text-base rounded-[var(--radius-md)]",
+  sm: "h-7 px-2.5 text-[13px] rounded-[var(--radius-md)]",
+  md: "h-8 px-3 text-[13px] rounded-[var(--radius-md)]",
+  lg: "h-9 px-3.5 text-[13px] rounded-[var(--radius-md)]",
 };
 
 export function Button({
@@ -41,7 +41,7 @@ export function Button({
       {...rest}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 font-medium transition-colors",
+        "inline-flex items-center justify-center gap-1.75 font-medium transition-colors",
         "disabled:cursor-not-allowed",
         VARIANTS[variant],
         SIZES[size],

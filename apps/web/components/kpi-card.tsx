@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { Icono } from "@/components/ui/icono";
 import { cn } from "@/lib/cn";
 import { formatearImporte } from "@/lib/moneda";
 import { esSinDato, SIN_DATO, SIN_DATO_ETIQUETA } from "@/lib/sin-dato";
@@ -94,7 +94,7 @@ function TrendPill({ trend }: { trend: KpiTrend }) {
   const flat = Math.abs(delta) < 1e-9;
   const up = delta > 0;
   const good = flat ? null : up === goodWhenUp;
-  const Icon = flat ? Minus : up ? TrendingUp : TrendingDown;
+  const nombreIcono = flat ? "minus" : up ? "trending-up" : "trending-down";
   const tone = flat
     ? "bg-[var(--color-subtle)] text-[var(--color-tertiary)]"
     : good
@@ -109,12 +109,32 @@ function TrendPill({ trend }: { trend: KpiTrend }) {
           tone,
         )}
       >
-        <Icon className="h-3 w-3" aria-hidden />
+        <Icono nombre={nombreIcono} size={12} />
         {sign}
         {formatValue(Math.abs(delta), trend.format ?? "number", trend.moneda)}
       </span>
       {label ? <span className="text-[11px] text-[var(--color-tertiary)]">{label}</span> : null}
     </span>
+  );
+}
+
+/**
+ * Banda única para un grupo de `KpiCard` (Revamp v2): un solo contenedor con
+ * relieve y un filete vertical entre celdas, en vez de N tarjetas con sombra
+ * propia. `className` trae el `grid-cols-*` responsive — varía según cuántas
+ * KPI agrupa cada pantalla (6 en el dashboard, 4 en org/programa).
+ */
+export function KpiBand({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <section
+      className={cn(
+        "grid rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]",
+        "[&>*+*]:border-l [&>*+*]:border-[var(--border-default)]",
+        className,
+      )}
+    >
+      {children}
+    </section>
   );
 }
 
@@ -134,16 +154,16 @@ export function KpiCard({
   const animated = useCountUp(vacio ? 0 : (value as number));
 
   const body = (
-    <div className="group flex h-full flex-col gap-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--color-subtle)]">
+    <div className="group flex h-full flex-col gap-2 p-4 transition-colors hover:bg-[var(--color-subtle)]">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
           {label}
         </span>
         {icon ? <span className="text-[var(--color-tertiary)]">{icon}</span> : null}
       </div>
       <span
         className={cn(
-          "text-2xl font-semibold tabular-nums",
+          "font-mono text-[26px] font-medium tabular-nums",
           TONES[tone],
           loading || vacio ? "opacity-50" : "",
         )}
@@ -156,9 +176,9 @@ export function KpiCard({
         {loading || vacio ? SIN_DATO : formatValue(animated, format, moneda)}
       </span>
       {!loading && !vacio && trend ? <TrendPill trend={trend} /> : null}
-      {hint ? <span className="text-[11px] text-[var(--color-tertiary)]">{hint}</span> : null}
+      {hint ? <span className="text-[11.5px] text-[var(--text-tertiary)]">{hint}</span> : null}
       {href ? (
-        <span className="text-xs text-[var(--color-tertiary)] group-hover:text-[var(--color-secondary)]">
+        <span className="text-[11.5px] text-[var(--text-tertiary)] group-hover:text-[var(--color-secondary)]">
           Ver detalle →
         </span>
       ) : null}

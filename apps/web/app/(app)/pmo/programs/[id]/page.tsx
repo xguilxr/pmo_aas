@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Download, FileText, FolderKanban, Layers, TrendingUp, Users } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
-import { KpiCard } from "@/components/kpi-card";
+import { KpiBand, KpiCard } from "@/components/kpi-card";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -316,12 +316,12 @@ export default function ProgramSummaryPage() {
         </section>
       ) : (
         <>
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <KpiBand className="grid-cols-2 sm:grid-cols-4">
         <KpiCard label="Proyectos" value={data.project_total} tone="accent" />
         <KpiCard label="Activos" value={data.project_active} />
         <KpiCard label="En riesgo" value={data.project_at_risk} tone={data.project_at_risk > 0 ? "warning" : "neutral"} />
         <KpiCard label="Cerrados" value={data.project_closed} />
-      </section>
+      </KpiBand>
 
       <section className="grid gap-3 md:grid-cols-[auto_1fr]">
         <div className="flex flex-col items-center gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">

@@ -120,7 +120,7 @@ export function AssistantWidget() {
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center",
-          "rounded-full text-white shadow-[var(--sb-shadow)] transition-transform hover:scale-105",
+          "rounded-full text-white shadow-[var(--shadow-optical-md)] transition-transform hover:scale-105",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
         )}
         style={{ background: "var(--color-accent)" }}
@@ -136,14 +136,14 @@ export function AssistantWidget() {
           className={cn(
             "fixed bottom-20 right-5 z-50 flex w-[min(380px,calc(100vw-2.5rem))] flex-col",
             "rounded-[var(--radius-window)] border border-[var(--border-default)]",
-            "bg-[var(--color-surface)] shadow-[var(--sb-shadow)]",
+            "bg-[var(--color-surface)] shadow-[var(--shadow-optical-md)]",
           )}
           style={{ height: "min(560px, calc(100vh - 7rem))" }}
         >
           {/* Header */}
           <header
             className="flex items-center justify-between gap-2 rounded-t-[var(--radius-window)] px-4 py-3 text-white"
-            style={{ background: "var(--chrome-bg)" }}
+            style={{ background: "var(--color-primary)" }}
           >
             <span className="flex items-center gap-2 text-sm font-semibold">
               <Bot className="h-4 w-4" /> Copiloto PMO

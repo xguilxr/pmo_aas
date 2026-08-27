@@ -10,7 +10,7 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProgramModal } from "@/components/program-modal";
-import { KpiCard } from "@/components/kpi-card";
+import { KpiBand, KpiCard } from "@/components/kpi-card";
 import { Legend, PALETTE, Pie, RiskMatrix, colorSalud, serieColor, TrendLines } from "@/components/dashboard-charts";
 import { etiquetaSalud } from "@/lib/api/projects";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
@@ -269,7 +269,7 @@ export default function PmoOrganizationPage() {
 
       {organigramaError ? <Banner variant="danger">{organigramaError}</Banner> : null}
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <KpiBand className="grid-cols-2 sm:grid-cols-4">
         <KpiCard label="Portafolios" value={portfolioCount} />
         <KpiCard
           label="Programas"
@@ -281,7 +281,7 @@ export default function PmoOrganizationPage() {
           value={projectsActive}
           hint={`${panel.projects.length} total`}
         />
-      </section>
+      </KpiBand>
 
       <section
         aria-label="Analítica de la organización"
