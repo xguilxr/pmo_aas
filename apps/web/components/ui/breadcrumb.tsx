@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { Icono } from "@/components/ui/icono";
 
 export type Crumb = {
   href?: string;
@@ -27,7 +27,7 @@ export function Breadcrumb({ items }: { items: Crumb[] }) {
                   {c.label}
                 </span>
               )}
-              {!last ? <ChevronRight className="h-3 w-3" aria-hidden /> : null}
+              {!last ? <Icono nombre="chevron-right" size={12} /> : null}
             </li>
           );
         })}

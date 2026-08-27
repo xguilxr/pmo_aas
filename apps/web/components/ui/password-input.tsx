@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useId, useState, type InputHTMLAttributes } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Icono } from "@/components/ui/icono";
 import { cn } from "@/lib/cn";
 import { Input } from "./input";
 
@@ -70,11 +70,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, Props>(
             "disabled:text-[var(--color-disabled)]",
           )}
         >
-          {visible ? (
-            <EyeOff className="h-4 w-4" aria-hidden />
-          ) : (
-            <Eye className="h-4 w-4" aria-hidden />
-          )}
+          <Icono nombre={visible ? "eye-off" : "eye"} size={15} />
         </button>
         {visible ? (
           <span id={descripcionId} className="sr-only" role="status">

@@ -1,5 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
-import { AlertCircle, CheckCircle2, Info, AlertTriangle } from "lucide-react";
+import { Icono } from "@/components/ui/icono";
 import { cn } from "@/lib/cn";
 
 type Variant = "success" | "warning" | "danger" | "info";
@@ -7,19 +7,19 @@ type Variant = "success" | "warning" | "danger" | "info";
 const STYLES: Record<Variant, { box: string; icon: ReactNode }> = {
   success: {
     box: "bg-[var(--color-success-bg)] border-[var(--color-success-border)] text-[var(--color-success-fg)]",
-    icon: <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />,
+    icon: <Icono nombre="circle-check" size={16} className="shrink-0" />,
   },
   warning: {
     box: "bg-[var(--color-warning-bg)] border-[var(--color-warning-border)] text-[var(--color-warning-fg)]",
-    icon: <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />,
+    icon: <Icono nombre="triangle-alert" size={16} className="shrink-0" />,
   },
   danger: {
     box: "bg-[var(--color-danger-bg)] border-[var(--color-danger-border)] text-[var(--color-danger-fg)]",
-    icon: <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />,
+    icon: <Icono nombre="circle-alert" size={16} className="shrink-0" />,
   },
   info: {
     box: "bg-[var(--color-info-bg)] border-[var(--color-info-border)] text-[var(--color-info-fg)]",
-    icon: <Info className="h-4 w-4 shrink-0" aria-hidden />,
+    icon: <Icono nombre="info" size={16} className="shrink-0" />,
   },
 };
 
