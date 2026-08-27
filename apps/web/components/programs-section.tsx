@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Calendar, Pencil, Plus, PowerOff } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -91,20 +91,20 @@ export function ProgramsSection({ organizationId }: Props) {
     <section className="space-y-4">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--color-primary)]">Programas</h2>
-          <p className="text-sm text-[var(--color-tertiary)]">
+          <h2 className="text-[17px] font-semibold text-[var(--text-primary)]">Programas</h2>
+          <p className="text-[13px] text-[var(--text-tertiary)]">
             Agrupa proyectos bajo iniciativas estratégicas.
           </p>
         </div>
         <Button onClick={() => setForm({ mode: "create" })}>
-          <Plus className="h-4 w-4" aria-hidden />
+          <Icono nombre="plus" size={15} />
           Nuevo programa
         </Button>
       </div>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
         <div className="divide-y divide-[var(--border-subtle)]">
           {loading
             ? Array.from({ length: 2 }).map((_, i) => (
@@ -117,19 +117,19 @@ export function ProgramsSection({ organizationId }: Props) {
                 <div key={p.id} className="flex items-start gap-3 px-4 py-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium text-[var(--color-primary)]">
+                      <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">
                         {p.name}
                       </span>
                       {!p.is_active ? <Badge variant="danger">Inactivo</Badge> : null}
                     </div>
                     {p.description ? (
-                      <p className="mt-1 line-clamp-2 text-xs text-[var(--color-tertiary)]">
+                      <p className="mt-1 line-clamp-2 text-[12px] text-[var(--text-tertiary)]">
                         {p.description}
                       </p>
                     ) : null}
                     {p.start_date || p.end_date ? (
-                      <div className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--color-tertiary)]">
-                        <Calendar className="h-3 w-3" aria-hidden />
+                      <div className="mt-1 inline-flex items-center gap-1 text-[12px] text-[var(--text-tertiary)]">
+                        <Icono nombre="calendar" size={13} />
                         {fmtDate(p.start_date)} — {fmtDate(p.end_date) || "—"}
                       </div>
                     ) : null}
@@ -141,7 +141,7 @@ export function ProgramsSection({ organizationId }: Props) {
                       onClick={() => setForm({ mode: "edit", program: p })}
                       aria-label={`Editar ${p.name}`}
                     >
-                      <Pencil className="h-4 w-4" aria-hidden />
+                      <Icono nombre="pen" size={14} />
                     </Button>
                     <Button
                       variant="ghost"
@@ -150,8 +150,8 @@ export function ProgramsSection({ organizationId }: Props) {
                       aria-label={`Desactivar ${p.name}`}
                       title="Desactivar"
                     >
-                      <PowerOff className="h-4 w-4" aria-hidden />
-                      <span className="ml-1 text-xs">Desactivar</span>
+                      <Icono nombre="circle-alert" size={14} />
+                      <span className="ml-1 text-[12px]">Desactivar</span>
                     </Button>
                     {!p.is_active ? (
                       <HardDeleteButton
@@ -167,7 +167,7 @@ export function ProgramsSection({ organizationId }: Props) {
                 </div>
               ))}
           {empty ? (
-            <div className="px-4 py-8 text-center text-sm text-[var(--color-tertiary)]">
+            <div className="px-4 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
               Aún no hay programas. Crea el primero.
             </div>
           ) : null}
@@ -202,7 +202,7 @@ export function ProgramsSection({ organizationId }: Props) {
           </>
         }
       >
-        <p className="text-sm text-[var(--color-secondary)]">
+        <p className="text-[13px] text-[var(--text-secondary)]">
           ¿Confirmas desactivar el programa <strong>{deleting?.name}</strong>?
         </p>
       </Modal>
@@ -281,7 +281,7 @@ function ProgramFormModal({
         <div>
           <label
             htmlFor="prog_name"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
           >
             Nombre
           </label>
@@ -297,7 +297,7 @@ function ProgramFormModal({
         <div>
           <label
             htmlFor="prog_desc"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
           >
             Descripción
           </label>
@@ -312,7 +312,7 @@ function ProgramFormModal({
         <div>
           <label
             htmlFor="prog_strategic"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
           >
             Alineación estratégica
           </label>
@@ -328,7 +328,7 @@ function ProgramFormModal({
           <div>
             <label
               htmlFor="prog_start"
-              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
             >
               Inicio
             </label>
@@ -343,7 +343,7 @@ function ProgramFormModal({
           <div>
             <label
               htmlFor="prog_end"
-              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
             >
               Fin
             </label>
@@ -356,8 +356,8 @@ function ProgramFormModal({
             />
           </div>
         </div>
-        <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-default)] px-4 py-3">
-          <span className="text-sm font-medium text-[var(--color-primary)]">Activo</span>
+        <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-default)] px-4 py-3 shadow-[var(--relieve-control)]">
+          <span className="text-[13px] font-medium text-[var(--text-primary)]">Activo</span>
           <Switch
             checked={isActive}
             onChange={(v) => setIsActive(v)}

@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { CheckCircle2, FileText, Plus, Trash2 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -302,7 +302,7 @@ export function RequestForm() {
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="space-y-5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]"
+      className="space-y-5 rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-8"
     >
       <ol className="flex flex-wrap gap-2" aria-label="Pasos del formulario">
         {STEPS.map((s, idx) => {
@@ -315,16 +315,16 @@ export function RequestForm() {
                 onClick={() => setStep(s.id)}
                 aria-current={current ? "step" : undefined}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-[var(--radius-md)] border px-3 py-1.5 text-sm transition-colors",
+                  "inline-flex items-center gap-2 rounded-[var(--radius-md)] border px-3 py-1.5 text-[13px] transition-colors",
                   current
-                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                    ? "border-[var(--text-primary)] bg-[var(--text-primary)] text-[var(--color-inverse)]"
                     : done
                       ? "border-[var(--color-success-border)] bg-[var(--color-success-bg)] text-[var(--color-success-fg)]"
-                      : "border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                      : "border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
                 )}
               >
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-current text-[11px] font-semibold">
-                  {done ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : idx + 1}
+                  {done ? <Icono nombre="circle-check" size={14} /> : idx + 1}
                 </span>
                 {s.label}
               </button>
@@ -338,7 +338,7 @@ export function RequestForm() {
         <Banner variant="danger">
           <div>
             <p className="font-medium">Faltan campos obligatorios:</p>
-            <ul className="mt-1 list-disc pl-5 text-sm">
+            <ul className="mt-1 list-disc pl-5 text-[13px]">
               {fieldsSummary(fieldErrors).map((f) => (
                 <li key={f}>{f}</li>
               ))}
@@ -347,7 +347,7 @@ export function RequestForm() {
         </Banner>
       ) : null}
       {autosavedAt ? (
-        <p className="text-xs text-[var(--color-tertiary)]">
+        <p className="text-[12px] text-[var(--text-tertiary)]">
           Guardado automático · {autosavedAt.toLocaleTimeString("es-MX")}
         </p>
       ) : null}
@@ -577,11 +577,11 @@ export function RequestForm() {
             htmlFor="currency"
             help={`Vacío usa la del inquilino (${preferida})`}
           >
-            <select
+            <Select
               id="currency"
-              className="w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm"
               value={draft.currency}
               onChange={(e) => setField("currency", e.target.value)}
+              style={draft.currency ? undefined : { color: "var(--text-faint)" }}
             >
               <option value="">Usar la del inquilino ({preferida})</option>
               {MONEDAS.map((m) => (
@@ -589,7 +589,7 @@ export function RequestForm() {
                   {m}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field
             label="Fecha de restricción de entrega"
@@ -725,7 +725,7 @@ export function RequestForm() {
         <ReviewPane draft={draft} orgs={orgs} onEdit={(id) => setStep(id)} />
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-default)] pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-default)] pt-4 shadow-[var(--linea-surco-arriba)]">
         <Button type="button" variant="danger" onClick={() => router.push("/pmo/requests")}>
           Cancelar
         </Button>
@@ -769,7 +769,7 @@ function Field({ label, htmlFor, error, children, required, full, help }: FieldP
     <div className={cn(full ? "sm:col-span-2" : undefined)}>
       <label
         htmlFor={htmlFor}
-        className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+        className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
       >
         {label} {required ? <span className="text-[var(--color-danger-fg)]">*</span> : null}
       </label>
@@ -784,11 +784,11 @@ function Field({ label, htmlFor, error, children, required, full, help }: FieldP
         {children}
       </div>
       {error ? (
-        <p id={errorId} className="mt-1 text-xs text-[var(--color-danger-fg)]" role="alert">
+        <p id={errorId} className="mt-1 text-[12px] text-[var(--color-danger-fg)]" role="alert">
           {error}
         </p>
       ) : help ? (
-        <p className="mt-1 text-xs text-[var(--color-tertiary)]">{help}</p>
+        <p className="mt-1 text-[12px] text-[var(--text-tertiary)]">{help}</p>
       ) : null}
     </div>
   );
@@ -840,7 +840,7 @@ function AttachmentsEditor({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-[var(--color-tertiary)]">
+      <p className="text-[13px] text-[var(--text-tertiary)]">
         Agrega enlaces a documentos de soporte (cotización, one-pager, etc.). Opcional.
       </p>
 
@@ -848,29 +848,29 @@ function AttachmentsEditor({
         <ul className="divide-y divide-[var(--border-subtle)] rounded-[var(--radius-md)] border border-[var(--border-default)]">
           {value.map((a, i) => (
             <li key={`${a.filename}-${i}`} className="flex items-center gap-3 px-3 py-2">
-              <FileText className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+              <Icono nombre="file-text" size={15} className="text-[var(--text-tertiary)]" />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-[var(--color-primary)]">
+                <div className="truncate text-[13px] font-medium text-[var(--text-primary)]">
                   {a.filename}
                 </div>
                 <a
                   href={a.url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="truncate text-xs text-[var(--color-tertiary)] hover:underline"
+                  className="truncate text-[12px] text-[var(--text-tertiary)] hover:underline"
                 >
                   {a.url}
                 </a>
               </div>
               <Button type="button" variant="ghost" size="sm" onClick={() => remove(i)}>
-                <Trash2 className="h-4 w-4" aria-hidden />
+                <Icono nombre="bin" size={14} />
                 Quitar
               </Button>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] px-4 py-6 text-center text-sm text-[var(--color-tertiary)]">
+        <p className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] px-4 py-6 text-center text-[13px] text-[var(--text-tertiary)]">
           Sin adjuntos.
         </p>
       )}
@@ -892,7 +892,7 @@ function AttachmentsEditor({
           onClick={add}
           disabled={!filename.trim() || !url.trim()}
         >
-          <Plus className="h-4 w-4" aria-hidden />
+          <Icono nombre="plus" size={14} />
           Agregar
         </Button>
       </div>
@@ -936,7 +936,7 @@ function ReviewPane({
       </Section>
       <Section title="Adjuntos" onEdit={() => onEdit("attachments")}>
         {draft.attachments.length ? (
-          <ul className="list-disc pl-4 text-sm text-[var(--color-secondary)]">
+          <ul className="list-disc pl-4 text-[13px] text-[var(--text-secondary)]">
             {draft.attachments.map((a, i) => (
               <li key={i}>
                 {a.filename} —{" "}
@@ -947,7 +947,7 @@ function ReviewPane({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-[var(--color-tertiary)]">Sin adjuntos.</p>
+          <p className="text-[13px] text-[var(--text-tertiary)]">Sin adjuntos.</p>
         )}
       </Section>
     </div>
@@ -965,17 +965,17 @@ function Section({
 }) {
   return (
     <section className="rounded-[var(--radius-md)] border border-[var(--border-default)]">
-      <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-2">
-        <h3 className="text-sm font-semibold text-[var(--color-primary)]">{title}</h3>
+      <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-2 shadow-[var(--linea-surco)]">
+        <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">{title}</h3>
         <button
           type="button"
           onClick={onEdit}
-          className="text-xs font-medium text-[var(--color-accent)] hover:underline"
+          className="text-[12px] font-medium text-[var(--color-accent)] hover:underline"
         >
           Editar
         </button>
       </header>
-      <div className="space-y-2 px-4 py-3 text-sm">{children}</div>
+      <div className="space-y-2 px-4 py-3 text-[13px]">{children}</div>
     </section>
   );
 }
@@ -983,10 +983,10 @@ function Section({
 function Row({ k, v, multiline }: { k: string; v: string; multiline?: boolean }) {
   return (
     <div className={cn("grid gap-1", multiline ? "" : "sm:grid-cols-[180px_1fr]")}>
-      <span className="text-xs uppercase tracking-wide text-[var(--color-tertiary)]">{k}</span>
+      <span className="text-[11.5px] uppercase tracking-wide text-[var(--text-tertiary)]">{k}</span>
       <span
         className={cn(
-          "text-[var(--color-primary)]",
+          "text-[var(--text-primary)]",
           multiline ? "whitespace-pre-wrap" : "truncate",
         )}
       >

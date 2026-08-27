@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Palette } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -130,7 +130,7 @@ export function TenantSettingsForm() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {notice ? <Banner variant="success">{notice}</Banner> : null}
 
-      <section className="space-y-5 rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-6">
+      <section className="space-y-5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4.5 shadow-[var(--relieve-isla)]">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Idioma default">
             <Select
@@ -201,14 +201,14 @@ export function TenantSettingsForm() {
               placeholder={COLOR_MARCA_POR_DEFECTO}
             />
             <span className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] px-3 text-[12px] text-[var(--text-secondary)]">
-              <Palette className="h-3.5 w-3.5" aria-hidden />
+              <Icono nombre="grid-2x2" size={14} />
               Se aplica a PDFs exportados
             </span>
           </div>
         </Field>
 
         {/* ENH-098 — Cálculo de avance (Report Builder / EP020) */}
-        <div className="border-t border-[var(--border-subtle)] pt-4">
+        <div className="border-t border-[var(--border-subtle)] pt-4 shadow-[var(--linea-surco-arriba)]">
           <h3 className="mb-2 text-[13px] font-semibold text-[var(--text-primary)]">
             Cálculo de avance
           </h3>
@@ -246,7 +246,7 @@ export function TenantSettingsForm() {
         </div>
 
         {/* ENH-099 — Umbrales de carga de tareas (Report Builder / EP020) */}
-        <div className="border-t border-[var(--border-subtle)] pt-4">
+        <div className="border-t border-[var(--border-subtle)] pt-4 shadow-[var(--linea-surco-arriba)]">
           <h3 className="mb-2 text-[13px] font-semibold text-[var(--text-primary)]">
             Umbrales de carga de tareas
           </h3>
@@ -311,7 +311,7 @@ export function TenantSettingsForm() {
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-4">
+        <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] pt-4 shadow-[var(--linea-surco-arriba)]">
           <Button
             variant="secondary"
             onClick={() => (initial ? setForm(initial) : null)}

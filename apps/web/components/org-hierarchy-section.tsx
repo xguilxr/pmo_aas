@@ -2,19 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
-import {
-  Briefcase,
-  ChevronRight,
-  ExternalLink,
-  Pencil,
-  Plus,
-  PowerOff,
-  Workflow,
-} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
@@ -162,13 +154,13 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
   }
 
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-default)] px-4 py-3">
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-default)] px-4 py-3 shadow-[var(--linea-surco)]">
         <div>
-          <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+          <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">
             Jerarquía: portafolios y programas
           </h2>
-          <p className="text-xs text-[var(--color-tertiary)]">
+          <p className="text-[12px] text-[var(--text-tertiary)]">
             El portafolio agrupa por decisión de inversión; el programa, por
             coordinación. Los proyectos cuelgan de uno, del otro, o de ninguno.
           </p>
@@ -176,12 +168,12 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
         <div className="flex gap-2">
           <Link href={`/pmo/projects?organization_id=${orgId}`}>
             <Button variant="secondary" size="sm">
-              <ExternalLink className="h-4 w-4" aria-hidden />
+              <Icono nombre="arrow-up-right" size={14} />
               Ver proyectos
             </Button>
           </Link>
           <Button size="sm" onClick={() => setModalPortafolio({ mode: "create" })}>
-            <Plus className="h-4 w-4" aria-hidden /> Nuevo portafolio
+            <Icono nombre="plus" size={14} /> Nuevo portafolio
           </Button>
         </div>
         {leido ? (
@@ -202,7 +194,7 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
           ))}
         </div>
       ) : portafolios.length === 0 ? (
-        <div className="p-8 text-center text-sm text-[var(--color-tertiary)]">
+        <div className="p-8 text-center text-[13px] text-[var(--text-tertiary)]">
           Aún no hay portafolios. Crea el primero con «Nuevo portafolio».
         </div>
       ) : (
@@ -218,23 +210,18 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                     onClick={() => alternar(portafolio.id)}
                     aria-expanded={abierto}
                     aria-label={abierto ? "Colapsar" : "Expandir"}
-                    className="inline-flex h-6 w-6 flex-none items-center justify-center text-[var(--color-tertiary)]"
+                    className="inline-flex h-6 w-6 flex-none items-center justify-center text-[var(--text-tertiary)]"
                   >
-                    <ChevronRight
-                      className={cn(
-                        "h-4 w-4 transition-transform",
-                        abierto && "rotate-90",
-                      )}
-                      aria-hidden
+                    <Icono
+                      nombre="chevron-right"
+                      size={14}
+                      className={cn("transition-transform", abierto && "rotate-90")}
                     />
                   </button>
-                  <Briefcase
-                    className="h-4 w-4 flex-none text-[var(--color-tertiary)]"
-                    aria-hidden
-                  />
+                  <Icono nombre="folder" size={15} className="flex-none text-[var(--text-tertiary)]" />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-medium text-[var(--color-primary)]">
+                      <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">
                         {portafolio.name}
                       </span>
                       {portafolio.code ? (
@@ -243,7 +230,7 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                       {!portafolio.is_active ? (
                         <Badge variant="danger">Inactivo</Badge>
                       ) : null}
-                      <span className="text-xs text-[var(--color-tertiary)]">
+                      <span className="text-[12px] text-[var(--text-tertiary)]">
                         {portafolio.program_count} programa
                         {portafolio.program_count === 1 ? "" : "s"} ·{" "}
                         {portafolio.active_project_count} proyecto
@@ -252,7 +239,7 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                       </span>
                     </div>
                     {portafolio.description ? (
-                      <div className="truncate text-xs text-[var(--color-tertiary)]">
+                      <div className="truncate text-[12px] text-[var(--text-tertiary)]">
                         {portafolio.description}
                       </div>
                     ) : null}
@@ -270,7 +257,7 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                       title="Nuevo programa"
                       aria-label={`Nuevo programa en ${portafolio.name}`}
                     >
-                      <Plus className="h-4 w-4" aria-hidden />
+                      <Icono nombre="plus" size={14} />
                     </Button>
                     <Button
                       size="sm"
@@ -279,7 +266,7 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                       title="Editar"
                       aria-label={`Editar ${portafolio.name}`}
                     >
-                      <Pencil className="h-4 w-4" aria-hidden />
+                      <Icono nombre="pen" size={14} />
                     </Button>
                     <Button
                       size="sm"
@@ -288,8 +275,8 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                       title="Archivar"
                       aria-label={`Archivar ${portafolio.name}`}
                     >
-                      <PowerOff className="h-4 w-4" aria-hidden />
-                      <span className="ml-1 text-xs">Archivar</span>
+                      <Icono nombre="circle-alert" size={14} />
+                      <span className="ml-1 text-[12px]">Archivar</span>
                     </Button>
                     {!portafolio.is_active ? (
                       <HardDeleteButton
@@ -307,15 +294,15 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                 {abierto ? (
                   <ul className="divide-y divide-[var(--border-subtle)] bg-[var(--color-app)]">
                     {susProgramas === "loading" ? (
-                      <li className="px-10 py-2 text-xs text-[var(--color-tertiary)]">
+                      <li className="px-10 py-2 text-[12px] text-[var(--text-tertiary)]">
                         Cargando programas…
                       </li>
                     ) : susProgramas === "error" ? (
-                      <li className="px-10 py-2 text-xs text-[var(--color-danger-fg)]">
+                      <li className="px-10 py-2 text-[12px] text-[var(--color-danger-fg)]">
                         Error al cargar programas.
                       </li>
                     ) : !susProgramas || susProgramas.length === 0 ? (
-                      <li className="px-10 py-2 text-xs italic text-[var(--color-tertiary)]">
+                      <li className="px-10 py-2 text-[12px] italic text-[var(--text-tertiary)]">
                         Sin programas. Los proyectos pueden colgar directo del
                         portafolio; usa «+» si quieres coordinarlos en uno.
                       </li>
@@ -325,15 +312,16 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                           key={programa.id}
                           className="flex items-center gap-2 py-2 pl-10 pr-3 hover:bg-[var(--color-subtle)]"
                         >
-                          <Workflow
-                            className="h-4 w-4 flex-none text-[var(--color-tertiary)]"
-                            aria-hidden
+                          <Icono
+                            nombre="folders"
+                            size={15}
+                            className="flex-none text-[var(--text-tertiary)]"
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <Link
                                 href={`/pmo/programs/${programa.id}`}
-                                className="truncate text-sm text-[var(--color-primary)] hover:underline"
+                                className="truncate text-[13px] text-[var(--text-primary)] hover:underline"
                               >
                                 {programa.name}
                               </Link>
@@ -342,7 +330,7 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                               ) : null}
                             </div>
                             {programa.description ? (
-                              <div className="truncate text-xs text-[var(--color-tertiary)]">
+                              <div className="truncate text-[12px] text-[var(--text-tertiary)]">
                                 {programa.description}
                               </div>
                             ) : null}
@@ -355,7 +343,7 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                               title="Editar"
                               aria-label={`Editar ${programa.name}`}
                             >
-                              <Pencil className="h-4 w-4" aria-hidden />
+                              <Icono nombre="pen" size={14} />
                             </Button>
                             <Button
                               size="sm"
@@ -364,8 +352,8 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                               title="Archivar"
                               aria-label={`Archivar ${programa.name}`}
                             >
-                              <PowerOff className="h-4 w-4" aria-hidden />
-                              <span className="ml-1 text-xs">Archivar</span>
+                              <Icono nombre="circle-alert" size={14} />
+                              <span className="ml-1 text-[12px]">Archivar</span>
                             </Button>
                             {!programa.is_active ? (
                               <HardDeleteButton
@@ -537,7 +525,7 @@ function FichaModal({
     <Modal open={open} onClose={onClose} title={title}>
       <form onSubmit={enviar} className="space-y-3">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+          <label className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
             Nombre
           </label>
           <Input
@@ -550,7 +538,7 @@ function FichaModal({
         </div>
         {conCodigo ? (
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+            <label className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
               Código
             </label>
             <Input
@@ -562,7 +550,7 @@ function FichaModal({
           </div>
         ) : null}
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+          <label className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
             Descripción
           </label>
           <Textarea
@@ -629,13 +617,13 @@ function ConfirmarArchivadoModal<T extends { name: string }>({
 
   return (
     <Modal open={target !== null} onClose={onClose} title={`Archivar ${label}`}>
-      <p className="text-sm text-[var(--color-secondary)]">
+      <p className="text-[13px] text-[var(--text-secondary)]">
         ¿Archivar <strong>{target?.name}</strong>? Queda inactivo y sale de las
         listas; nada se borra. El borrado permanente es un segundo paso, y pide
         escribir el nombre.
       </p>
       {conCascada ? (
-        <label className="mt-3 inline-flex items-center gap-2 text-sm">
+        <label className="mt-3 inline-flex items-center gap-2 text-[13px] text-[var(--text-secondary)]">
           <input
             type="checkbox"
             checked={force}
