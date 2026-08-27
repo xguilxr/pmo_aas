@@ -12,10 +12,11 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { Eye, ArrowLeft, FileDown, Loader2, Save, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { CatalogSidebar } from "@/components/reports/builder/CatalogSidebar";
 import { ChatPanel } from "@/components/reports/builder/ChatPanel";
@@ -381,9 +382,9 @@ export default function ReportBuilderPage() {
   );
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-2">
-        <div className="flex items-center gap-3">
+    <div className="flex h-screen flex-col bg-[var(--color-app)] text-[var(--text-primary)]">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[var(--border-default)] bg-[var(--color-surface)] px-5 shadow-[var(--linea-surco)]">
+        <nav className="flex items-center gap-1.75 text-[13px]">
           <Link
             href={`/pmo/projects/${projectId}/reports`}
             onClick={(e) => {
@@ -392,31 +393,32 @@ export default function ReportBuilderPage() {
                 e.preventDefault();
               }
             }}
-            className="flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900"
+            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           >
-            <ArrowLeft className="h-4 w-4" /> Reportes
+            Reportes
           </Link>
-          <h1 className="text-lg font-semibold text-zinc-900">Report Builder</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-zinc-600">
+          <Icono nombre="chevron-right" size={14} className="text-[var(--border-strong)]" />
+          <span className="font-medium text-[var(--text-primary)]">Constructor</span>
+        </nav>
+        <div className="ml-5 flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--text-tertiary)]">
             Agrupación
             <Select
               value={compositionMode}
               onChange={(e) => setCompositionMode(e.target.value as "A" | "B")}
-              className="ml-1 inline-block h-8 w-auto"
+              className="h-8 w-36"
               title="Por sección: cada sección ordena sus items por área. Por área: agrupa todas las secciones bajo cada área."
             >
               <option value="A">Por sección</option>
               <option value="B">Por área</option>
             </Select>
           </label>
-          <label className="text-xs text-zinc-600">
+          <label className="flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--text-tertiary)]">
             Área
             <Select
               value={areaId}
               onChange={(e) => setAreaId(e.target.value)}
-              className="ml-1 inline-block h-8 w-auto"
+              className="h-8 w-40"
               title="Filtra el contenido del reporte a una sola área."
             >
               <option value="">Todas</option>
@@ -433,9 +435,9 @@ export default function ReportBuilderPage() {
               ))}
             </Select>
           </label>
-          <label className="flex items-center gap-1 text-xs text-zinc-600">
+          <label className="flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--text-tertiary)]">
             Ventana
-            <input
+            <Input
               type="number"
               min={1}
               max={52}
@@ -446,7 +448,7 @@ export default function ReportBuilderPage() {
                 const mult = { days: 1, weeks: 7, months: 30 }[windowUnit];
                 setWindowDays(v * mult);
               }}
-              className="h-8 w-14 rounded border border-zinc-300 px-2 text-xs"
+              className="h-8 w-14 px-2 text-center font-mono"
             />
             <Select
               value={windowUnit}
@@ -456,20 +458,22 @@ export default function ReportBuilderPage() {
                 const mult = { days: 1, weeks: 7, months: 30 }[unit];
                 setWindowDays(windowValue * mult);
               }}
-              className="h-8 w-auto text-xs"
+              className="h-8 w-24"
             >
               <option value="days">días</option>
               <option value="weeks">semanas</option>
               <option value="months">mes</option>
             </Select>
           </label>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setChatOpen(true)}
             title="Abrir chat IA"
           >
-            <Sparkles className="mr-1 h-3.5 w-3.5 text-violet-500" /> IA
+            <Icono nombre="star" size={15} className="text-[var(--color-accent)]" /> IA
           </Button>
           {/* ENH-139/140: orden Visualizar · Guardar Reporte · Guardar Plantilla. */}
           <Button
@@ -480,7 +484,7 @@ export default function ReportBuilderPage() {
             loading={visualizing}
             title="Abrir un PDF del preview real"
           >
-            <Eye className="mr-1 h-3.5 w-3.5" /> Visualizar
+            <Icono nombre="eye" size={15} /> Visualizar
           </Button>
           <Button
             variant="primary"
@@ -490,7 +494,7 @@ export default function ReportBuilderPage() {
             loading={savingReport}
             title="Guardar el reporte en el Historial del proyecto"
           >
-            <FileDown className="mr-1 h-3.5 w-3.5" /> Guardar Reporte
+            <Icono nombre="download" size={15} /> Guardar Reporte
           </Button>
           <Button
             variant="secondary"
@@ -499,15 +503,19 @@ export default function ReportBuilderPage() {
             disabled={codes.length === 0}
             title="Guardar la composición como plantilla reusable"
           >
-            <Save className="mr-1 h-3.5 w-3.5" /> Guardar Plantilla
+            Guardar Plantilla
           </Button>
         </div>
       </header>
 
       <main className="flex flex-1 overflow-hidden">
         {loadingCatalog ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cargando catálogo…
+          <div className="flex flex-1 items-center justify-center gap-2 text-[13px] text-[var(--text-tertiary)]">
+            <span
+              aria-hidden
+              className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+            />
+            Cargando catálogo…
           </div>
         ) : (
           <>
@@ -516,7 +524,7 @@ export default function ReportBuilderPage() {
               selectedCodes={codes}
               onAdd={handleAdd}
             />
-            <div className="flex flex-1 flex-col border-r border-zinc-200">
+            <div className="flex flex-1 flex-col border-r border-[var(--border-default)]">
               <TemplatesGallery
                 templates={templates}
                 currentUserId={currentUserId}
@@ -544,7 +552,7 @@ export default function ReportBuilderPage() {
             {/* BUG-063: columna derecha solo Preview, siempre visible y
                 actualizándose en vivo (el propio PreviewPane trae su
                 header + estado de render). */}
-            <div className="flex w-[480px] flex-col border-l border-zinc-200">
+            <div className="flex w-[480px] flex-col border-l border-[var(--border-default)]">
               <PreviewPane request={renderRequest} />
             </div>
           </>
