@@ -19,6 +19,14 @@ revisar_cada: 30d
 > `scripts/proximo_id.py` contra `origin/main` al crear cada issue
 > (MCA CTX-03). Punto de partida al escribir esto: US-227 / ENH-203.
 
+> **Especificaciones ejecutables** (2026-08-27, segunda pasada): el detalle
+> por US —endpoints, DDL, migraciones, archivos reales, ACs y guía de la
+> ronda— vive en tres documentos hermanos:
+> `plan-post-revamp-especificaciones.md` (R1–R4),
+> `plan-post-revamp-operacion.md` (bloque O: CLI `pmo` + skills) y
+> `plan-post-revamp-generacion.md` (bloque G: schemas de report-spec y
+> minuta + renderer). Este documento queda como el índice y el porqué.
+
 ## Norte
 
 1. Que ninguna cifra de la UI diga «pendiente de backend»: todo lo que el
