@@ -3,17 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ChevronDown,
-  LogOut,
-  Monitor,
-  Moon,
-  Sun,
-  UserCircle,
-} from "lucide-react";
 
 import { useLocale, type Locale } from "@/components/locale-provider";
 import { useTheme } from "@/components/theme-provider";
+import { Icono } from "@/components/ui/icono";
 import { logout } from "@/lib/auth";
 import { type StoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
@@ -101,7 +94,7 @@ export function UserMenu({ user, variant = "chrome" }: Props) {
         <span className="hidden max-w-[120px] truncate sm:inline">
           {user?.full_name || user?.username || "Sesión"}
         </span>
-        <ChevronDown className="h-3.5 w-3.5 opacity-70" aria-hidden />
+        <Icono nombre="chevron-down" size={14} className="opacity-70" />
       </button>
 
       {open ? (
@@ -192,12 +185,11 @@ export function UserMenu({ user, variant = "chrome" }: Props) {
             >
               {(
                 [
-                  { v: "light", icon: Sun, label: "Claro" },
-                  { v: "dark", icon: Moon, label: "Oscuro" },
-                  { v: "system", icon: Monitor, label: "Sistema" },
+                  { v: "light", icono: "sun", label: "Claro" },
+                  { v: "dark", icono: "moon", label: "Oscuro" },
+                  { v: "system", icono: "monitor", label: "Sistema" },
                 ] as const
               ).map((opt) => {
-                const Icon = opt.icon;
                 const active = theme === opt.v;
                 return (
                   <button
@@ -214,7 +206,7 @@ export function UserMenu({ user, variant = "chrome" }: Props) {
                     )}
                     title={opt.label}
                   >
-                    <Icon className="h-3 w-3" aria-hidden />
+                    <Icono nombre={opt.icono} size={13} />
                     {opt.label}
                   </button>
                 );
@@ -228,7 +220,7 @@ export function UserMenu({ user, variant = "chrome" }: Props) {
               onClick={() => setOpen(false)}
               className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-left text-[13px] text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
             >
-              <UserCircle className="h-3.5 w-3.5" aria-hidden />
+              <Icono nombre="circle-user" size={14} />
               Administrar cuenta
             </Link>
             <button
@@ -239,9 +231,9 @@ export function UserMenu({ user, variant = "chrome" }: Props) {
               className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-left text-[13px] text-[var(--text-primary)] hover:bg-[var(--color-subtle)] disabled:opacity-60"
             >
               {signingOut ? (
-                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                <Icono nombre="loader" size={14} className="animate-spin" />
               ) : (
-                <LogOut className="h-3.5 w-3.5" aria-hidden />
+                <Icono nombre="square-arrow-right" size={14} />
               )}
               Cerrar sesión
             </button>

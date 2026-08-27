@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Bell, Check } from "lucide-react";
 
+import { Icono } from "@/components/ui/icono";
 import { cn } from "@/lib/cn";
 import {
   NOTIFICATION_TYPE_LABEL,
@@ -112,7 +112,7 @@ export function NotificationBell() {
         onClick={() => setOpen((v) => !v)}
         className="relative inline-flex h-[34px] w-[34px] items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
       >
-        <Bell className="h-4 w-4" aria-hidden />
+        <Icono nombre="bell" size={15} />
         {count > 0 ? (
           <span
             className="absolute right-1 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-danger-fg)] px-1 text-[10px] font-semibold text-[var(--color-inverse)]"
@@ -138,7 +138,7 @@ export function NotificationBell() {
               disabled={count === 0}
               className="inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:underline disabled:cursor-not-allowed disabled:text-[var(--color-tertiary)] disabled:no-underline"
             >
-              <Check className="h-3 w-3" aria-hidden /> Marcar todas
+              <Icono nombre="check" size={13} /> Marcar todas
             </button>
           </header>
 
