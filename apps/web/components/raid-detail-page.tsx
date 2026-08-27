@@ -3,18 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  CheckCircle2,
-  Scale,
-  Trash2,
-  TriangleAlert,
-} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -291,15 +284,15 @@ export function RaidDetailPage({
   const item = isRisk ? risk : issue;
   if (!item) return null;
 
-  // Iconos por tipo (spec): warning Riesgo, check Acción, alert
-  // Issue, scale Decisión.
-  const Icon = isRisk
-    ? TriangleAlert
+  // Iconos por tipo (spec): warning Riesgo, check Acción, fork Decisión
+  // (sin equivalente de balanza en el set Keyline), alert Incidente.
+  const iconoTipo = isRisk
+    ? "triangle-alert"
     : issueTypeFromTab === "action"
-      ? CheckCircle2
+      ? "circle-check"
       : issueTypeFromTab === "decision"
-        ? Scale
-        : AlertTriangle;
+        ? "git-fork"
+        : "circle-alert";
 
   const statusLabel = isRisk
     ? RISK_STATUS_LABEL[(risk as Risk).status] ?? (risk as Risk).status
@@ -457,28 +450,28 @@ export function RaidDetailPage({
             disabled={saving}
             aria-label="Borrar ítem"
           >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+            <Icono nombre="bin" size={14} /> Borrar
           </Button>
         </div>
       </div>
 
       {/* Header card: bloque superior (icono + ID/tipo/estado/sev + título)
           + strip de metadatos (6 columnas) */}
-      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
         <header className="flex flex-col gap-2 px-4.5 py-3.5">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 flex-none items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)]">
-              <Icon className="h-5 w-5 text-[var(--color-tertiary)]" aria-hidden />
+              <Icono nombre={iconoTipo} size={18} className="text-[var(--color-tertiary)]" />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono text-[11px] text-[var(--color-tertiary)]">
+                  <span className="text-[11px] tracking-[0.01em] text-[var(--color-tertiary)]">
                     {item.folio}
                   </span>
                   <span className="text-[var(--color-tertiary)]">·</span>
                   <span
-                    className="rounded border border-[var(--chrome-soft-border)] bg-[var(--chrome-soft-bg)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[var(--chrome-soft-text)]"
+                    className="rounded-[var(--radius-sm)] border border-[var(--chrome-soft-border)] bg-[var(--chrome-soft-bg)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--chrome-soft-text)]"
                   >
                     {typeLabel}
                   </span>
@@ -612,7 +605,7 @@ export function RaidDetailPage({
                   </Select>
                 </div>
               ) : (
-                <span>
+                <span className="font-mono">
                   {(risk as Risk).probability ?? "—"} ×{" "}
                   {(risk as Risk).impact ?? "—"}
                   <span className="ml-1 text-[var(--color-tertiary)]">
@@ -695,11 +688,13 @@ export function RaidDetailPage({
                 }
               />
             ) : (
-              fmtDate(
-                isRisk
-                  ? (risk as Risk).identified_at
-                  : (issue as Issue).reported_at,
-              ) ?? <Empty />
+              <span className="font-mono">
+                {fmtDate(
+                  isRisk
+                    ? (risk as Risk).identified_at
+                    : (issue as Issue).reported_at,
+                ) ?? <Empty />}
+              </span>
             )}
           </StripCell>
           {/* F. Compromiso / Resolución / Vigencia */}
@@ -727,11 +722,13 @@ export function RaidDetailPage({
                 }
               />
             ) : (
-              fmtDate(
-                isRisk
-                  ? (risk as Risk).due_date
-                  : (issue as Issue).committed_date,
-              ) ?? <Empty />
+              <span className="font-mono">
+                {fmtDate(
+                  isRisk
+                    ? (risk as Risk).due_date
+                    : (issue as Issue).committed_date,
+                ) ?? <Empty />}
+              </span>
             )}
           </StripCell>
         </div>
@@ -763,7 +760,7 @@ export function RaidDetailPage({
       {editError ? <Banner variant="danger">{editError}</Banner> : null}
 
       {/* Card Descripción */}
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
         <header className="border-b border-[var(--border-default)] px-4 py-2.5">
           <h2 className="text-[13px] font-semibold text-[var(--color-primary)]">
             Descripción
@@ -788,7 +785,7 @@ export function RaidDetailPage({
           {/* Mitigation strategy / Resolution editables en edit mode */}
           {editing && isRisk ? (
             <div className="mt-3">
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+              <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
                 Estrategia de mitigación
               </label>
               <Textarea
@@ -801,7 +798,7 @@ export function RaidDetailPage({
             </div>
           ) : isRisk && (risk as Risk).mitigation_strategy ? (
             <div className="mt-3">
-              <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+              <h3 className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
                 Estrategia de mitigación
               </h3>
               <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
@@ -812,7 +809,7 @@ export function RaidDetailPage({
           {/* ENH-177: categoría para issues (action/issue/decision). */}
           {editing && !isRisk ? (
             <div className="mt-3">
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+              <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
                 Categoría
               </label>
               <Input
@@ -822,7 +819,7 @@ export function RaidDetailPage({
             </div>
           ) : !isRisk && (issue as Issue).category ? (
             <div className="mt-3">
-              <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+              <h3 className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
                 Categoría
               </h3>
               <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
@@ -832,7 +829,7 @@ export function RaidDetailPage({
           ) : null}
           {editing && !isRisk ? (
             <div className="mt-3">
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+              <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
                 Nota de cierre
               </label>
               <Textarea
@@ -843,7 +840,7 @@ export function RaidDetailPage({
             </div>
           ) : !isRisk && (issue as Issue).resolution ? (
             <div className="mt-3">
-              <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+              <h3 className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
                 Nota de cierre
               </h3>
               <p className="whitespace-pre-wrap text-[13px] text-[var(--color-primary)]">
@@ -853,7 +850,7 @@ export function RaidDetailPage({
           ) : null}
           {editing && isRisk ? (
             <div className="mt-3">
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+              <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
                 Nota de cierre (opcional)
               </label>
               <Textarea
@@ -873,7 +870,7 @@ export function RaidDetailPage({
       {isRisk && risk ? <RiskActionsCard riskId={risk.id} /> : null}
 
       {/* Card Proyecto */}
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
         <header className="border-b border-[var(--border-default)] px-4 py-2.5">
           <h2 className="text-[13px] font-semibold text-[var(--color-primary)]">
             Proyecto
@@ -882,7 +879,7 @@ export function RaidDetailPage({
         <div className="flex items-center gap-2 px-4 py-3 text-[13px]">
           <Link
             href={`/pmo/projects/${item.project_id}`}
-            className="font-mono text-[12px] text-[var(--color-accent)] underline-offset-2 hover:underline"
+            className="text-[12px] tracking-[0.01em] text-[var(--color-accent)] underline-offset-2 hover:underline"
           >
             {item.project_id.slice(0, 8)}…
           </Link>
@@ -890,7 +887,7 @@ export function RaidDetailPage({
       </section>
 
       {/* ENH-070: Card Comentarios + Historial unificada */}
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
         <header className="border-b border-[var(--border-default)] px-4 py-2.5">
           <h2 className="text-[13px] font-semibold text-[var(--color-primary)]">
             Comentarios &amp; Historial
@@ -899,7 +896,7 @@ export function RaidDetailPage({
         <div className="grid gap-5 px-4 py-3 md:grid-cols-2">
           {/* Comentarios */}
           <div className="space-y-3">
-            <h3 className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            <h3 className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
               Comentarios
             </h3>
             <CommentList
@@ -932,7 +929,7 @@ export function RaidDetailPage({
           </div>
           {/* Historial */}
           <div className="space-y-2">
-            <h3 className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            <h3 className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
               Historial de cambios
             </h3>
             {history.length === 0 ? (
@@ -987,7 +984,7 @@ export function RaidDetailPage({
               Cancelar
             </Button>
             <Button variant="danger" onClick={handleDelete} loading={deleting}>
-              <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+              <Icono nombre="bin" size={14} /> Borrar
             </Button>
           </>
         }
@@ -1010,7 +1007,7 @@ function StripCell({
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
         {label}
       </p>
       <div className="mt-0.5 break-words text-[13px] text-[var(--color-primary)]">
@@ -1099,7 +1096,7 @@ export function BackLink({ href, label }: { href: string; label: string }) {
       href={href}
       className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
     >
-      <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+      <Icono nombre="arrow-left" size={14} />
       {label}
     </Link>
   );

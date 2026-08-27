@@ -9,9 +9,8 @@
  * `/superadmin/tenants/[id]/permissions` (DEC-021 / US-073).
  */
 
-import { Check, Minus, ShieldCheck } from "lucide-react";
-
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Icono } from "@/components/ui/icono";
 
 type CapabilityRow = {
   capability: string;
@@ -73,9 +72,15 @@ const ROWS: CapabilityRow[] = [
 
 function YesNo({ ok }: { ok: boolean }) {
   return ok ? (
-    <Check className="mx-auto h-5 w-5 text-emerald-600" aria-label="Sí" />
+    <Icono
+      nombre="check"
+      size={16}
+      className="mx-auto text-[var(--color-success-fg)]"
+    />
   ) : (
-    <Minus className="mx-auto h-5 w-5 text-[var(--color-tertiary)]" aria-label="No" />
+    <span className="text-[16px] text-[var(--text-faint)]" aria-label="No">
+      —
+    </span>
   );
 }
 
@@ -88,61 +93,66 @@ export default function PermissionsPage() {
           { label: "Permisos" },
         ]}
       />
-      <div>
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-6 w-6 text-[var(--color-primary)]" aria-hidden />
-          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2.25">
+          <Icono nombre="lock" size={20} className="text-[var(--text-primary)]" />
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
             Permisos del tenant
           </h1>
         </div>
-        <p className="mt-2 text-sm text-[var(--color-secondary)]">
-          PMO·aaS usa un modelo de <strong>capabilities fijas</strong>: el rol{" "}
-          <code className="rounded bg-[var(--color-bg-muted)] px-1">admin</code>{" "}
+        <p className="max-w-[780px] text-[13.5px] leading-[1.6] text-[var(--text-secondary)]">
+          PMO·aaS usa un modelo de{" "}
+          <strong className="text-[var(--text-primary)]">capabilities fijas</strong>: el rol{" "}
+          <code className="rounded-[4px] bg-[var(--color-muted)] px-1.25 py-0.25 font-mono text-[12.5px]">
+            admin
+          </code>{" "}
           tiene 5 capabilities adicionales sobre el rol{" "}
-          <code className="rounded bg-[var(--color-bg-muted)] px-1">user</code>.
-          Todo lo demás está disponible para cualquier usuario autenticado del
-          tenant.
+          <code className="rounded-[4px] bg-[var(--color-muted)] px-1.25 py-0.25 font-mono text-[12.5px]">
+            user
+          </code>
+          . Todo lo demás está disponible para cualquier usuario autenticado
+          del tenant.
         </p>
       </div>
 
-      <div className="rounded-lg border border-[var(--border-default)] bg-[var(--color-bg-surface)] shadow-sm">
-        <table className="w-full text-sm">
+      <div className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+        <table className="w-full">
           <thead>
-            <tr className="border-b border-[var(--border-default)] bg-[var(--color-bg-muted)]">
-              <th className="px-4 py-3 text-left font-medium text-[var(--color-secondary)]">
-                Capability
-              </th>
-              <th className="px-4 py-3 text-center font-medium text-[var(--color-secondary)]">
-                Admin
-              </th>
-              <th className="px-4 py-3 text-center font-medium text-[var(--color-secondary)]">
-                User
-              </th>
+            <tr className="h-9 border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-[12px] font-semibold text-[var(--text-secondary)] shadow-[var(--linea-surco)]">
+              <th className="px-4.5 text-left">Capability</th>
+              <th className="w-22.5 px-4.5 text-center">Admin</th>
+              <th className="w-22.5 px-4.5 text-center">User</th>
             </tr>
           </thead>
           <tbody>
-            {ROWS.map((row) => (
+            {ROWS.map((row, i) => (
               <tr
                 key={row.capability}
-                className="border-b border-[var(--border-default)] last:border-0"
+                className={
+                  i < ROWS.length - 1
+                    ? "border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)]"
+                    : undefined
+                }
               >
-                <td className="px-4 py-3">
-                  <div className="font-medium text-[var(--color-primary)]">
-                    {row.label}
+                <td className="px-4.5 py-3">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[13px] font-medium text-[var(--text-primary)]">
+                      {row.label}
+                    </span>
+                    <span className="text-[12px] text-[var(--text-tertiary)]">
+                      {row.description}
+                    </span>
+                    {row.capability !== "_default_" && (
+                      <span className="font-mono text-[11px] text-[var(--text-faint)]">
+                        {row.capability}
+                      </span>
+                    )}
                   </div>
-                  <div className="mt-0.5 text-xs text-[var(--color-secondary)]">
-                    {row.description}
-                  </div>
-                  {row.capability !== "_default_" && (
-                    <code className="mt-1 inline-block text-xs text-[var(--color-tertiary)]">
-                      {row.capability}
-                    </code>
-                  )}
                 </td>
-                <td className="px-4 py-3 text-center">
+                <td className="w-22.5 px-4.5 py-3 text-center">
                   <YesNo ok={row.admin} />
                 </td>
-                <td className="px-4 py-3 text-center">
+                <td className="w-22.5 px-4.5 py-3 text-center">
                   <YesNo ok={row.user} />
                 </td>
               </tr>
@@ -151,14 +161,23 @@ export default function PermissionsPage() {
         </table>
       </div>
 
-      <div className="rounded-lg border border-[var(--border-default)] bg-[var(--color-bg-muted)] p-4 text-sm text-[var(--color-secondary)]">
+      <div className="flex items-start gap-2.5 rounded-[var(--radius-xl)] border border-[var(--border-default)] px-4 py-3.5 text-[13px] leading-[1.55] text-[var(--text-secondary)] shadow-[var(--linea-surco-arriba)]">
+        <Icono
+          nombre="info"
+          size={16}
+          className="mt-px flex-none text-[var(--text-tertiary)]"
+        />
         <p>
-          <strong>¿Necesitas una excepción puntual?</strong> Las capabilities son
-          fijas a nivel de plataforma (DEC-024). Si tu tenant necesita un
-          override (ej. dar a un user específico la capability{" "}
-          <code>organizations.delete</code>), debes contactar al superadmin de la
-          plataforma para que registre el override en{" "}
-          <code>tenant_role_permission_overrides</code> (DEC-021).
+          <strong className="text-[var(--text-primary)]">
+            ¿Necesitas una excepción puntual?
+          </strong>{" "}
+          Las capabilities son fijas a nivel de plataforma (DEC-024). Si tu
+          tenant necesita un override (ej. dar a un user específico la
+          capability <code className="font-mono">organizations.delete</code>),
+          debes contactar al superadmin de la plataforma para que registre el
+          override en{" "}
+          <code className="font-mono">tenant_role_permission_overrides</code>{" "}
+          (DEC-021).
         </p>
       </div>
     </div>

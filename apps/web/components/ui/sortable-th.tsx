@@ -6,8 +6,7 @@
 //   ...
 //   <SortableTh sortKey="name" getter={(r) => r.name} ctrl={ctrl}>Nombre</SortableTh>
 
-import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
-
+import { Icono } from "@/components/ui/icono";
 import type { SortableCtrl } from "@/lib/hooks/use-sortable-rows";
 import { cn } from "@/lib/cn";
 
@@ -29,11 +28,11 @@ export function SortableTh<T>({
   align = "left",
 }: Props<T>) {
   const active = ctrl.sortKey === sortKey;
-  const Icon = active
+  const nombreIcono = active
     ? ctrl.sortDir === "asc"
-      ? ChevronUp
-      : ChevronDown
-    : ChevronsUpDown;
+      ? "chevron-up"
+      : "chevron-down"
+    : "chevrons-up-down";
   return (
     <th className={cn("px-3 py-2 font-medium", className)}>
       <button
@@ -47,7 +46,7 @@ export function SortableTh<T>({
         )}
       >
         <span>{children}</span>
-        <Icon className="h-3 w-3 opacity-60" />
+        <Icono nombre={nombreIcono} size={12} className="opacity-60" />
       </button>
     </th>
   );

@@ -4,14 +4,16 @@
 // operativos, roles de proyecto) con CRUD inline.
 
 import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -184,11 +186,7 @@ export function AreasAndTeamsPanel({
 
   return (
     <div className="space-y-6">
-      {error ? (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      {error ? <Banner variant="danger">{error}</Banner> : null}
 
       {/* Áreas funcionales */}
       <SectionCard
@@ -330,21 +328,21 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)]">
-      <header className="flex items-start justify-between gap-3 border-b border-[var(--border-default)] p-3">
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+      <header className="flex items-start justify-between gap-3 border-b border-[var(--border-default)] px-3.5 py-3 shadow-[var(--linea-surco)]">
         <div>
-          <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+          <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">
             {title}
           </h2>
-          <p className="text-xs text-[var(--color-tertiary)]">{description}</p>
+          <p className="text-[11.5px] text-[var(--text-tertiary)]">{description}</p>
         </div>
         <Button size="sm" onClick={onAdd} disabled={addDisabled}>
-          <Plus className="mr-1 h-4 w-4" /> {addLabel}
+          <Icono nombre="plus" size={14} /> {addLabel}
         </Button>
       </header>
       <div className="divide-y divide-[var(--border-subtle)]">
         {empty ? (
-          <p className="p-6 text-center text-xs text-[var(--color-tertiary)]">
+          <p className="p-6 text-center text-[12.5px] text-[var(--text-tertiary)]">
             {empty}
           </p>
         ) : (
@@ -379,10 +377,10 @@ function Row({
   onDelete: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-2 text-sm">
-      <div className="flex-1">
+    <div className="flex min-h-11 items-center gap-3 px-3.5 py-2 text-[13px]">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-[var(--color-primary)]">{title}</span>
+          <span className="font-medium text-[var(--text-primary)]">{title}</span>
           {badge ? <Badge variant="neutral">{badge}</Badge> : null}
           {assigned !== undefined ? (
             <Badge variant={assigned ? "success" : "neutral"}>
@@ -392,7 +390,7 @@ function Row({
           {inactive ? <Badge variant="danger">Inactivo</Badge> : null}
         </div>
         {subtitle ? (
-          <p className="text-xs text-[var(--color-tertiary)]">{subtitle}</p>
+          <p className="text-[11.5px] text-[var(--text-tertiary)]">{subtitle}</p>
         ) : null}
       </div>
       {onToggleAssign ? (
@@ -407,10 +405,10 @@ function Row({
         </Button>
       ) : null}
       <Button size="sm" variant="ghost" onClick={onEdit} title="Editar">
-        <Pencil className="h-3.5 w-3.5" />
+        <Icono nombre="pen" size={14} />
       </Button>
       <Button size="sm" variant="ghost" onClick={onDelete} title="Eliminar">
-        <Trash2 className="h-3.5 w-3.5" />
+        <Icono nombre="bin" size={14} />
       </Button>
     </div>
   );
@@ -528,7 +526,7 @@ function AreaModalForm({
           </div>
         ) : null}
         {projectId && mode === "create" ? (
-          <p className="rounded bg-[var(--color-subtle)] px-2 py-1 text-xs text-[var(--color-tertiary)]">
+          <p className="rounded-[var(--radius-sm)] bg-[var(--color-subtle)] px-2 py-1 text-xs text-[var(--color-tertiary)]">
             {area
               ? "Al guardar, esta área queda disponible en este proyecto."
               : "El área se agrega a este proyecto automáticamente."}
@@ -557,17 +555,10 @@ function AreaModalForm({
             onChange={(e) => setDescription(e.target.value)}
           />
         </FieldLabel>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-          />
-          <span>Activa</span>
-        </label>
+        <Switch checked={isActive} onChange={setIsActive} label="Activa" />
           </>
         )}
-        {err ? <p className="text-sm text-red-600">{err}</p> : null}
+        {err ? <Banner variant="danger">{err}</Banner> : null}
         <ModalActions onCancel={onClose} onSave={submit} saving={saving} />
       </div>
     </Modal>
@@ -646,15 +637,8 @@ function TeamModalForm({
             onChange={(e) => setDescription(e.target.value)}
           />
         </FieldLabel>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-          />
-          <span>Activo</span>
-        </label>
-        {err ? <p className="text-sm text-red-600">{err}</p> : null}
+        <Switch checked={isActive} onChange={setIsActive} label="Activo" />
+        {err ? <Banner variant="danger">{err}</Banner> : null}
         <ModalActions onCancel={onClose} onSave={submit} saving={saving} />
       </div>
     </Modal>
@@ -718,15 +702,8 @@ function RoleModalForm({
             onChange={(e) => setDescription(e.target.value)}
           />
         </FieldLabel>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-          />
-          <span>Activo</span>
-        </label>
-        {err ? <p className="text-sm text-red-600">{err}</p> : null}
+        <Switch checked={isActive} onChange={setIsActive} label="Activo" />
+        {err ? <Banner variant="danger">{err}</Banner> : null}
         <ModalActions onCancel={onClose} onSave={submit} saving={saving} />
       </div>
     </Modal>

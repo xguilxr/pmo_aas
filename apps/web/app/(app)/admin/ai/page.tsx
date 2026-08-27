@@ -1,28 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import {
   type FormEvent,
   type ReactNode,
   useEffect,
   useState,
 } from "react";
-import {
-  AlertTriangle,
-  Check,
-  CheckCircle2,
-  ExternalLink,
-  FileText,
-  KeyRound,
-  Plug,
-  Sparkles,
-  XCircle,
-} from "lucide-react";
 
 import { ConsumoDeIAPanel } from "@/components/consumo-de-ia";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Modal } from "@/components/ui/modal";
@@ -157,32 +147,27 @@ export default function TenantAdminAIPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <header className="space-y-2">
-        <nav className="text-[11px] text-[var(--text-tertiary)]">
-          <Link href="/admin" className="hover:underline">
-            Admin
-          </Link>
-          <span className="mx-1">/</span>
-          <span>IA</span>
-        </nav>
+        <Breadcrumb items={[{ href: "/admin", label: "Admin" }, { label: "IA" }]} />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <Sparkles
-                className="h-6 w-6 text-[var(--color-accent)]"
-                aria-hidden
+              <Icono
+                nombre="info"
+                size={20}
+                className="text-[var(--color-accent)]"
               />
-              <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+              <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
                 Configuración de IA
               </h1>
             </div>
-            <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+            <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
               Elige cómo procesa minutas y reportes tu tenant. Los cambios
               pueden interrumpir la conexión activa — confírmalos en el
               diálogo antes de guardar.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--color-tertiary)]">
+            <span className="text-xs text-[var(--text-tertiary)]">
               Estado actual:
             </span>
             {currentBadge}
@@ -193,7 +178,7 @@ export default function TenantAdminAIPage() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {notice ? <Banner variant="success">{notice}</Banner> : null}
 
-      <section className="space-y-2">
+      <section className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
         <ModeCard
           mode="disabled"
           pending={pendingMode}
@@ -244,9 +229,10 @@ export default function TenantAdminAIPage() {
       >
         <div className="space-y-3">
           <div className="flex items-start gap-2 text-[13px] text-[var(--color-secondary)]">
-            <AlertTriangle
-              className="h-5 w-5 shrink-0 text-[var(--color-warning-fg)]"
-              aria-hidden
+            <Icono
+              nombre="triangle-alert"
+              size={19}
+              className="shrink-0 text-[var(--color-warning-fg)]"
             />
             <p>
               Cambiar de <strong>{MODE_LABEL[data.mode]}</strong> a{" "}
@@ -299,6 +285,12 @@ export default function TenantAdminAIPage() {
 
 /* ======================= ModeCard ======================= */
 
+const MODE_ICON: Record<TenantAIMode, string> = {
+  disabled: "x",
+  platform: "info",
+  byo: "settings",
+};
+
 function ModeCard({
   mode,
   pending,
@@ -311,13 +303,14 @@ function ModeCard({
   onChoose: (m: TenantAIMode) => void;
 }) {
   const checked = pending === mode;
+  const active = mode === current;
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-[var(--radius-xl)] border p-4 shadow-[var(--shadow-sm)] transition-colors",
-        checked
-          ? "border-[var(--color-accent)] bg-[var(--color-subtle)]"
-          : "border-[var(--border-default)] bg-[var(--color-surface)]",
+        "flex cursor-pointer flex-col gap-2.5 rounded-[var(--radius-xl)] p-4 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-accent)]",
+        active
+          ? "border-2 border-[var(--color-primary)] bg-[var(--color-subtle)]"
+          : "border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)] hover:border-[var(--color-accent)]",
       )}
     >
       <input
@@ -326,19 +319,33 @@ function ModeCard({
         value={mode}
         checked={checked}
         onChange={() => onChoose(mode)}
-        className="mt-1"
+        className="sr-only"
       />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-[var(--color-primary)]">
-            {MODE_LABEL[mode]}
-          </span>
-          {mode === current ? <Badge variant="neutral">Actual</Badge> : null}
-        </div>
-        <p className="mt-1 text-[13px] text-[var(--color-secondary)]">
-          {MODE_DESCRIPTION[mode]}
-        </p>
+      <div className="flex items-center justify-between">
+        <Icono
+          nombre={MODE_ICON[mode]}
+          size={20}
+          className={
+            active
+              ? "text-[var(--text-primary)]"
+              : "text-[var(--text-tertiary)]"
+          }
+        />
+        {active ? <Badge variant="accent">Activo</Badge> : null}
       </div>
+      <span className="text-[14.5px] font-semibold text-[var(--text-primary)]">
+        {MODE_LABEL[mode]}
+      </span>
+      <p
+        className={cn(
+          "text-[12px] leading-[1.5]",
+          active
+            ? "text-[var(--text-secondary)]"
+            : "text-[var(--text-tertiary)]",
+        )}
+      >
+        {MODE_DESCRIPTION[mode]}
+      </p>
     </label>
   );
 }
@@ -394,7 +401,7 @@ function PermanentInstructionsSection({
   return (
     <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center gap-2">
-        <FileText className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+        <Icono nombre="file-text" size={15} className="text-[var(--color-tertiary)]" />
         <h2 className="text-sm font-semibold text-[var(--color-primary)]">
           Instrucciones permanentes de IA
         </h2>
@@ -450,10 +457,7 @@ function BYOSection({
   return (
     <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center gap-2">
-        <Plug
-          className="h-4 w-4 text-[var(--color-tertiary)]"
-          aria-hidden
-        />
+        <Icono nombre="link" size={15} className="text-[var(--color-tertiary)]" />
         <h2 className="text-sm font-semibold text-[var(--color-primary)]">
           Conectar tu proveedor
         </h2>
@@ -866,7 +870,7 @@ function ProviderCard({
           <Badge variant="danger">Última prueba falló</Badge>
         ) : connected && testStatus === "ok" ? (
           <Badge variant="success">
-            <Check className="mr-1 h-3 w-3" aria-hidden />
+            <Icono nombre="check" size={12} className="mr-1" />
             Conectado
           </Badge>
         ) : connected ? (
@@ -1112,7 +1116,7 @@ function WizardKey({
           htmlFor="wiz-key"
           className="mb-1.5 flex items-center gap-1 text-sm font-medium text-[var(--color-secondary)]"
         >
-          <KeyRound className="h-3.5 w-3.5" aria-hidden />
+          <Icono nombre="lock" size={14} />
           API key
         </label>
         <PasswordInput
@@ -1317,9 +1321,10 @@ function WizardTest({
           <span className="inline-flex items-center gap-1 text-[13px]">
             {result.ok ? (
               <>
-                <CheckCircle2
-                  className="h-4 w-4 text-[var(--color-success-fg)]"
-                  aria-hidden
+                <Icono
+                  nombre="circle-check"
+                  size={15}
+                  className="text-[var(--color-success-fg)]"
                 />
                 <span className="text-[var(--color-success-fg)]">
                   Conexión OK
@@ -1330,9 +1335,10 @@ function WizardTest({
               </>
             ) : (
               <>
-                <XCircle
-                  className="h-4 w-4 text-[var(--color-danger-fg)]"
-                  aria-hidden
+                <Icono
+                  nombre="circle-x"
+                  size={15}
+                  className="text-[var(--color-danger-fg)]"
                 />
                 <span className="text-[var(--color-danger-fg)]">
                   {result.error ?? "Falló"}
@@ -1424,7 +1430,7 @@ function DeepLinks({
           className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
         >
           Generar API key
-          <ExternalLink className="h-3 w-3" aria-hidden />
+          <Icono nombre="arrow-up-right" size={12} />
         </a>
       ) : null}
       <a
@@ -1434,7 +1440,7 @@ function DeepLinks({
         className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
       >
         Documentación
-        <ExternalLink className="h-3 w-3" aria-hidden />
+        <Icono nombre="arrow-up-right" size={12} />
       </a>
     </div>
   );

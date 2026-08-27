@@ -29,12 +29,12 @@
  */
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ClipboardCheck } from "lucide-react";
 
 import { colorSalud } from "@/components/dashboard-charts";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Icono } from "@/components/ui/icono";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { useOrgFiltro } from "@/components/organizacion-activa";
 import { ApiError } from "@/lib/api";
@@ -113,7 +113,7 @@ export default function PortfolioBoardPage() {
         items={[{ href: "/pmo", label: "Portafolio" }, { label: "Board" }]}
       />
       <header>
-        <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-primary)]">
           Portfolio Board
         </h1>
         {leido && (
@@ -123,7 +123,7 @@ export default function PortfolioBoardPage() {
             actualizado={leido}
           />
         )}
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+        <p className="mt-1 max-w-[900px] text-[13px] leading-[1.55] text-[var(--color-tertiary)]">
           Los proyectos por estatus de reporte, de lo más urgente a lo que no
           necesita nada. No se arrastra: el estatus se deriva de la fecha del
           último reporte, así que se cambia generando el reporte.
@@ -141,7 +141,7 @@ export default function PortfolioBoardPage() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
       {cargando ? (
-        <div className="grid gap-3 lg:grid-cols-4">
+        <div className="grid gap-3.5 lg:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
             <span
               key={i}
@@ -158,33 +158,33 @@ export default function PortfolioBoardPage() {
           están en curso; los cerrados no se reportan y quedan fuera a propósito.
         </div>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-4">
+        <div className="grid gap-3.5 lg:grid-cols-4">
           {board.columns.map((col) => (
             <section
               key={col.status}
               aria-label={`Proyectos ${col.label}`}
-              className="flex flex-col rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]"
+              className="flex flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]"
             >
               <header
-                className="border-b border-[var(--border-default)] p-3"
+                className="border-t-2 border-b border-[var(--border-default)] bg-[var(--color-subtle)] px-3.5 py-3 shadow-[var(--linea-surco)]"
                 style={{ borderTopColor: TONO[col.status] }}
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <h2
-                    className="text-sm font-semibold capitalize"
+                    className="text-[13px] font-semibold"
                     style={{ color: TONO[col.status] }}
                   >
-                    {col.label}
+                    {col.label.charAt(0).toUpperCase() + col.label.slice(1)}
                   </h2>
-                  <span className="text-sm font-semibold tabular-nums text-[var(--color-primary)]">
+                  <span className="font-mono text-[13px] font-medium tabular-nums text-[var(--color-primary)]">
                     {col.projects.length}
                   </span>
                 </div>
-                <p className="mt-0.5 text-[11px] text-[var(--color-tertiary)]">
+                <p className="mt-0.75 text-[11px] text-[var(--color-disabled)]">
                   {QUE_HACER[col.status]}
                 </p>
               </header>
-              <div className="flex-1 space-y-2 p-2">
+              <div className="flex-1 space-y-2 p-2.5">
                 {col.projects.length === 0 ? (
                   <p className="py-6 text-center text-[11px] text-[var(--color-tertiary)]">
                     Vacía
@@ -193,16 +193,16 @@ export default function PortfolioBoardPage() {
                   col.projects.map((p) => (
                     <article
                       key={p.project_id}
-                      className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-2.5"
+                      className="flex flex-col gap-1.5 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-2.5 shadow-[var(--linea-surco-arriba)]"
                     >
                       <Link
                         href={`/pmo/projects/${p.project_id}/reports`}
-                        className="block truncate text-[13px] font-medium text-[var(--color-primary)] hover:text-[var(--color-accent)]"
+                        className="block truncate text-[12.5px] font-medium text-[var(--color-primary)] hover:text-[var(--color-accent)]"
                         title={`${p.folio} · ${p.name} — ir a sus reportes`}
                       >
                         {p.name}
                       </Link>
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <div className="flex flex-wrap items-center gap-1.75 text-[11px]">
                         <Badge
                           variant={
                             PHASE_BADGE_TONE[p.phase as ProjectPhase] ?? "neutral"
@@ -214,7 +214,7 @@ export default function PortfolioBoardPage() {
                           {etiquetaSalud(p.health)}
                         </span>
                         {p.report_days_late > 0 ? (
-                          <span className="tabular-nums text-[var(--color-danger-fg)]">
+                          <span className="font-mono tabular-nums text-[var(--color-danger-fg)]">
                             +{p.report_days_late} d
                           </span>
                         ) : null}
@@ -224,9 +224,9 @@ export default function PortfolioBoardPage() {
                       {p.pending_decisions > 0 ? (
                         <Link
                           href={`/pmo/projects/${p.project_id}/raid`}
-                          className="mt-1.5 flex items-center gap-1 text-[11px] text-[var(--color-warning-fg)] hover:underline"
+                          className="flex items-center gap-1.25 text-[11px] text-[var(--color-warning-fg)] hover:underline"
                         >
-                          <ClipboardCheck className="h-3 w-3" aria-hidden />
+                          <Icono nombre="list-check" size={12} />
                           {p.pending_decisions}{" "}
                           {p.pending_decisions === 1
                             ? "decisión pendiente"
@@ -236,7 +236,7 @@ export default function PortfolioBoardPage() {
                       {p.next_milestone ? (
                         <p
                           className={cn(
-                            "mt-1 truncate text-[11px]",
+                            "flex min-w-0 items-center gap-1.25 text-[11px]",
                             p.next_milestone.overdue
                               ? "text-[var(--color-danger-fg)]"
                               : "text-[var(--color-tertiary)]",
@@ -244,12 +244,11 @@ export default function PortfolioBoardPage() {
                           title={p.next_milestone.name}
                         >
                           {p.next_milestone.overdue ? (
-                            <AlertTriangle
-                              className="mr-1 inline h-3 w-3"
-                              aria-hidden
-                            />
+                            <Icono nombre="triangle-alert" size={12} />
                           ) : null}
-                          {p.next_milestone.name}
+                          <span className="truncate">
+                            {p.next_milestone.name}
+                          </span>
                         </p>
                       ) : null}
                     </article>

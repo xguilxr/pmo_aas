@@ -3,14 +3,6 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  ChevronsUpDown,
-  ChevronUp,
-  Download,
-  Eye,
-} from "lucide-react";
 
 import {
   InlineSelectCell,
@@ -19,7 +11,6 @@ import {
 } from "@/components/inline-select-cell";
 import { ItemPreviewModal } from "@/components/item-preview-modal";
 import { RaidEditModal } from "@/components/raid-edit-modal";
-import { Trash2, Pencil } from "lucide-react";
 import { listAreasByProject } from "@/lib/api/areas";
 import { listEligibleActors } from "@/lib/api/project-directory";
 import type { InlineOption } from "@/components/inline-select-cell";
@@ -35,6 +26,8 @@ import {
 } from "@/components/raid-create-modal";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError, apiBase } from "@/lib/api";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
@@ -564,36 +557,38 @@ function RaidInner() {
             <span className="mx-1">/</span>
             <span>RAID</span>
           </nav>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-            RAID
-          </h1>
+          <div className="mt-1 flex items-center gap-2">
+            <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
+              RAID
+            </h1>
+            <span className="inline-flex h-5.5 items-center rounded-full bg-[var(--color-muted)] px-2 font-mono text-[11.5px] text-[var(--text-secondary)]">
+              {loading ? "…" : counts[tab]}
+            </span>
+          </div>
           <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
             Vista consolidada: Riesgos · Acciones · Incidentes · Decisiones.
             Click en una fila abre el módulo correspondiente para editar.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--color-primary)] px-3 text-sm font-medium text-[var(--color-inverse)] shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-hover)]"
-          >
-            + {KIND_NEW_LABEL[tab]}
-          </button>
+          <Button type="button" onClick={() => setCreateOpen(true)}>
+            <Icono nombre="plus" size={15} />
+            {KIND_NEW_LABEL[tab]}
+          </Button>
           {/* ENH-168 + ENH-171: menú "Exportar ▾" (export por tipo + 4 hojas). */}
           <div ref={setExportEl} className="relative">
-            <button
+            <Button
               type="button"
+              variant="secondary"
               onClick={() => setExportOpen((v) => !v)}
               disabled={exporting}
               aria-haspopup="menu"
               aria-expanded={exportOpen}
-              className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <Download className="h-4 w-4" aria-hidden />
+              <Icono nombre="download" size={15} />
               {exporting ? "Exportando…" : "Exportar"}
-              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-            </button>
+              <Icono nombre="chevron-down" size={13} className="text-[var(--text-faint)]" />
+            </Button>
             {exportOpen ? (
               <div
                 role="menu"
@@ -606,9 +601,9 @@ function RaidInner() {
                     setExportOpen(false);
                     void downloadRaid(tab);
                   }}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                  className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-left text-sm text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
                 >
-                  <Download className="h-4 w-4" aria-hidden />
+                  <Icono nombre="download" size={14} className="text-[var(--text-faint)]" />
                   Sólo {TABS.find((t) => t.id === tab)?.label ?? "tipo"} (1 hoja)
                 </button>
                 <button
@@ -618,9 +613,9 @@ function RaidInner() {
                     setExportOpen(false);
                     void downloadRaid();
                   }}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                  className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-left text-sm text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
                 >
-                  <Download className="h-4 w-4" aria-hidden />
+                  <Icono nombre="download" size={14} className="text-[var(--text-faint)]" />
                   RAID completo (4 hojas)
                 </button>
               </div>
@@ -631,10 +626,12 @@ function RaidInner() {
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
+      {/* Bandeja con pestañas de tipo — filete inferior de 2px en la activa,
+          conteo en pastilla --color-muted (nunca fondo sólido en inactivas). */}
       <div
         role="tablist"
         aria-label="Secciones RAID"
-        className="flex flex-wrap gap-2"
+        className="flex flex-wrap items-center gap-5 border-b border-[var(--border-default)] shadow-[var(--linea-surco)]"
       >
         {TABS.map((t) => {
           const active = t.id === tab;
@@ -646,33 +643,30 @@ function RaidInner() {
               aria-selected={active}
               onClick={() => switchTab(t.id)}
               className={cn(
-                "inline-flex items-center gap-2 rounded-[var(--radius-md)] border px-2 py-1.5 text-sm transition-colors",
+                "-mb-px flex h-9 items-center gap-2 border-b-2 text-[13px] transition-colors",
                 active
-                  ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                  : "border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                  ? "border-[var(--color-primary)] font-medium text-[var(--text-primary)]"
+                  : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
               )}
             >
               <span
-                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
-                style={{
-                  backgroundColor: active ? "var(--color-inverse)" : t.color,
-                  color: active ? t.color : "var(--color-inverse)",
-                }}
+                className="inline-flex h-4.5 w-4.5 items-center justify-center rounded-full text-[9.5px] font-bold text-[var(--color-inverse)]"
+                style={{ backgroundColor: t.color }}
                 aria-hidden
               >
                 {t.letter}
               </span>
               <span>{t.label}</span>
-              <Badge variant={active ? "neutral" : "neutral"}>
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-muted)] px-1.5 font-mono text-[10.5px] text-[var(--text-secondary)]">
                 {loading ? "…" : counts[t.id]}
-              </Badge>
+              </span>
             </button>
           );
         })}
       </div>
 
       {/* US-174: toggle Lista / Kanban (por tab). */}
-      <div className="flex w-fit items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5">
+      <div className="flex w-fit items-center gap-0.5 rounded-[var(--radius-md)] bg-[var(--color-muted)] p-0.5 shadow-[var(--hundido)]">
         {(["list", "board"] as const).map((v) => (
           <button
             key={v}
@@ -680,10 +674,10 @@ function RaidInner() {
             onClick={() => setViewAndUrl(v)}
             aria-pressed={view === v}
             className={cn(
-              "rounded px-3 py-1 text-xs font-medium",
+              "h-7 rounded-[var(--radius-sm)] px-3 text-xs font-medium transition-colors",
               view === v
-                ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                ? "bg-[var(--color-surface)] text-[var(--text-primary)] shadow-[var(--relieve-control)]"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
             )}
           >
             {v === "list" ? "Lista" : "Kanban"}
@@ -693,15 +687,16 @@ function RaidInner() {
 
       {/* ENH-026: filtros avanzados (status + severity/priority)
           consolidados — antes vivían en /risks y /issues. */}
-      <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-2 py-1.5 text-[13px]">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+      <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-2.5 py-1.5 text-[13px]">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+          <Icono nombre="filter" size={13} />
           Filtros
         </span>
         <select
           aria-label="Estado"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+          className="h-8 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)] shadow-[var(--hundido)]"
         >
           <option value="">Todos los estados</option>
           {tab === "risks"
@@ -723,7 +718,7 @@ function RaidInner() {
             onChange={(e) =>
               setSeverityMin(e.target.value === "" ? "" : Number(e.target.value))
             }
-            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+            className="h-8 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)] shadow-[var(--hundido)]"
           >
             <option value="">Cualquier severidad</option>
             <option value="1">Baja (≥ 1)</option>
@@ -737,7 +732,7 @@ function RaidInner() {
             onChange={(e) =>
               setPriorityMin(e.target.value === "" ? "" : Number(e.target.value))
             }
-            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+            className="h-8 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)] shadow-[var(--hundido)]"
           >
             <option value="">Cualquier prioridad</option>
             <option value="1">P1+ (Crítica)</option>
@@ -752,7 +747,7 @@ function RaidInner() {
             aria-label="Área"
             value={areaFilter}
             onChange={(e) => setAreaFilter(e.target.value)}
-            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+            className="h-8 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)] shadow-[var(--hundido)]"
           >
             <option value="">Todas las áreas</option>
             {areaOptions.map((a) => (
@@ -886,14 +881,12 @@ function severityToneOf(sev: number | null): "danger" | "warning" | "success" | 
 // US-179: tag de color del estado RAID.
 function RaidStatusBadge({ status }: { status: RaidStatus }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-        RAID_STATUS_BADGE[status] ?? "bg-[var(--color-subtle)]",
-      )}
+    <Badge
+      variant="neutral"
+      className={RAID_STATUS_BADGE[status] ?? "bg-[var(--color-subtle)]"}
     >
       {RAID_STATUS_LABEL[status] ?? status}
-    </span>
+    </Badge>
   );
 }
 
@@ -964,7 +957,7 @@ function RowActions({
         title="Vista rápida"
         className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
       >
-        <Eye className="h-3.5 w-3.5" aria-hidden />
+        <Icono nombre="eye" size={15} />
       </button>
       <button
         type="button"
@@ -973,7 +966,7 @@ function RowActions({
         title="Editar"
         className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
       >
-        <Pencil className="h-3.5 w-3.5" aria-hidden />
+        <Icono nombre="pen" size={15} />
       </button>
       <button
         type="button"
@@ -982,7 +975,7 @@ function RowActions({
         title="Eliminar"
         className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-danger-bg)] hover:text-[var(--color-danger-fg)]"
       >
-        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+        <Icono nombre="bin" size={15} />
       </button>
     </div>
   );
@@ -1001,7 +994,7 @@ function OnHoldInfo({
   if (days === null) return null;
   return (
     <span
-      className="ml-1 rounded bg-[var(--color-warning-bg)] px-1 text-[10px] font-medium text-[var(--color-warning-fg)]"
+      className="ml-1 rounded-[var(--radius-sm)] bg-[var(--color-warning-bg)] px-1 text-[10px] font-medium text-[var(--color-warning-fg)]"
       title={`Detenido desde ${since}`}
     >
       {days}d
@@ -1029,7 +1022,7 @@ function RiskMatrix({
     return g;
   }, [rows]);
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
       <h2 className="mb-1 text-sm font-semibold text-[var(--color-primary)]">
         Matriz P × I
       </h2>
@@ -1180,11 +1173,7 @@ function RisksSection({
         aria-expanded={showMatrix || cellFilter !== null}
         className="inline-flex items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]"
       >
-        {showMatrix || cellFilter ? (
-          <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-        )}
+        <Icono nombre={showMatrix || cellFilter ? "chevron-down" : "chevron-right"} size={14} />
         Matriz P × I
       </button>
       {showMatrix || cellFilter ? (
@@ -1205,7 +1194,7 @@ function RisksSection({
               aria-label="Quitar filtro de matriz"
               className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-[var(--color-subtle)]"
             >
-              ×
+              <Icono nombre="x" size={11} />
             </button>
           </span>
           <span className="text-[var(--color-tertiary)]">
@@ -1219,51 +1208,51 @@ function RisksSection({
           {" "}arriba para crear el primero.
         </div>
       ) : (
-        <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+        <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
           {/* ENH-196: layout de 2 líneas por fila — toda la info visible
               sin scroll horizontal (feedback cliente 16-jul). Columnas
               combinadas con sort por chip; edición inline intacta. */}
           <table className="w-full table-fixed text-[13px]">
-            <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+            <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)] shadow-[var(--linea-surco)]">
               <tr>
-                <th className="w-[38%] px-3 py-2 font-medium">
+                <th className="h-8.5 w-[38%] px-3">
                   <span className="flex items-center gap-2">
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="folio" getter={(r) => r.folio}>Folio</SortChip>
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="title" getter={(r) => r.title}>Título</SortChip>
                   </span>
                 </th>
-                <th className="w-[19%] px-2 py-2 font-medium">
+                <th className="h-8.5 w-[19%] px-2">
                   <span className="flex items-center gap-2">
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="area" getter={(r) => (r as any).area?.name ?? ""}>Área</SortChip>
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="responsible" getter={(r) => r.responsible_name ?? ""}>Resp.</SortChip>
                   </span>
                 </th>
-                <th className="w-[17%] px-2 py-2 font-medium">
+                <th className="h-8.5 w-[17%] px-2">
                   <span className="flex items-center gap-2">
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="severity" getter={(r) => r.severity ?? 0}>Severidad</SortChip>
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="status" getter={(r) => r.status}>Estado</SortChip>
                   </span>
                 </th>
-                <th className="w-[18%] px-2 py-2 font-medium">
+                <th className="h-8.5 w-[18%] px-2">
                   <span className="flex items-center gap-2">
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="identified" getter={(r) => (r as any).identified_at ?? ""}>Creación</SortChip>
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="due" getter={(r) => r.due_date ?? ""}>Compromiso</SortChip>
                   </span>
                 </th>
-                <th className="w-[8%] px-2 py-2 text-right font-medium">Acciones</th>
+                <th className="h-8.5 w-[8%] px-2 pr-3.5 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {visibleRows.map((r) => (
                 <tr
                   key={r.id}
-                  className="border-b border-[var(--border-subtle)] align-top hover:bg-[var(--color-subtle)]"
+                  className="border-b border-[var(--border-subtle)] align-top shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]"
                 >
                   {/* Línea 1: folio (link) · Línea 2: título editable. */}
                   <td className="px-3 py-2">
                     <Link
                       href={`/pmo/projects/${projectId}/raid/${r.id}?type=risk`}
-                      className="font-mono text-xs text-[var(--color-tertiary)] hover:text-[var(--color-accent)] hover:underline"
+                      className="text-[12px] tracking-[0.01em] text-[var(--color-tertiary)] hover:text-[var(--color-accent)] hover:underline"
                     >
                       {r.folio}
                     </Link>
@@ -1365,7 +1354,7 @@ function RisksSection({
                       />
                     </div>
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-2 pr-3.5">
                     <RowActions
                       onPreview={() => setPreview(r)}
                       onEdit={() => onEdit(r)}
@@ -1466,50 +1455,50 @@ function IssuesSection({
   const displayLabel =
     issueType === "issue" ? INCIDENT_LABEL : ISSUE_TYPE_LABEL[issueType];
   return (
-    <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+    <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
       {/* ENH-196: 2 líneas por fila — sin scroll horizontal, edición
           inline directa (feedback cliente 16-jul, pág. 6). */}
       <table className="w-full table-fixed text-[13px]">
-        <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+        <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)] shadow-[var(--linea-surco)]">
           <tr>
-            <th className="w-[38%] px-3 py-2 font-medium">
+            <th className="h-8.5 w-[38%] px-3">
               <span className="flex items-center gap-2">
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="folio" getter={(r) => r.folio}>Folio</SortChip>
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="title" getter={(r) => r.title}>Título</SortChip>
               </span>
             </th>
-            <th className="w-[19%] px-2 py-2 font-medium">
+            <th className="h-8.5 w-[19%] px-2">
               <span className="flex items-center gap-2">
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="area" getter={(r) => (r as any).area?.name ?? ""}>Área</SortChip>
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="responsible" getter={(r) => r.responsible_name ?? ""}>Resp.</SortChip>
               </span>
             </th>
-            <th className="w-[17%] px-2 py-2 font-medium">
+            <th className="h-8.5 w-[17%] px-2">
               <span className="flex items-center gap-2">
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="priority" getter={(r) => (r as any).priority ?? 0}>Prioridad</SortChip>
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="status" getter={(r) => r.status}>Estado</SortChip>
               </span>
             </th>
-            <th className="w-[18%] px-2 py-2 font-medium">
+            <th className="h-8.5 w-[18%] px-2">
               <span className="flex items-center gap-2">
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="identified" getter={(r) => (r as any).reported_at ?? ""}>Creación</SortChip>
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="committed" getter={(r) => (r as any).committed_date ?? ""}>Compromiso</SortChip>
               </span>
             </th>
-            <th className="w-[8%] px-2 py-2 text-right font-medium">Acciones</th>
+            <th className="h-8.5 w-[8%] px-2 pr-3.5 text-right">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {sortedRows.map((it) => (
             <tr
               key={it.id}
-              className="border-b border-[var(--border-subtle)] align-top hover:bg-[var(--color-subtle)]"
+              className="border-b border-[var(--border-subtle)] align-top shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]"
             >
               {/* Línea 1: folio (link) · Línea 2: título editable. */}
               <td className="px-3 py-2">
                 <Link
                   href={`/pmo/projects/${projectId}/raid/${it.id}?type=${issueType === "action" ? "action" : issueType === "decision" ? "decision" : "incident"}`}
-                  className="font-mono text-xs text-[var(--color-tertiary)] hover:text-[var(--color-accent)] hover:underline"
+                  className="text-[12px] tracking-[0.01em] text-[var(--color-tertiary)] hover:text-[var(--color-accent)] hover:underline"
                 >
                   {it.folio}
                 </Link>
@@ -1649,11 +1638,11 @@ function SortChip<T>({
   children: React.ReactNode;
 }) {
   const active = ctrl.sortKey === sortKey;
-  const Icon = active
+  const nombreIcono = active
     ? ctrl.sortDir === "asc"
-      ? ChevronUp
-      : ChevronDown
-    : ChevronsUpDown;
+      ? "chevron-up"
+      : "chevron-down"
+    : "chevrons-up-down";
   return (
     <button
       type="button"
@@ -1664,53 +1653,31 @@ function SortChip<T>({
       )}
     >
       <span>{children}</span>
-      <Icon className="h-3 w-3 opacity-60" />
+      <Icono nombre={nombreIcono} size={12} className="opacity-60" />
     </button>
   );
 }
 
 function SeverityBadge({ severity }: { severity: number | null }) {
-  if (severity === null) return <span className="text-xs">—</span>;
-  const tone =
-    severity >= 13
-      ? "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]"
-      : severity >= 6
-        ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
-        : "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]";
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-        tone,
-      )}
-    >
-      {severity}
-    </span>
-  );
+  if (severity === null) return <span className="text-xs text-[var(--text-faint)]">—</span>;
+  return <Badge variant={severityToneOf(severity)}>{severity}</Badge>;
 }
 
 function PriorityBadge({ priority }: { priority: number | null | undefined }) {
   if (priority === null || priority === undefined)
-    return <span className="text-xs">—</span>;
-  const tone =
+    return <span className="text-xs text-[var(--text-faint)]">—</span>;
+  const variant =
     priority === 1
-      ? "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]"
+      ? "danger"
       : priority === 2
-        ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
+        ? "warning"
         : priority === 3
-          ? "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]"
-          : "bg-[var(--color-subtle)] text-[var(--color-secondary)]";
+          ? "info"
+          : "neutral";
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-        tone,
-      )}
-      aria-label={`Prioridad ${priority}`}
-      title={`Prioridad ${priority}`}
-    >
+    <Badge variant={variant} aria-label={`Prioridad ${priority}`} title={`Prioridad ${priority}`}>
       P{priority}
-    </span>
+    </Badge>
   );
 }
 

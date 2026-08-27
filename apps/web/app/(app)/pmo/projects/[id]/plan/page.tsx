@@ -3,27 +3,11 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import {
-  BarChart3,
-  Building2,
-  ChevronDown,
-  ChevronRight,
-  ClipboardCheck,
-  Columns3,
-  Diamond,
-  Download,
-  FileDown,
-  ListTree,
-  Network,
-  Pencil,
-  Plus,
-  Rows3,
-  Trash2,
-  Upload,
-} from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -58,7 +42,7 @@ import {
 } from "@/lib/api/tasks";
 import { cn } from "@/lib/cn";
 import { confirmarDestructivo } from "@/lib/confirmar";
-import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
+import { MarcaDeDatos } from "@/components/ui/marca-de-datos";
 
 type Mode = "split" | "list" | "gantt";
 
@@ -209,7 +193,7 @@ function WbsHierarchyPicker({
         onClick={() => onPick(nextWbsUnder(parent || null, tasks, excludeId))}
         title="Asigna el siguiente WBS disponible bajo la tarea padre seleccionada"
       >
-        <Network className="mr-1 h-3.5 w-3.5" aria-hidden />
+        <Icono nombre="git-branch" size={14} />
         Bajar nivel
       </Button>
     </div>
@@ -279,7 +263,7 @@ function ownerInitials(owner: Task["owner"]): string {
 
 function OwnerCell({ owner }: { owner: Task["owner"] }) {
   if (!owner) {
-    return <span className="text-[var(--color-tertiary)]">—</span>;
+    return <span className="text-[var(--text-tertiary)]">—</span>;
   }
   return (
     <span
@@ -288,11 +272,11 @@ function OwnerCell({ owner }: { owner: Task["owner"] }) {
     >
       <span
         aria-hidden
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-subtle)] text-[10px] font-medium text-[var(--color-secondary)]"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-muted)] text-[10px] font-medium text-[var(--text-secondary)]"
       >
         {ownerInitials(owner)}
       </span>
-      <span className="truncate text-[var(--color-secondary)]">
+      <span className="truncate text-[var(--text-secondary)]">
         {ownerLabel(owner)}
       </span>
     </span>
@@ -312,7 +296,7 @@ function FormField({
 }) {
   return (
     <label className={cn("block", className)}>
-      <span className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+      <span className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
         {label}
       </span>
       {children}
@@ -320,27 +304,17 @@ function FormField({
   );
 }
 
+// BUG-067: el enum real es completed/on_hold (no done/blocked).
+function statusTone(status: string): "success" | "info" | "warning" | "neutral" {
+  if (status === "completed") return "success";
+  if (status === "in_progress") return "info";
+  if (status === "on_hold") return "warning";
+  return "neutral";
+}
+
 function StatusBadge({ status }: { status: string }) {
   const label = TASK_STATUS_LABEL[status as keyof typeof TASK_STATUS_LABEL] ?? status;
-  // BUG-067: el enum real es completed/on_hold (no done/blocked).
-  const tone =
-    status === "completed"
-      ? "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]"
-      : status === "in_progress"
-        ? "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]"
-        : status === "on_hold"
-          ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
-          : "bg-[var(--color-subtle)] text-[var(--color-secondary)]";
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
-        tone,
-      )}
-    >
-      {label}
-    </span>
-  );
+  return <Badge variant={statusTone(status)}>{label}</Badge>;
 }
 
 // ENH-188: estado con tag de color en la tabla del Plan, editable inline
@@ -364,7 +338,7 @@ function TaskStatusInlineCell({
         onClick={() => setEditing(true)}
         title="Estado (clic para editar)"
         aria-label={ariaLabel}
-        className="rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+        className="rounded-[var(--radius-sm)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
       >
         <StatusBadge status={status} />
       </button>
@@ -386,7 +360,7 @@ function TaskStatusInlineCell({
           setEditing(false);
         }
       }}
-      className="rounded border border-[var(--border-default)] bg-[var(--color-surface)] px-1 py-0.5 text-xs text-[var(--color-secondary)] focus:outline-none"
+      className="rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-1.5 py-0.5 text-xs text-[var(--text-secondary)] shadow-[var(--hundido)] focus:outline-none"
     >
       {(Object.keys(TASK_STATUS_LABEL) as TaskStatus[]).map((k) => (
         <option key={k} value={k}>
@@ -436,15 +410,15 @@ function AreaFilterDropdown({
         aria-expanded={open}
         title="Filtrar por Área"
         className={cn(
-          "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
+          "inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-md)] px-2 text-xs font-medium",
           count > 0
             ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-            : "border border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+            : "border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
         )}
       >
-        <Building2 className="h-3.5 w-3.5" aria-hidden />
+        <Icono nombre="building" size={14} />
         Área: {label}
-        <ChevronDown className="h-3 w-3" aria-hidden />
+        <Icono nombre="chevron-down" size={13} className="opacity-70" />
       </button>
       {open ? (
         <div
@@ -457,10 +431,10 @@ function AreaFilterDropdown({
               onClick={onToggleGroup}
               aria-pressed={groupByArea}
               className={cn(
-                "rounded px-2 py-0.5 text-[11px] font-medium",
+                "rounded-[var(--radius-sm)] px-2 py-0.5 text-[11px] font-medium",
                 groupByArea
                   ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                  : "border border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                  : "border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
               )}
             >
               {groupByArea ? "Agrupando por Área" : "Agrupar por Área"}
@@ -469,14 +443,14 @@ function AreaFilterDropdown({
               <button
                 type="button"
                 onClick={() => onChange(new Set())}
-                className="text-[11px] text-[var(--color-tertiary)] hover:underline"
+                className="text-[11px] text-[var(--text-tertiary)] hover:underline"
               >
                 Limpiar
               </button>
             ) : null}
           </div>
           {areas.length === 0 ? (
-            <p className="p-2 text-[11px] italic text-[var(--color-tertiary)]">
+            <p className="p-2 text-[11px] italic text-[var(--text-tertiary)]">
               Sin áreas registradas en el proyecto.
             </p>
           ) : (
@@ -485,7 +459,7 @@ function AreaFilterDropdown({
                 const checked = selected.has(a.id);
                 return (
                   <li key={a.id}>
-                    <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-[var(--color-subtle)]">
+                    <label className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1 text-xs hover:bg-[var(--color-subtle)]">
                       <input
                         type="checkbox"
                         checked={checked}
@@ -496,7 +470,7 @@ function AreaFilterDropdown({
                           onChange(next);
                         }}
                       />
-                      <span className="flex-1 text-[var(--color-primary)]">
+                      <span className="flex-1 text-[var(--text-primary)]">
                         {a.name}
                       </span>
                     </label>
@@ -566,35 +540,35 @@ function ColumnsDropdown({
         aria-expanded={open}
         title="Configurar columnas visibles"
         className={cn(
-          "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
+          "inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-md)] px-2 text-xs font-medium",
           extra > 0
             ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-            : "border border-[var(--border-default)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+            : "border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
         )}
       >
-        <Columns3 className="h-3.5 w-3.5" aria-hidden />
+        <Icono nombre="sliders-horizontal" size={14} />
         Columnas{extra > 0 ? ` (+${extra})` : ""}
-        <ChevronDown className="h-3 w-3" aria-hidden />
+        <Icono nombre="chevron-down" size={13} className="opacity-70" />
       </button>
       {open ? (
         <div
           role="listbox"
           className="absolute left-0 z-20 mt-1 w-60 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-md)]"
         >
-          <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+          <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
             Siempre visibles
           </p>
           <ul className="mb-1.5 border-b border-[var(--border-subtle)] pb-1.5">
             {MANDATORY_COL_LABELS.map((label) => (
               <li key={label}>
-                <label className="flex items-center gap-2 rounded px-2 py-1 text-xs text-[var(--color-tertiary)]">
+                <label className="flex items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1 text-xs text-[var(--text-tertiary)]">
                   <input type="checkbox" checked readOnly disabled />
                   <span className="flex-1">{label}</span>
                 </label>
               </li>
             ))}
           </ul>
-          <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+          <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
             Opcionales
           </p>
           <ul>
@@ -602,13 +576,13 @@ function ColumnsDropdown({
               const checked = value[c.key];
               return (
                 <li key={c.key}>
-                  <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-[var(--color-subtle)]">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1 text-xs hover:bg-[var(--color-subtle)]">
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => onChange({ ...value, [c.key]: !checked })}
                     />
-                    <span className="flex-1 text-[var(--color-primary)]">
+                    <span className="flex-1 text-[var(--text-primary)]">
                       {c.label}
                     </span>
                   </label>
@@ -665,7 +639,7 @@ function AreaGroupedList({
   }
   if (tasks.length === 0) {
     return (
-      <div className="p-8 text-center text-sm text-[var(--color-tertiary)]">
+      <div className="p-8 text-center text-sm text-[var(--text-tertiary)]">
         Sin tareas registradas (filtros activos pueden estar ocultando todo).
       </div>
     );
@@ -681,9 +655,9 @@ function AreaGroupedList({
     <div>
       {areaOrder.map((a) => (
         <div key={a.id}>
-          <div className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-secondary)]">
+          <div className="h-8.5 flex items-center border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] px-4 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)] shadow-[var(--linea-surco)]">
             {a.name}{" "}
-            <span className="ml-1 text-[var(--color-tertiary)] tabular-nums">
+            <span className="ml-1 text-[var(--text-tertiary)] tabular-nums">
               ({grouped.get(a.id)!.length})
             </span>
           </div>
@@ -701,7 +675,7 @@ function AreaGroupedList({
       ))}
       {unassigned ? (
         <div>
-          <div className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+          <div className="h-8.5 flex items-center border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] px-4 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
             Sin asignar{" "}
             <span className="ml-1 tabular-nums">({unassigned.length})</span>
           </div>
@@ -766,7 +740,7 @@ function InlineProgressCell({
           setEditing(false);
         }
       }}
-      className="w-16 rounded border border-[var(--border-default)] bg-[var(--color-surface)] px-1 py-0.5 text-xs tabular-nums"
+      className="w-16 rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-[var(--hundido)]"
     />
   );
 }
@@ -863,45 +837,45 @@ function TaskList({
   }
   if (tasks.length === 0) {
     return (
-      <div className="p-8 text-center text-sm text-[var(--color-tertiary)]">
+      <div className="p-8 text-center text-sm text-[var(--text-tertiary)]">
         Sin tareas registradas.
       </div>
     );
   }
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+      <table className="w-full table-fixed text-[13px]">
+        <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
           <tr>
-            <th className="w-16 px-3 py-2 font-medium">WBS</th>
+            <th className="h-8.5 w-16 px-3">WBS</th>
             {colVis.outline ? (
-              <th className="w-12 px-3 py-2 font-medium" title="Outline level (auto)">
+              <th className="h-8.5 w-12 px-3" title="Outline level (auto)">
                 Nivel
               </th>
             ) : null}
-            <th className="px-3 py-2 font-medium">Tarea</th>
+            <th className="h-8.5 px-3">Tarea</th>
             {/* US-098 fix: la columna ahora es 'Área responsable'.
                 El owner (responsable persona) sigue editable en el form. */}
-            <th className="px-3 py-2 font-medium">Área responsable</th>
-            <th className="px-3 py-2 font-medium">Inicio</th>
-            <th className="px-3 py-2 font-medium">Fin</th>
+            <th className="h-8.5 w-32 px-3">Área responsable</th>
+            <th className="h-8.5 w-24 px-3">Inicio</th>
+            <th className="h-8.5 w-24 px-3">Fin</th>
             {colVis.duration ? (
-              <th className="w-16 px-3 py-2 font-medium" title="Duración (auto). Máximo recomendado 21d; macros mayores se permiten con warning.">
+              <th className="h-8.5 w-16 px-3 pr-3.5 text-right" title="Duración (auto). Máximo recomendado 21d; macros mayores se permiten con warning.">
                 Dur.
               </th>
             ) : null}
             {colVis.predecessors ? (
-              <th className="w-24 px-3 py-2 font-medium">Predecesoras</th>
+              <th className="h-8.5 w-24 px-3">Predecesoras</th>
             ) : null}
             {colVis.successors ? (
-              <th className="w-24 px-3 py-2 font-medium">Sucesoras</th>
+              <th className="h-8.5 w-24 px-3">Sucesoras</th>
             ) : null}
-            <th className="px-3 py-2 font-medium">Avance</th>
-            <th className="px-3 py-2 font-medium">Estado</th>
+            <th className="h-8.5 w-20 px-3 pr-3.5 text-right">Avance</th>
+            <th className="h-8.5 w-28 px-3">Estado</th>
             {/* ENH-182: Criticidad e Hito centrados (checkmark/badge). */}
-            <th className="px-3 py-2 text-center font-medium">Criticidad</th>
-            <th className="px-3 py-2 text-center font-medium">Hito</th>
-            {showActions ? <th className="w-20 px-3 py-2" aria-label="Acciones" /> : null}
+            <th className="h-8.5 w-20 px-3 text-center">Criticidad</th>
+            <th className="h-8.5 w-20 px-3 text-center">Hito</th>
+            {showActions ? <th className="h-8.5 w-24 px-3" aria-label="Acciones" /> : null}
           </tr>
         </thead>
         <tbody>
@@ -917,52 +891,48 @@ function TaskList({
             <tr
               key={t.id}
               className={cn(
-                "border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]",
+                "h-10.5 border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]",
                 delayed && "bg-[var(--color-danger-bg)]/40",
                 completedLate && "bg-[var(--color-warning-bg)]/40",
               )}
             >
-              <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
+              <td className="px-3 text-[11.5px] tracking-[0.01em] text-[var(--text-tertiary)] tabular-nums">
                 {t.wbs_code ?? ""}
               </td>
               {colVis.outline ? (
-                <td className="px-3 py-2 text-xs text-[var(--color-tertiary)] tabular-nums">
+                <td className="px-3 text-xs text-[var(--text-tertiary)] tabular-nums">
                   {t.outline_level ?? "—"}
                 </td>
               ) : null}
               <td className="px-3 py-2">
                 <div
-                  className="flex items-center gap-1 font-medium text-[var(--color-primary)]"
+                  className="flex items-center gap-1.5 font-medium text-[var(--text-primary)]"
                   style={groupByWbs ? { paddingLeft: depth * 16 } : undefined}
                 >
                   {groupByWbs && isParent && onToggleCollapse ? (
                     <button
                       type="button"
                       onClick={() => onToggleCollapse(wbsKey)}
-                      className="inline-flex h-4 w-4 items-center justify-center text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
+                      className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-faint)] hover:text-[var(--text-primary)]"
                       aria-label={isCollapsed ? "Expandir" : "Colapsar"}
                     >
-                      {isCollapsed ? (
-                        <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-                      ) : (
-                        <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-                      )}
+                      <Icono nombre={isCollapsed ? "chevron-right" : "chevron-down"} size={13} />
                     </button>
                   ) : groupByWbs ? (
-                    <span className="inline-block h-4 w-4" aria-hidden />
+                    <span className="inline-block h-4 w-4 shrink-0" aria-hidden />
                   ) : null}
                   <span className={delayed ? "text-[var(--color-danger-fg)]" : undefined}>
                     {t.is_milestone ? (
-                      <Diamond
-                        className="mr-1 inline h-3 w-3 text-[var(--color-info-fg)]"
+                      <span
                         aria-hidden
+                        className="mr-1.5 inline-block h-2.5 w-2.5 shrink-0 rotate-45 rounded-[1px] bg-[var(--color-info-fg)] align-[-1px]"
                       />
                     ) : null}
                     {t.name}
                     {/* US-177: tag rojo "Atrasada" (no completada y vencida). */}
                     {delayed ? (
                       <span
-                        className="ml-2 inline-flex items-center rounded border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]"
+                        className="ml-2 inline-flex items-center rounded-[var(--radius-sm)] border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]"
                         title="No completada y con fecha Fin pasada"
                       >
                         Atrasada
@@ -971,7 +941,7 @@ function TaskList({
                     {/* US-177: tag amarillo "Completada con atraso" (cerró tarde). */}
                     {completedLate ? (
                       <span
-                        className="ml-2 inline-flex items-center rounded border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-warning-fg)]"
+                        className="ml-2 inline-flex items-center rounded-[var(--radius-sm)] border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-warning-fg)]"
                         title="Completada después de la fecha Fin (fecha de cierre posterior)"
                       >
                         Completada con atraso
@@ -980,7 +950,7 @@ function TaskList({
                     {/* ENH-050: tooltip con hito relacionado. */}
                     {t.related_milestone ? (
                       <span
-                        className="ml-2 inline-flex items-center rounded bg-[var(--color-subtle)] px-1.5 py-0.5 text-[9px] text-[var(--color-tertiary)]"
+                        className="ml-2 inline-flex items-center rounded-[var(--radius-sm)] bg-[var(--color-muted)] px-1.5 py-0.5 text-[9px] text-[var(--text-tertiary)]"
                         title={`Hito relacionado: ${t.related_milestone.name}`}
                       >
                         ↪ {t.related_milestone.wbs_code ?? t.related_milestone.name}
@@ -990,7 +960,7 @@ function TaskList({
                 </div>
               </td>
               {/* US-173 + Fase 2: Área responsable editable inline (on-click). */}
-              <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+              <td className="px-3 text-xs text-[var(--text-secondary)]">
                 {onInlineUpdate ? (
                   <InlineSelectCell
                     value={t.area_id ?? ""}
@@ -1003,15 +973,15 @@ function TaskList({
                     ariaLabel={`Área de ${t.name}`}
                   />
                 ) : t.area_id && areaById.has(t.area_id) ? (
-                  <span className="text-[var(--color-secondary)]">
+                  <span className="block truncate text-[var(--text-secondary)]">
                     {areaById.get(t.area_id)}
                   </span>
                 ) : (
-                  <span className="text-[var(--color-tertiary)]">—</span>
+                  <span className="text-[var(--text-tertiary)]">—</span>
                 )}
               </td>
               {/* US-173: fechas editables inline (calendario nativo). */}
-              <td className="px-3 py-2 text-[var(--color-secondary)]">
+              <td className="px-3 font-mono text-[11.5px] text-[var(--text-secondary)]">
                 {onInlineUpdate ? (
                   <input
                     type="date"
@@ -1020,7 +990,7 @@ function TaskList({
                       onInlineUpdate(t.id, { start_date: e.target.value || null })
                     }
                     title="Inicio"
-                    className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                    className="w-full rounded-[var(--radius-sm)] border border-transparent bg-transparent px-1 py-0.5 font-mono text-[11.5px] hover:border-[var(--border-default)] focus:border-[var(--border-strong)] focus:outline-none"
                   />
                 ) : (
                   fmtDate(t.start_date)
@@ -1028,12 +998,12 @@ function TaskList({
               </td>
               <td
                 className={cn(
-                  "px-3 py-2",
+                  "px-3 font-mono text-[11.5px]",
                   delayed
                     ? "font-medium text-[var(--color-danger-fg)]"
                     : completedLate
                       ? "font-medium text-[var(--color-warning-fg)]"
-                      : "text-[var(--color-secondary)]",
+                      : "text-[var(--text-secondary)]",
                 )}
               >
                 {onInlineUpdate ? (
@@ -1044,14 +1014,14 @@ function TaskList({
                       onInlineUpdate(t.id, { end_date: e.target.value || null })
                     }
                     title="Fin"
-                    className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-[var(--border-default)] focus:border-[var(--border-default)] focus:outline-none"
+                    className="w-full rounded-[var(--radius-sm)] border border-transparent bg-transparent px-1 py-0.5 font-mono text-[11.5px] hover:border-[var(--border-default)] focus:border-[var(--border-strong)] focus:outline-none"
                   />
                 ) : (
                   fmtDate(t.end_date)
                 )}
               </td>
               {colVis.duration ? (
-                <td className="px-3 py-2 text-xs text-[var(--color-secondary)] tabular-nums">
+                <td className="px-3 pr-3.5 text-right font-mono text-xs text-[var(--text-secondary)] tabular-nums">
                   {t.duration_days != null ? (
                     t.duration_days > 21 ? (
                       <span
@@ -1069,17 +1039,17 @@ function TaskList({
                 </td>
               ) : null}
               {colVis.predecessors ? (
-                <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                <td className="truncate px-3 text-xs text-[var(--text-secondary)]">
                   {(t.predecessors ?? []).join(", ") || "—"}
                 </td>
               ) : null}
               {colVis.successors ? (
-                <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                <td className="truncate px-3 text-xs text-[var(--text-secondary)]">
                   {(t.successors ?? []).join(", ") || "—"}
                 </td>
               ) : null}
               {/* US-173: Avance editable con doble clic. */}
-              <td className="px-3 py-2 text-[var(--color-secondary)] tabular-nums">
+              <td className="px-3 pr-3.5 text-right font-mono text-[12px] text-[var(--text-secondary)] tabular-nums">
                 {onInlineUpdate ? (
                   <InlineProgressCell
                     value={t.progress}
@@ -1091,7 +1061,7 @@ function TaskList({
               </td>
               {/* US-173 + Fase 2 + ENH-188: Estado editable inline (on-click), */}
               {/* mostrado siempre como tag de color (StatusBadge). */}
-              <td className="px-3 py-2">
+              <td className="px-3">
                 {onInlineUpdate ? (
                   <TaskStatusInlineCell
                     status={t.status}
@@ -1105,7 +1075,7 @@ function TaskList({
                 )}
               </td>
               {/* US-173: Criticidad como checkmark inline. ENH-182: centrado. */}
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 text-center">
                 {onInlineUpdate ? (
                   <input
                     type="checkbox"
@@ -1117,15 +1087,13 @@ function TaskList({
                     aria-label={`Crítica: ${t.name}`}
                   />
                 ) : isTaskCritical(t) ? (
-                  <span className="inline-flex items-center rounded-full bg-[var(--color-danger-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-danger-fg)]">
-                    Sí
-                  </span>
+                  <Badge variant="danger">Sí</Badge>
                 ) : (
-                  <span className="text-[var(--color-tertiary)]">—</span>
+                  <span className="text-[var(--text-tertiary)]">—</span>
                 )}
               </td>
               {/* ENH-163 + US-173: Hito como checkmark inline. ENH-182: centrado. */}
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 text-center">
                 {onInlineUpdate ? (
                   <input
                     type="checkbox"
@@ -1137,36 +1105,37 @@ function TaskList({
                     aria-label={`Hito: ${t.name}`}
                   />
                 ) : t.is_milestone ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-info-bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-info-fg)]">
-                    <Diamond className="h-3 w-3" aria-hidden /> Hito
-                  </span>
+                  <Badge variant="info" className="gap-1.5">
+                    <span aria-hidden className="inline-block h-1.5 w-1.5 shrink-0 rotate-45 rounded-[1px] bg-current" />
+                    Hito
+                  </Badge>
                 ) : (
-                  <span className="text-[var(--color-tertiary)]">—</span>
+                  <span className="text-[var(--text-tertiary)]">—</span>
                 )}
               </td>
               {showActions ? (
-                <td className="px-3 py-2">
+                <td className="px-3">
                   <div className="flex items-center gap-1">
                     {onEdit ? (
                       <button
                         type="button"
                         onClick={() => onEdit(t)}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
                         aria-label={`Editar ${t.name}`}
                         title="Editar"
                       >
-                        <Pencil className="h-3.5 w-3.5" aria-hidden />
+                        <Icono nombre="pen" size={14} />
                       </button>
                     ) : null}
                     {onDelete ? (
                       <button
                         type="button"
                         onClick={() => onDelete(t)}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-danger-bg)] hover:text-[var(--color-danger-fg)]"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-danger-bg)] hover:text-[var(--color-danger-fg)]"
                         aria-label={`Eliminar ${t.name}`}
                         title="Eliminar"
                       >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        <Icono nombre="bin" size={14} />
                       </button>
                     ) : null}
                     {/* ENH-200: agregar tarea relativa a esta fila. */}
@@ -1177,12 +1146,12 @@ function TaskList({
                           onClick={() =>
                             setAddMenuFor((v) => (v === t.id ? null : t.id))
                           }
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
                           aria-label={`Agregar tarea relativa a ${t.name}`}
                           aria-expanded={addMenuFor === t.id}
                           title="Agregar tarea aquí"
                         >
-                          <Plus className="h-3.5 w-3.5" aria-hidden />
+                          <Icono nombre="plus" size={14} />
                         </button>
                         {addMenuFor === t.id ? (
                           <span className="absolute right-0 top-8 z-20 w-44 overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-md)]">
@@ -1192,7 +1161,7 @@ function TaskList({
                                 setAddMenuFor(null);
                                 onAddTask(t, "child");
                               }}
-                              className="block w-full px-3 py-2 text-left text-xs text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                              className="block w-full px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
                             >
                               ↳ Sub-tarea{t.wbs_code ? ` de ${t.wbs_code}` : ""}
                             </button>
@@ -1202,7 +1171,7 @@ function TaskList({
                                 setAddMenuFor(null);
                                 onAddTask(t, "sibling");
                               }}
-                              className="block w-full border-t border-[var(--border-subtle)] px-3 py-2 text-left text-xs text-[var(--color-primary)] hover:bg-[var(--color-subtle)]"
+                              className="block w-full border-t border-[var(--border-subtle)] px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
                             >
                               ＋ Al mismo nivel
                             </button>
@@ -1910,10 +1879,10 @@ function PlanInner() {
 
   const listBlock = useMemo(
     () => (
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-        <header className="flex items-center gap-2 border-b border-[var(--border-default)] px-4 py-3">
-          <ListTree className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
-          <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+        <header className="flex h-11 items-center gap-2 border-b border-[var(--border-default)] px-4 shadow-[var(--linea-surco)]">
+          <Icono nombre="list-check" size={15} className="text-[var(--text-tertiary)]" />
+          <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">
             Lista de tareas
           </h2>
         </header>
@@ -2006,14 +1975,14 @@ function PlanInner() {
 
   const ganttBlock = useMemo(
     () => (
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-sm)]">
+      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-2 shadow-[var(--relieve-isla)]">
         <header className="flex items-center gap-2 px-2 py-2">
-          <BarChart3 className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
-          <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+          <Icono nombre="bar-chart" size={15} className="text-[var(--text-tertiary)]" />
+          <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">
             Gantt
           </h2>
           {filteredGantt && gantt && filteredGantt.tasks.length < gantt.tasks.length ? (
-            <span className="ml-2 text-xs text-[var(--color-tertiary)]">
+            <span className="ml-2 text-xs text-[var(--text-tertiary)]">
               ({filteredGantt.tasks.length} de {gantt.tasks.length} visibles)
             </span>
           ) : null}
@@ -2023,7 +1992,7 @@ function PlanInner() {
         ) : filteredGantt && filteredGantt.tasks.length > 0 ? (
           <GanttView data={filteredGantt} />
         ) : (
-          <div className="p-6 text-center text-sm text-[var(--color-tertiary)]">
+          <div className="p-6 text-center text-sm text-[var(--text-tertiary)]">
             Sin datos para el Gantt con los filtros activos.
           </div>
         )}
@@ -2050,7 +2019,7 @@ function PlanInner() {
             <span className="mx-1">/</span>
             <span>Plan</span>
           </nav>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+          <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
             Plan
           </h1>
           <MarcaDeDatos periodo="vivo" actualizado={new Date()} />
@@ -2103,28 +2072,28 @@ function PlanInner() {
             aria-label="Descargar plantilla vacía"
             title="Descargar XLSX vacío con las columnas que el sistema espera"
           >
-            <FileDown className="h-4 w-4" aria-hidden />
+            <Icono nombre="file-arrow-down" size={15} />
             Plantilla
           </Button>
           <Button
             type="button"
             size="sm"
+            variant="secondary"
             onClick={exportToExcel}
             loading={exportingXlsx}
             aria-label="Descargar plan en Excel"
-            className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300"
           >
-            <Download className="h-4 w-4" aria-hidden />
+            <Icono nombre="download" size={15} />
             Descargar
           </Button>
           <Button
             type="button"
             size="sm"
+            variant="secondary"
             onClick={() => setWizardOpen(true)}
             aria-label="Abrir wizard de import"
-            className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-emerald-300"
           >
-            <Upload className="h-4 w-4" aria-hidden />
+            <Icono nombre="upload" size={15} />
             Importar
           </Button>
           {/* US-190: linter de calidad del plan. */}
@@ -2137,7 +2106,7 @@ function PlanInner() {
             aria-label="Revisar calidad del plan"
             title="Revisa estructura WBS, hitos de cierre, críticas, duraciones y fechas"
           >
-            <ClipboardCheck className="h-4 w-4" aria-hidden />
+            <Icono nombre="file-check" size={15} />
             Revisar calidad
           </Button>
           <Button
@@ -2146,7 +2115,7 @@ function PlanInner() {
             onClick={() => setNewOpen(true)}
             aria-label="Nueva tarea"
           >
-            <Plus className="h-4 w-4" aria-hidden />
+            <Icono nombre="plus" size={15} />
             Nueva tarea
           </Button>
         </div>
@@ -2157,20 +2126,20 @@ function PlanInner() {
           Área (multi-checklist), MSP, Vista (Lista/Dividida/Gantt). */}
       <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 shadow-[var(--shadow-sm)]">
         {/* WBS toggle + niveles 1/2/3/4/Manual integrados */}
-        <div className="flex items-center gap-1 rounded border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5">
+        <div className="flex items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5">
           <button
             type="button"
             onClick={toggleGroupByWbs}
             aria-pressed={groupByWbs}
             title="Agrupar por WBS"
             className={cn(
-              "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
+              "inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-xs font-medium",
               groupByWbs
                 ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
             )}
           >
-            <Network className="h-3.5 w-3.5" aria-hidden />
+            <Icono nombre="git-branch" size={14} />
             WBS
           </button>
           {groupByWbs
@@ -2190,10 +2159,10 @@ function PlanInner() {
                           : `Mostrar hasta nivel ${lvl}`
                     }
                     className={cn(
-                      "h-7 rounded px-2 text-[11px] font-medium",
+                      "h-7 rounded-[var(--radius-sm)] px-2 text-[11px] font-medium",
                       active
                         ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                        : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                        : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
                     )}
                   >
                     {lvl === "manual" ? "Manual" : lvl}
@@ -2240,7 +2209,7 @@ function PlanInner() {
                   "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                   active
                     ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                    : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                    : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
                 )}
               >
                 {label}
@@ -2252,7 +2221,7 @@ function PlanInner() {
             <button
               type="button"
               onClick={() => setActiveChips(new Set())}
-              className="text-xs text-[var(--color-tertiary)] underline-offset-2 hover:underline"
+              className="text-xs text-[var(--text-tertiary)] underline-offset-2 hover:underline"
             >
               Limpiar
             </button>
@@ -2262,16 +2231,15 @@ function PlanInner() {
         <div
           role="radiogroup"
           aria-label="Vista del Plan"
-          className="ml-auto inline-flex rounded border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+          className="ml-auto inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
         >
           {(
             [
-              { v: "list", label: "Lista", icon: ListTree },
-              { v: "split", label: "Dividida", icon: Rows3 },
-              { v: "gantt", label: "Gantt", icon: BarChart3 },
+              { v: "list", label: "Lista", icono: "list-check" },
+              { v: "split", label: "Dividida", icono: "panel-bottom" },
+              { v: "gantt", label: "Gantt", icono: "bar-chart" },
             ] as const
           ).map((opt) => {
-            const Icon = opt.icon;
             const active = mode === opt.v;
             return (
               <button
@@ -2281,13 +2249,13 @@ function PlanInner() {
                 aria-checked={active}
                 onClick={() => setModeAndUrl(opt.v as Mode)}
                 className={cn(
-                  "inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium",
+                  "inline-flex h-7 items-center gap-1.5 rounded-[var(--radius-sm)] px-2 text-xs font-medium",
                   active
                     ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                    : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                    : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
                 )}
               >
-                <Icon className="h-3.5 w-3.5" aria-hidden />
+                <Icono nombre={opt.icono} size={14} />
                 {opt.label}
               </button>
             );
@@ -2421,7 +2389,7 @@ function PlanInner() {
                 checked={newForm.is_critical}
                 onChange={(e) => setNewForm({ ...newForm, is_critical: e.target.checked })}
               />
-              <span className="text-xs text-[var(--color-secondary)]">Crítica</span>
+              <span className="text-xs text-[var(--text-secondary)]">Crítica</span>
             </label>
             <label className="inline-flex items-center gap-2">
               <input
@@ -2429,11 +2397,11 @@ function PlanInner() {
                 checked={newForm.is_milestone}
                 onChange={(e) => setNewForm({ ...newForm, is_milestone: e.target.checked })}
               />
-              <span className="text-xs text-[var(--color-secondary)]">Hito ◆</span>
+              <span className="text-xs text-[var(--text-secondary)]">Hito ◆</span>
             </label>
           </div>
           <details>
-            <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+            <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
               Más opciones (jerarquía · hito relacionado · predecesoras)
             </summary>
             <div className="mt-2 space-y-3">
@@ -2577,7 +2545,7 @@ function PlanInner() {
               />
             </FormField>
           </div>
-          <p className="-mt-1 text-[11px] text-[var(--color-tertiary)]">
+          <p className="-mt-1 text-[11px] text-[var(--text-tertiary)]">
             <strong>Fecha de cierre:</strong> fecha real en que se cerró la
             actividad. Si es posterior a la fecha Fin se marca “Completada con
             atraso” (amarillo); una tarea no completada con fecha Fin pasada se
@@ -2635,7 +2603,7 @@ function PlanInner() {
                 checked={editForm.is_critical}
                 onChange={(e) => setEditForm({ ...editForm, is_critical: e.target.checked })}
               />
-              <span className="text-xs text-[var(--color-secondary)]">
+              <span className="text-xs text-[var(--text-secondary)]">
                 Marcar como crítica
               </span>
             </label>
@@ -2645,7 +2613,7 @@ function PlanInner() {
                 checked={editForm.is_milestone}
                 onChange={(e) => setEditForm({ ...editForm, is_milestone: e.target.checked })}
               />
-              <span className="text-xs text-[var(--color-secondary)]">Marcar hito</span>
+              <span className="text-xs text-[var(--text-secondary)]">Marcar hito</span>
             </label>
           </div>
           <FormField label="Hito relacionado (opcional)">
@@ -2709,16 +2677,16 @@ function PlanInner() {
                 className={cn(
                   "inline-flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold",
                   quality.score >= 80
-                    ? "bg-emerald-100 text-emerald-700"
+                    ? "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]"
                     : quality.score >= 50
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-red-100 text-red-700",
+                      ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
+                      : "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]",
                 )}
               >
                 {quality.score}
               </span>
-              <div className="text-sm text-[var(--color-secondary)]">
-                <p className="font-medium text-[var(--color-primary)]">
+              <div className="text-sm text-[var(--text-secondary)]">
+                <p className="font-medium text-[var(--text-primary)]">
                   {quality.observations.length === 0
                     ? "Plan sano — sin observaciones."
                     : `${quality.observations.length} observación(es) sobre ${quality.task_count} tareas.`}
@@ -2736,26 +2704,26 @@ function PlanInner() {
                   className="rounded-[var(--radius-md)] border border-[var(--border-default)] p-2.5 text-sm"
                 >
                   <div className="flex items-start gap-2">
-                    <span
-                      className={cn(
-                        "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                    <Badge
+                      variant={
                         o.severity === "error"
-                          ? "bg-red-100 text-red-700"
+                          ? "danger"
                           : o.severity === "warning"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-slate-100 text-slate-600",
-                      )}
+                            ? "warning"
+                            : "neutral"
+                      }
+                      className="mt-0.5 shrink-0 uppercase"
                     >
                       {o.severity === "error"
                         ? "Error"
                         : o.severity === "warning"
                           ? "Aviso"
                           : "Nota"}
-                    </span>
+                    </Badge>
                     <div className="min-w-0">
-                      <p className="text-[var(--color-primary)]">{o.message}</p>
+                      <p className="text-[var(--text-primary)]">{o.message}</p>
                       {o.items.length > 0 ? (
-                        <p className="mt-0.5 truncate text-xs text-[var(--color-tertiary)]" title={o.items.join(", ")}>
+                        <p className="mt-0.5 truncate text-xs text-[var(--text-tertiary)]" title={o.items.join(", ")}>
                           {o.items.slice(0, 6).join(" · ")}
                           {o.count > 6 ? ` · +${o.count - 6} más` : ""}
                         </p>

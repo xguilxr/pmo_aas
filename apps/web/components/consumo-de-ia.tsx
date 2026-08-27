@@ -23,9 +23,9 @@
  * fuera» (US-216): un total sin su hueco miente por omisión.
  */
 import { useEffect, useState } from "react";
-import { Activity, AlertTriangle, Info } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
+import { Icono } from "@/components/ui/icono";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { ApiError } from "@/lib/api";
 import { getAIUsage, type ConsumoDeIA } from "@/lib/api/admin-ai";
@@ -81,10 +81,12 @@ export function ConsumoDeIAPanel() {
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-[var(--color-primary)]">
-            <Activity className="h-4 w-4" aria-hidden />
-            Consumo
-          </h2>
+          <div className="flex items-center gap-2">
+            <Icono nombre="activity" size={15} className="text-[var(--color-tertiary)]" />
+            <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+              Consumo
+            </h2>
+          </div>
           {leido ? (
             <MarcaDeDatos
               periodo="acumulado"
@@ -109,7 +111,7 @@ export function ConsumoDeIAPanel() {
           </span>
           {datos.failed_this_month > 0 ? (
             <span className="flex items-center gap-1 text-[var(--color-danger-fg)]">
-              <AlertTriangle className="h-3 w-3" aria-hidden />
+              <Icono nombre="triangle-alert" size={13} />
               {datos.failed_this_month} fallidos
             </span>
           ) : null}
@@ -180,7 +182,7 @@ export function ConsumoDeIAPanel() {
       )}
 
       <p className="flex items-start gap-1.5 text-[11px] text-[var(--color-tertiary)]">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+        <Icono nombre="info" size={14} className="mt-0.5 shrink-0" />
         {datos.note}
       </p>
     </section>

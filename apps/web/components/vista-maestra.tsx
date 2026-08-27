@@ -38,12 +38,12 @@
  */
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Columns3, Download } from "lucide-react";
 
 import { colorSalud } from "@/components/dashboard-charts";
 import { InlineSelectCell } from "@/components/inline-select-cell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { cn } from "@/lib/cn";
 import { formatearImporte } from "@/lib/moneda";
@@ -152,7 +152,7 @@ const ORDEN_DE_REPORTE: Record<string, number> = {
 };
 
 const COLOR_DE_REPORTE: Record<string, string> = {
-  sin_reporte: "var(--color-tertiary)",
+  sin_reporte: "var(--text-tertiary)",
   vencido: "var(--color-danger-fg)",
   por_vencer: "var(--color-warning-fg)",
   al_dia: "var(--color-success-fg)",
@@ -186,11 +186,11 @@ function columnas(): Columna[] {
       celda: (r) => (
         <Link
           href={`/pmo/projects/${r.project_id}`}
-          className="block max-w-[280px] truncate font-medium text-[var(--color-primary)] hover:text-[var(--color-accent)]"
+          className="block max-w-[280px] truncate font-medium text-[var(--text-primary)] hover:text-[var(--color-accent)]"
           title={`${r.folio} · ${r.name}`}
         >
           {r.name}
-          <span className="ml-1.5 text-[11px] font-normal text-[var(--color-tertiary)]">
+          <span className="ml-1.5 text-[12px] font-normal tracking-[0.01em] text-[var(--text-tertiary)]">
             {r.folio}
           </span>
         </Link>
@@ -315,7 +315,7 @@ function columnas(): Columna[] {
             <button
               type="button"
               onClick={() => ctx.onDesglose?.(r.project_id, r.name)}
-              className="rounded px-1 text-[11px] text-[var(--color-tertiary)] underline decoration-dotted hover:text-[var(--color-accent)]"
+              className="rounded px-1 text-[11px] text-[var(--text-tertiary)] underline decoration-dotted hover:text-[var(--color-accent)]"
               title={`Por qué ${r.name} está en ${etiquetaSalud(r.health).toLowerCase()}`}
             >
               ?
@@ -336,10 +336,10 @@ function columnas(): Columna[] {
       celda: (r) => {
         const delta = Math.round(r.progress_actual - r.progress_plan);
         return (
-          <span className="whitespace-nowrap tabular-nums">
+          <span className="whitespace-nowrap font-mono tabular-nums">
             {par(r.progress_plan, r.progress_actual)}
             {delta < 0 ? (
-              <span className="ml-1 text-[11px] text-[var(--color-danger-fg)]">
+              <span className="ml-1 font-mono text-[11px] text-[var(--color-danger-fg)]">
                 −{Math.abs(delta)}
               </span>
             ) : null}
@@ -358,9 +358,9 @@ function columnas(): Columna[] {
       texto: (r) =>
         `${formatearImporte(r.budget_plan, r.currency)} / ${formatearImporte(r.budget_actual, r.currency)}`,
       celda: (r) => (
-        <span className="whitespace-nowrap tabular-nums">
+        <span className="whitespace-nowrap font-mono tabular-nums">
           {formatearImporte(r.budget_plan, r.currency)}
-          <span className="text-[var(--color-tertiary)]"> / </span>
+          <span className="text-[var(--text-tertiary)]"> / </span>
           {formatearImporte(r.budget_actual, r.currency)}
         </span>
       ),
@@ -384,12 +384,12 @@ function columnas(): Columna[] {
         r.open_risks > 0 ? (
           <Link
             href={`/pmo/projects/${r.project_id}/raid`}
-            className="tabular-nums hover:text-[var(--color-accent)]"
+            className="font-mono tabular-nums hover:text-[var(--color-accent)]"
           >
             {r.open_risks}
           </Link>
         ) : (
-          <span className="tabular-nums text-[var(--color-tertiary)]">0</span>
+          <span className="font-mono tabular-nums text-[var(--text-tertiary)]">0</span>
         ),
     },
     {
@@ -403,12 +403,12 @@ function columnas(): Columna[] {
         r.open_issues > 0 ? (
           <Link
             href={`/pmo/projects/${r.project_id}/raid`}
-            className="tabular-nums hover:text-[var(--color-accent)]"
+            className="font-mono tabular-nums hover:text-[var(--color-accent)]"
           >
             {r.open_issues}
           </Link>
         ) : (
-          <span className="tabular-nums text-[var(--color-tertiary)]">0</span>
+          <span className="font-mono tabular-nums text-[var(--text-tertiary)]">0</span>
         ),
     },
     {
@@ -424,7 +424,7 @@ function columnas(): Columna[] {
           : "—",
       celda: (r) => {
         const h = r.next_milestone;
-        if (!h) return <span className="text-[var(--color-tertiary)]">—</span>;
+        if (!h) return <span className="text-[var(--text-tertiary)]">—</span>;
         return (
           <span
             className="block max-w-[220px] truncate"
@@ -436,7 +436,7 @@ function columnas(): Columna[] {
               style={{
                 color: h.overdue
                   ? "var(--color-danger-fg)"
-                  : "var(--color-tertiary)",
+                  : "var(--text-tertiary)",
               }}
             >
               {fecha(h.date)}
@@ -469,7 +469,7 @@ function columnas(): Columna[] {
         >
           {r.report_status_label}
           {r.report_days_late > 0 ? (
-            <span className="ml-1 text-[11px] tabular-nums">
+            <span className="ml-1 font-mono text-[11px] tabular-nums">
               +{r.report_days_late} d
             </span>
           ) : null}
@@ -487,13 +487,13 @@ function columnas(): Columna[] {
       texto: (r) => (r.completeness ? `${r.completeness.pct}%` : "—"),
       celda: (r, ctx) => {
         const c = r.completeness;
-        if (!c) return <span className="text-[var(--color-tertiary)]">—</span>;
+        if (!c) return <span className="text-[var(--text-tertiary)]">—</span>;
         return (
           <button
             type="button"
             onClick={() => ctx.onCompletitud?.(r)}
             disabled={!ctx.onCompletitud}
-            className="tabular-nums underline decoration-dotted hover:text-[var(--color-accent)] disabled:no-underline"
+            className="font-mono tabular-nums underline decoration-dotted hover:text-[var(--color-accent)] disabled:no-underline"
             style={{ color: colorDeCompletitud(c.pct) }}
             title={
               c.faltantes.length === 0
@@ -514,7 +514,7 @@ function columnas(): Columna[] {
       texto: (r) => frescura(r.updated_at),
       celda: (r) => (
         <span
-          className="whitespace-nowrap text-[var(--color-tertiary)]"
+          className="whitespace-nowrap text-[var(--text-tertiary)]"
           title={r.updated_at ?? undefined}
         >
           {frescura(r.updated_at)}
@@ -688,9 +688,9 @@ export function VistaMaestra({
   }
 
   return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-default)] p-3">
-        <p className="text-sm text-[var(--color-tertiary)]">
+    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-default)] p-3 shadow-[var(--linea-surco)]">
+        <p className="text-[13px] text-[var(--text-tertiary)]">
           {cargando
             ? "Cargando proyectos…"
             : `${filas.length} ${filas.length === 1 ? "proyecto" : "proyectos"}`}
@@ -707,7 +707,7 @@ export function VistaMaestra({
             onClick={() => setConfigAbierta((v) => !v)}
             aria-expanded={configAbierta}
           >
-            <Columns3 className="mr-1 h-3.5 w-3.5" aria-hidden />
+            <Icono nombre="sliders-horizontal" size={14} />
             Columnas ({mostradas.length}/{todas.length})
           </Button>
           <Button
@@ -715,9 +715,10 @@ export function VistaMaestra({
             variant="secondary"
             size="sm"
             onClick={exportar}
-            disabled={exportando || filas.length === 0}
+            disabled={filas.length === 0}
+            loading={exportando}
           >
-            <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+            <Icono nombre="download" size={14} />
             {exportando ? "Generando…" : "XLSX"}
           </Button>
         </div>
@@ -726,7 +727,7 @@ export function VistaMaestra({
       {configAbierta ? (
         <div className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] p-3">
           <fieldset>
-            <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+            <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
               Columnas visibles
             </legend>
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
@@ -735,7 +736,7 @@ export function VistaMaestra({
                   key={c.clave}
                   className={cn(
                     "flex items-center gap-1.5 text-[13px]",
-                    c.ocultable === false && "text-[var(--color-tertiary)]",
+                    c.ocultable === false && "text-[var(--text-tertiary)]",
                   )}
                 >
                   <input
@@ -753,7 +754,7 @@ export function VistaMaestra({
               que quien conoce el mockup las busque y crea que se perdieron.
               Con la lista vacía no se pinta: el párrafo saldría sin sujeto. */}
           {COLUMNAS_PENDIENTES.length > 0 ? (
-            <p className="mt-2.5 text-[11px] text-[var(--color-tertiary)]">
+            <p className="mt-2.5 text-[11px] text-[var(--text-tertiary)]">
               Pendientes de los mockups:{" "}
               {COLUMNAS_PENDIENTES.map((c) => `${c.etiqueta} (${c.us})`).join(" · ")}
               . Necesitan datos que todavía no existen.
@@ -768,9 +769,9 @@ export function VistaMaestra({
       {checklist?.completeness ? (
         <div className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="text-sm font-semibold text-[var(--color-primary)]">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
               {checklist.name}
-              <span className="ml-2 font-normal text-[var(--color-tertiary)]">
+              <span className="ml-2 font-normal text-[var(--text-tertiary)]">
                 {checklist.completeness.presentes} de{" "}
                 {checklist.completeness.total} datos mínimos
               </span>
@@ -778,7 +779,7 @@ export function VistaMaestra({
             <button
               type="button"
               onClick={() => setChecklist(null)}
-              className="text-[11px] text-[var(--color-tertiary)] underline hover:text-[var(--color-accent)]"
+              className="text-[11px] text-[var(--text-tertiary)] underline hover:text-[var(--color-accent)]"
             >
               Cerrar
             </button>
@@ -791,13 +792,13 @@ export function VistaMaestra({
             <ul className="mt-2 space-y-1.5">
               {checklist.completeness.faltantes.map((f) => (
                 <li key={f.clave} className="text-[13px]">
-                  <span className="font-medium text-[var(--color-primary)]">
+                  <span className="font-medium text-[var(--text-primary)]">
                     {f.etiqueta}
                   </span>
                   {/* El porqué, no solo el qué: una casilla sin consecuencia
                       se ignora, y la consecuencia es lo que hace que alguien
                       capture el dato. */}
-                  <span className="text-[var(--color-tertiary)]"> — {f.porque}</span>
+                  <span className="text-[var(--text-tertiary)]"> — {f.porque}</span>
                 </li>
               ))}
             </ul>
@@ -817,14 +818,15 @@ export function VistaMaestra({
       <div className="relative max-h-[70vh] overflow-auto">
         <table className="w-full min-w-max border-separate border-spacing-0 text-[13px]">
           <thead>
-            <tr className="text-left text-[11px] uppercase tracking-wide text-[var(--color-tertiary)]">
+            <tr className="text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               {mostradas.map((c, i) => {
                 // La primera columna se queda pegada a la izquierda **y** arriba:
                 // es la intersección de los dos ejes fijos, así que necesita el
                 // z-index más alto o el header la tapa al hacer scroll.
                 const fijaX = i === 0;
                 const clases = cn(
-                  "sticky top-0 border-b border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2",
+                  "sticky top-0 h-8.5 border-b border-[var(--border-default)] bg-[var(--color-subtle)] px-3 shadow-[var(--linea-surco)]",
+                  c.align === "right" && "pr-3.5",
                   fijaX && "left-0 z-20",
                   !fijaX && "z-10",
                   c.align === "right" && "text-right",
@@ -852,9 +854,9 @@ export function VistaMaestra({
           <tbody>
             {cargando ? (
               [0, 1, 2, 3, 4].map((i) => (
-                <tr key={i}>
+                <tr key={i} className="h-11">
                   {mostradas.map((c) => (
-                    <td key={c.clave} className="px-3 py-2">
+                    <td key={c.clave} className="px-3">
                       <span
                         aria-hidden
                         className="block h-4 animate-pulse rounded bg-[var(--color-muted)]"
@@ -867,7 +869,7 @@ export function VistaMaestra({
               <tr>
                 <td
                   colSpan={mostradas.length}
-                  className="px-3 py-10 text-center text-sm text-[var(--color-tertiary)]"
+                  className="px-3 py-10 text-center text-sm text-[var(--text-tertiary)]"
                 >
                   Ningún proyecto casa con estos filtros. Prueba a limpiarlos, o
                   crea el primero desde «Nuevo proyecto».
@@ -875,17 +877,17 @@ export function VistaMaestra({
               </tr>
             ) : (
               sortedRows.map((r) => (
-                <tr key={r.project_id} className="group hover:bg-[var(--color-subtle)]">
+                <tr key={r.project_id} className="group h-11 hover:bg-[var(--color-subtle)]">
                   {mostradas.map((c, i) => (
                     <td
                       key={c.clave}
                       className={cn(
-                        "border-b border-[var(--border-subtle)] px-3 py-2",
+                        "border-b border-[var(--border-subtle)] px-3 shadow-[var(--linea-surco)]",
                         // La celda fija necesita fondo propio: sin él se ve el
                         // texto de las columnas de debajo pasando por detrás.
                         i === 0 &&
                           "sticky left-0 z-10 bg-[var(--color-surface)] group-hover:bg-[var(--color-subtle)]",
-                        c.align === "right" && "text-right",
+                        c.align === "right" && "pr-3.5 text-right",
                         c.align === "center" && "text-center",
                       )}
                     >

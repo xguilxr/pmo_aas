@@ -1,7 +1,7 @@
 "use client";
 
-import { X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
+import { Icono } from "@/components/ui/icono";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -73,7 +73,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
             aria-label="Cerrar"
             className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
           >
-            <X className="h-4 w-4" aria-hidden />
+            <Icono nombre="x" size={15} />
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>

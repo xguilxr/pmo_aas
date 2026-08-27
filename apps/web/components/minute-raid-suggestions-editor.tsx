@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Check, ExternalLink, Pencil, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   approveMinuteRaidSuggestions,
@@ -309,11 +308,13 @@ export function MinuteRaidSuggestionsEditor({
 
   if (total === 0) {
     return (
-      <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-4">
-        <h3 className="text-[13px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-          Sugerencias RAID detectadas
-        </h3>
-        <p className="mt-2 text-[12px] italic text-[var(--text-tertiary)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+        <header className="border-b border-[var(--border-default)] px-4 py-2.5">
+          <h3 className="text-[13px] font-semibold text-[var(--color-primary)]">
+            Sugerencias RAID detectadas
+          </h3>
+        </header>
+        <p className="px-4 py-3 text-[13px] italic text-[var(--color-tertiary)]">
           La IA no detectó items RAID en esta minuta.
         </p>
       </section>
@@ -321,13 +322,13 @@ export function MinuteRaidSuggestionsEditor({
   }
 
   return (
-    <section className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-4">
-      <header className="flex flex-wrap items-center justify-between gap-2">
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-default)] px-4 py-2.5">
         <div>
-          <h3 className="text-[13px] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+          <h3 className="text-[13px] font-semibold text-[var(--color-primary)]">
             Sugerencias RAID detectadas
           </h3>
-          <p className="text-[11px] text-[var(--text-tertiary)]">
+          <p className="text-[11px] text-[var(--color-tertiary)]">
             {counts.pending} pendientes · {counts.approved} aprobadas ·{" "}
             {counts.discarded} descartadas
           </p>
@@ -342,9 +343,10 @@ export function MinuteRaidSuggestionsEditor({
         </Button>
       </header>
 
-      {error ? <Banner variant="danger">{error}</Banner> : null}
+      <div className="space-y-3 px-4 py-3">
+        {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <div className="space-y-3">
+        <div className="space-y-3">
         {SECTION_META.map((meta) => {
           const items = suggestions[meta.key];
           if (items.length === 0) return null;
@@ -419,17 +421,20 @@ export function MinuteRaidSuggestionsEditor({
                               </p>
                               <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
                                 {s.suggested_owner_name ? (
-                                  <span>👤 {s.suggested_owner_name}</span>
+                                  <span className="inline-flex items-center gap-1">
+                                    <Icono nombre="user" size={13} />
+                                    {s.suggested_owner_name}
+                                  </span>
                                 ) : null}
                                 {s.suggested_priority ? (
-                                  <span>⚑ P{s.suggested_priority}</span>
+                                  <Badge variant="neutral">P{s.suggested_priority}</Badge>
                                 ) : null}
                                 {/* ENH-119: "approved" = item RAID real ya
                                     creado y linkeado. Label "Creado" para
                                     diferenciar del concepto de "aprobación"
                                     legacy. */}
                                 {s.status === "approved" ? (
-                                  <Badge variant="success">✓ Creado</Badge>
+                                  <Badge variant="success">Creado</Badge>
                                 ) : s.status === "discarded" ? (
                                   <Badge variant="neutral">Descartado</Badge>
                                 ) : (
@@ -440,7 +445,7 @@ export function MinuteRaidSuggestionsEditor({
                                     href={href}
                                     className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
                                   >
-                                    <ExternalLink className="h-3 w-3" aria-hidden />
+                                    <Icono nombre="square-arrow-up-right" size={13} />
                                     Abrir {s.ticket_type ?? "ticket"}
                                   </Link>
                                 ) : null}
@@ -480,7 +485,7 @@ export function MinuteRaidSuggestionsEditor({
                                 aria-label="Editar"
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
                               >
-                                <Pencil className="h-3.5 w-3.5" aria-hidden />
+                                <Icono nombre="pen" size={15} />
                               </button>
                               <button
                                 type="button"
@@ -490,7 +495,7 @@ export function MinuteRaidSuggestionsEditor({
                                 disabled={saving !== null}
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-success-fg)] hover:bg-[var(--color-success-bg)] disabled:opacity-50"
                               >
-                                <Check className="h-3.5 w-3.5" aria-hidden />
+                                <Icono nombre="check" size={15} />
                               </button>
                               <button
                                 type="button"
@@ -499,7 +504,7 @@ export function MinuteRaidSuggestionsEditor({
                                 disabled={saving !== null}
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-bg)] disabled:opacity-50"
                               >
-                                <X className="h-3.5 w-3.5" aria-hidden />
+                                <Icono nombre="x" size={15} />
                               </button>
                             </>
                           ) : null}
@@ -512,6 +517,7 @@ export function MinuteRaidSuggestionsEditor({
             </details>
           );
         })}
+        </div>
       </div>
     </section>
   );

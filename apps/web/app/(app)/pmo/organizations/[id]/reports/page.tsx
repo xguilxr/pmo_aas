@@ -9,9 +9,9 @@
  * monta el mismo componente como tab.
  */
 import { useParams } from "next/navigation";
-import { Building2 } from "lucide-react";
 
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Icono } from "@/components/ui/icono";
 import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
 
 export default function OrgReportsPage() {
@@ -30,12 +30,12 @@ export default function OrgReportsPage() {
       />
       <header>
         <div className="flex items-center gap-2">
-          <Building2 className="h-6 w-6 text-zinc-700" />
-          <h1 className="text-2xl font-semibold text-zinc-900">
+          <Icono nombre="building" size={20} className="text-[var(--text-secondary)]" />
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
             Reportes de la Organización (Nivel 2)
           </h1>
         </div>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-[var(--text-tertiary)]">
           Plantillas Nivel 2 aplicadas con scope filtrado a esta
           organización.
         </p>

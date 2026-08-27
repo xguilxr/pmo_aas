@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Brain, Save } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
@@ -122,16 +122,27 @@ export default function ProjectAIContextPage() {
       <header className="space-y-3">
         <div className="flex items-center gap-2">
           <BackLink fallbackHref={`/pmo/projects/${ctx.project_id}`} />
+          <nav className="text-[11px] text-[var(--text-tertiary)]">
+            <Link href="/pmo/projects" className="hover:underline">
+              Proyectos
+            </Link>
+            <span className="mx-1">/</span>
+            <Link href={`/pmo/projects/${ctx.project_id}`} className="hover:underline">
+              Detalle
+            </Link>
+            <span className="mx-1">/</span>
+            <span>Memoria IA</span>
+          </nav>
         </div>
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)] text-[var(--color-secondary)]">
-            <Brain className="h-5 w-5" aria-hidden />
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)] text-[var(--text-secondary)]">
+            <Icono nombre="info" size={18} />
           </span>
           <div>
-            <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+            <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
               Memoria IA
             </h1>
-            <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+            <p className="mt-1 text-sm text-[var(--text-tertiary)]">
               Contexto persistente que la IA usa al generar minutas y reportes de
               este proyecto.
             </p>
@@ -175,7 +186,7 @@ export default function ProjectAIContextPage() {
               La IA actualiza este resumen automáticamente al guardar minutas.
               Puedes editarlo o podarlo aquí.
               {ctx.auto_summary_updated_at ? (
-                <span className="mt-1 block text-[var(--color-tertiary)]">
+                <span className="mt-1 block text-[var(--text-tertiary)]">
                   Actualizado por IA el {formatDateTime(ctx.auto_summary_updated_at)}.
                 </span>
               ) : null}
@@ -191,14 +202,14 @@ export default function ProjectAIContextPage() {
           <CharCount value={form.auto_summary_md} />
         </Section>
 
-        <div className="flex items-center justify-end gap-2 border-t border-[var(--border-default)] pt-4">
+        <div className="flex items-center justify-end gap-2 border-t border-[var(--border-default)] pt-4 shadow-[var(--linea-surco-arriba)]">
           <Link href={`/pmo/projects/${ctx.project_id}`}>
             <Button type="button" variant="secondary" disabled={saving}>
               Cancelar
             </Button>
           </Link>
           <Button type="submit" loading={saving}>
-            <Save className="h-4 w-4" aria-hidden />
+            <Icono nombre="check" size={15} />
             Guardar
           </Button>
         </div>
@@ -217,10 +228,10 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-      <h2 className="text-sm font-semibold text-[var(--color-primary)]">{title}</h2>
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
+      <h2 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
       {description ? (
-        <p className="mb-3 mt-1 text-[12px] text-[var(--color-tertiary)]">
+        <p className="mb-3 mt-1 text-[12px] text-[var(--text-tertiary)]">
           {description}
         </p>
       ) : (
@@ -233,7 +244,7 @@ function Section({
 
 function CharCount({ value }: { value: string }) {
   return (
-    <p className="text-right text-[11px] text-[var(--color-tertiary)]">
+    <p className="text-right text-[11px] text-[var(--text-tertiary)]">
       {value.length.toLocaleString("es-MX")} / {MAX_LEN.toLocaleString("es-MX")}
     </p>
   );

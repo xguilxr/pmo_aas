@@ -77,12 +77,6 @@ FUERA_DE_ALCANCE: dict[str, str] = {
         "Es la tarjeta, no la pantalla. El periodo lo declara la superficie que "
         "la usa: la misma tarjeta sirve para un dato vivo y para uno de corte."
     ),
-    "components/app-shell.tsx": (
-        "Casa por el icono `BarChart3` de la navegación. No pinta ningún dato."
-    ),
-    "components/project-tabs-bar.tsx": (
-        "Mismo icono de navegación; ninguna cifra."
-    ),
     "components/directory/DirectoryView.tsx": (
         "`allocation_pct` es un valor DECLARADO de la participación, no un "
         "cálculo: la ficha lo dice («valor declarado, no se calcula»). Un campo "

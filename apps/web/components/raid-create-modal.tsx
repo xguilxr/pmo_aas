@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -12,6 +13,7 @@ import { ApiError } from "@/lib/api";
 import { createIssue, createRisk, type IssueType } from "@/lib/api/modules";
 import { listProjectAreas, type ProjectArea } from "@/lib/api/project-areas";
 import { PersonPicker } from "@/components/directory/PersonPicker";
+import { cn } from "@/lib/cn";
 
 /**
  * ENH-026: modal unificado para crear un ítem RAID (riesgo, acción,
@@ -221,8 +223,7 @@ export function RaidCreateModal({
             />
           </Field>
           <Field label="Fecha de creación">
-            <Input
-              type="date"
+            <DateField
               value={identifiedAt}
               onChange={(e) => setIdentifiedAt(e.target.value)}
             />
@@ -264,12 +265,8 @@ export function RaidCreateModal({
                 onChange={(e) => setMitigation(e.target.value)}
               />
             </Field>
-            <Field label="Fecha compromiso">
-              <Input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
+            <Field label="Fecha compromiso" className="max-w-[200px]">
+              <DateField value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </Field>
           </>
         ) : (
@@ -286,9 +283,8 @@ export function RaidCreateModal({
                 ))}
               </Select>
             </Field>
-            <Field label="Fecha compromiso">
-              <Input
-                type="date"
+            <Field label="Fecha compromiso" className="max-w-[200px]">
+              <DateField
                 value={committedDate}
                 onChange={(e) => setCommittedDate(e.target.value)}
               />
@@ -314,16 +310,43 @@ export { KIND_NEW_LABEL };
 function Field({
   label,
   children,
+  className,
 }: {
   label: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-[12px] font-medium text-[var(--text-secondary)]">
+    <label className={cn("block", className)}>
+      <span className="mb-1 block text-[12.5px] font-medium text-[var(--text-secondary)]">
         {label}
       </span>
       {children}
     </label>
+  );
+}
+
+/** Campo de fecha con icono de calendario, como en el mockup (spec 9b). */
+function DateField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="relative">
+      <Icono
+        nombre="calendar"
+        size={13}
+        className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)]"
+      />
+      <Input
+        type="date"
+        value={value}
+        onChange={onChange}
+        className="pl-8 font-mono text-[12.5px]"
+      />
+    </div>
   );
 }

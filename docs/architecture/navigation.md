@@ -98,7 +98,8 @@ flowchart TB
             SA_AI["/superadmin/ai"]:::super
             SA_LOG["/superadmin/logs"]:::super
             SA_ME["/superadmin/me"]:::super
-            SA_HEALTH["/superadmin/health (huérfana)"]:::orphan
+            SA_HEALTH["/superadmin/health"]:::super
+            SA_SEC["/superadmin/security"]:::super
             SA_PRQ["/superadmin/permission-requests"]:::super
         end
     end
@@ -216,6 +217,8 @@ flowchart LR
         S4["/superadmin/permission-requests"]
         S5["/superadmin/ai"]
         S6["/superadmin/logs"]
+        S7["/superadmin/security"]
+        S8["/superadmin/health"]
     end
 ```
 
@@ -348,7 +351,7 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/admin/areas` | Directorio de áreas/equipos/actores. | Panel del landing |
 | `/admin/audit-logs` | Bitácora con filtros + export CSV. | Sidebar + panel |
 
-### 3.5 `/superadmin/**` — plataforma (12)
+### 3.5 `/superadmin/**` — plataforma (14)
 
 | URL | Propósito | Acceso |
 |---|---|---|
@@ -362,6 +365,8 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/superadmin/permission-requests` | Aprobación / rechazo de tickets `permission_change_requests` (US-082; auto-crea overrides en `tenant_role_permission_overrides`). | Sidebar |
 | `/superadmin/ai` | Config IA plataforma (Groq). | Sidebar |
 | `/superadmin/logs` | Logs plataforma. | Sidebar |
+| `/superadmin/security` | Cuentas bloqueadas y auditoría de superadmin agregadas a nivel plataforma (revamp v2, mockup 6e). Cuentas bloqueadas todavía sin endpoint agregado — `SIN_DATO`. | Sidebar (grupo Seguridad) |
+| `/superadmin/health` | Versión desplegada, migraciones, colas de Celery e historial de incidentes (revamp v2, mockup 6f). Repropone el redirect client-side de US-026 — ya no es huérfana. Todo el contenido va con `SIN_DATO`: ningún dato tiene endpoint real todavía. | Sidebar (grupo Sistema) |
 | `/superadmin/me` | Perfil del superadmin. | UserMenu |
 
 ---
@@ -472,7 +477,7 @@ admin tiene 5 capabilities cerradas (`tenant.manage`, `ai.configure`,
 |---|---|---|
 | `/admin/stakeholders` (catálogo standalone) | Innecesario como página propia. Solo informativo. | **Borrado** (`page.tsx` + `lib/api/stakeholders.ts`). Reemplazado por sub-tab "Stakeholders" en `/pmo/projects/[id]` (Resumen del proyecto). Lista solo los que vienen del charter (sponsor / líder de negocio / líder técnico); si no hay, el tab se oculta. |
 | `/superadmin/permission-requests` | Necesario — sin él, US-082 está rota. | **Wire-up** agregado a `SUPERADMIN_NAV` en `app-shell.tsx` (entre Usuarios y IA). |
-| `/superadmin/health` | Dejar como está. | Sin cambios. **No era huérfana**: el archivo es un redirect client-side a `/superadmin` (US-026: Health se consolidó en Visión General). Solo subsiste para bookmarks viejos. |
+| `/superadmin/health` | Dejar como está *(decisión de 2026-05-23, superada)*. | Sin cambios en su momento — el archivo era un redirect client-side a `/superadmin` (US-026: Health se consolidó en Visión General), solo para bookmarks viejos. **Revamp v2 (2026-08-27)** lo repropuso como la pantalla "Sistema" (mockup 6f: versión, migraciones, colas, incidentes) y lo agregó a `SUPERADMIN_NAV` — ya no es un redirect ni una página huérfana. |
 | `/pmo/programs` (listado plano) | Drill-down vía OrgTreeNav cubre el caso. | **Borrado** (`page.tsx`). El detalle `/pmo/programs/[id]` queda intacto. |
 
 ### 6.2 Rutas legacy redirigidas en `next.config.js`
@@ -505,7 +510,6 @@ No son huérfanas. Su único punto de entrada es no-obvio:
 | `/pmo/projects/[id]/charter` | Tras crear proyecto (`router.replace` desde `project-form`), desde `/documents` y desde el flujo de aprobación de request. **No tiene tab propio**. |
 | `/pmo/projects/[id]/edit` | Botón "Editar" en el header del hub del proyecto. |
 | `/superadmin/me` | Solo desde `UserMenu` cuando el usuario es superadmin. |
-| `/superadmin/health` | Redirect client-side; nadie lo visita "en vivo". |
 
 ### 6.4 Estado actual
 

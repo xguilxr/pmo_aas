@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, Loader2, Send, Sparkles, Undo2, X } from "lucide-react";
 
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/cn";
 import {
   chatWithBuilder,
   type ChatAction,
@@ -103,52 +105,59 @@ export function ChatPanel({
   }
 
   return (
-    <aside className="fixed right-0 top-0 z-40 flex h-screen w-96 flex-col border-l border-zinc-200 bg-white shadow-xl">
-      <header className="flex items-center justify-between border-b border-zinc-200 px-3 py-2">
-        <div className="flex items-center gap-2 text-sm font-semibold text-zinc-800">
-          <Sparkles className="h-4 w-4 text-violet-500" /> Asistente IA
+    <aside className="fixed right-0 top-0 z-40 flex h-screen w-96 flex-col border-l border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-lg)]">
+      <header className="flex items-center justify-between border-b border-[var(--border-default)] px-3.5 py-2.5">
+        <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--text-primary)]">
+          <Icono nombre="star" size={15} className="text-[var(--color-accent)]" /> Asistente IA
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="rounded p-1 text-zinc-500 hover:bg-zinc-100"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
           title="Cerrar"
         >
-          <X className="h-4 w-4" />
+          <Icono nombre="x" size={15} />
         </button>
       </header>
 
-      <div className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
+      <div className="flex-1 space-y-2.5 overflow-y-auto p-3.5 text-[13px]">
         {transcript.length === 0 && (
-          <div className="rounded border border-dashed border-zinc-300 p-3 text-xs text-zinc-500">
+          <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] p-3 text-[12px] text-[var(--text-tertiary)]">
             Pídeme cosas como “agrega los hitos próximos” o “quita la sección de KPIs”.
           </div>
         )}
         {transcript.map((m) => (
           <div
             key={m.id}
-            className={`rounded-lg p-2 ${
-              m.role === "user" ? "bg-zinc-100" : "bg-violet-50"
-            }`}
+            className={cn(
+              "rounded-[var(--radius-md)] p-2.5",
+              m.role === "user" ? "bg-[var(--color-muted)]" : "bg-[var(--color-info-bg)]",
+            )}
           >
-            <div className="mb-0.5 flex items-center justify-between">
-              <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-                {m.role === "user" ? "Tú" : <><Bot className="h-3 w-3" /> IA</>}
+            <div className="mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+                {m.role === "user" ? (
+                  "Tú"
+                ) : (
+                  <>
+                    <Icono nombre="info" size={12} /> IA
+                  </>
+                )}
               </span>
               {m.role === "assistant" && undoStack[m.id] && (
                 <button
                   type="button"
                   onClick={() => undo(m.id)}
-                  className="flex items-center gap-0.5 text-[10px] text-zinc-600 hover:text-zinc-900"
+                  className="flex items-center gap-1 text-[10.5px] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   title="Revertir acciones"
                 >
-                  <Undo2 className="h-3 w-3" /> Revertir
+                  <Icono nombre="rotate-ccw" size={12} /> Revertir
                 </button>
               )}
             </div>
-            <p className="whitespace-pre-wrap text-sm text-zinc-800">{m.text}</p>
+            <p className="whitespace-pre-wrap text-[13px] text-[var(--text-primary)]">{m.text}</p>
             {m.actions && m.actions.length > 0 && (
-              <ul className="mt-1 list-disc pl-4 text-[11px] text-zinc-600">
+              <ul className="mt-1.5 list-disc pl-4 text-[11px] text-[var(--text-tertiary)]">
                 {m.actions.map((a, idx) => (
                   <li key={idx}>
                     {a.type}
@@ -163,7 +172,9 @@ export function ChatPanel({
       </div>
 
       {error && (
-        <div className="bg-red-50 px-3 py-1.5 text-xs text-red-700">{error}</div>
+        <div className="px-3.5 pb-2.5">
+          <Banner variant="danger">{error}</Banner>
+        </div>
       )}
 
       <form
@@ -171,17 +182,17 @@ export function ChatPanel({
           e.preventDefault();
           void send();
         }}
-        className="flex items-center gap-2 border-t border-zinc-200 p-2"
+        className="flex items-center gap-2 border-t border-[var(--border-default)] p-2.5"
       >
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Pídele algo al asistente…"
           disabled={sending}
-          className="flex-1 text-sm"
+          className="flex-1"
         />
-        <Button type="submit" disabled={sending || !input.trim()} size="sm">
-          {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+        <Button type="submit" disabled={sending || !input.trim()} loading={sending} size="sm">
+          <Icono nombre="arrow-up-right" size={15} />
         </Button>
       </form>
     </aside>

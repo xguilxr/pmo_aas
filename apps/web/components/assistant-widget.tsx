@@ -2,9 +2,9 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Bot, Loader2, Plus, Send, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { ApiError } from "@/lib/api";
 import {
   type AssistantAction,
@@ -120,12 +120,12 @@ export function AssistantWidget() {
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center",
-          "rounded-full text-white shadow-[var(--sb-shadow)] transition-transform hover:scale-105",
+          "rounded-full text-white shadow-[var(--shadow-optical-md)] transition-transform hover:scale-105",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
         )}
         style={{ background: "var(--color-accent)" }}
       >
-        {open ? <X className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+        <Icono nombre={open ? "x" : "info"} size={19} />
       </button>
 
       {/* Panel */}
@@ -136,17 +136,17 @@ export function AssistantWidget() {
           className={cn(
             "fixed bottom-20 right-5 z-50 flex w-[min(380px,calc(100vw-2.5rem))] flex-col",
             "rounded-[var(--radius-window)] border border-[var(--border-default)]",
-            "bg-[var(--color-surface)] shadow-[var(--sb-shadow)]",
+            "bg-[var(--color-surface)] shadow-[var(--shadow-optical-md)]",
           )}
           style={{ height: "min(560px, calc(100vh - 7rem))" }}
         >
           {/* Header */}
           <header
             className="flex items-center justify-between gap-2 rounded-t-[var(--radius-window)] px-4 py-3 text-white"
-            style={{ background: "var(--chrome-bg)" }}
+            style={{ background: "var(--color-primary)" }}
           >
             <span className="flex items-center gap-2 text-sm font-semibold">
-              <Bot className="h-4 w-4" /> Copiloto PMO
+              <Icono nombre="info" size={15} /> Copiloto PMO
             </span>
             <span className="flex items-center gap-1">
               <button
@@ -155,7 +155,7 @@ export function AssistantWidget() {
                 title="Nueva conversación"
                 className="rounded-md p-1 opacity-80 hover:bg-white/10 hover:opacity-100"
               >
-                <Plus className="h-4 w-4" />
+                <Icono nombre="plus" size={15} />
               </button>
               <button
                 type="button"
@@ -163,7 +163,7 @@ export function AssistantWidget() {
                 title="Cerrar"
                 className="rounded-md p-1 opacity-80 hover:bg-white/10 hover:opacity-100"
               >
-                <X className="h-4 w-4" />
+                <Icono nombre="x" size={15} />
               </button>
             </span>
           </header>
@@ -209,7 +209,7 @@ export function AssistantWidget() {
             {loading ? (
               <div className="flex justify-start">
                 <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm bg-[var(--color-subtle)] px-3 py-2 text-sm text-[var(--color-tertiary)]">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Pensando…
+                  <Icono nombre="loader" size={14} className="animate-spin" /> Pensando…
                 </div>
               </div>
             ) : null}
@@ -244,7 +244,7 @@ export function AssistantWidget() {
                 disabled={loading || !input.trim()}
                 aria-label="Enviar"
               >
-                <Send className="h-4 w-4" />
+                <Icono nombre="arrow-up-right" size={15} />
               </Button>
             </div>
             {/*

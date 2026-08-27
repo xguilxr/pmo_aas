@@ -3,36 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  BarChart3,
-  Boxes,
-  Building2,
-  ChevronRight,
-  Bell,
-  ClipboardCheck,
-  ClipboardList,
-  Columns3,
-  CreditCard,
-  FolderKanban,
-  Gauge,
-  GitBranch,
-  KeyRound,
-  LayoutDashboard,
-  Menu,
-  MessageSquareText,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ScrollText,
-  Search,
-  Server,
-  ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  Upload,
-  Users,
-  X,
-} from "lucide-react";
 
+import { Icono } from "@/components/ui/icono";
 import { NotificationBell } from "@/components/notification-bell";
 import { SwitcherDeInquilino } from "@/components/switcher-de-inquilino";
 import { SwitcherDeOrganizacion } from "@/components/switcher-de-organizacion";
@@ -52,7 +24,7 @@ const SIDEBAR_COLLAPSE_KEY = "pmoaas:sidebar-collapsed";
 type NavItem = {
   id: string;
   label: string;
-  icon: ReactNode;
+  icono: string;
   href?: string;
   match?: (path: string) => boolean;
   children?: NavItem[];
@@ -88,14 +60,14 @@ const GRUPOS_NAV: GrupoNav[] = [
       {
         id: "dashboard",
         label: "Dashboard",
-        icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
+        icono: "layout-dashboard",
         href: "/dashboard",
         match: (p) => p === "/dashboard",
       },
       {
         id: "portfolio",
         label: "Portafolio",
-        icon: <Boxes className="h-4 w-4" aria-hidden />,
+        icono: "folders",
         href: "/pmo",
         match: (p) => p === "/pmo",
       },
@@ -104,14 +76,14 @@ const GRUPOS_NAV: GrupoNav[] = [
         // Portafolio porque es la misma cartera vista por otro eje.
         id: "board",
         label: "Board",
-        icon: <Columns3 className="h-4 w-4" aria-hidden />,
+        icono: "grid-2x2",
         href: "/pmo/board",
         match: (p) => p.startsWith("/pmo/board"),
       },
       {
         id: "projects",
         label: "Proyectos",
-        icon: <FolderKanban className="h-4 w-4" aria-hidden />,
+        icono: "folder",
         href: "/pmo/projects",
         match: (p) => p.startsWith("/pmo/projects"),
       },
@@ -120,14 +92,14 @@ const GRUPOS_NAV: GrupoNav[] = [
         // inicial: el artboard lo sitúa en «Org activa › Proyectos › Importar».
         id: "imports",
         label: "Importar",
-        icon: <Upload className="h-4 w-4" aria-hidden />,
+        icono: "upload",
         href: "/pmo/imports",
         match: (p) => p.startsWith("/pmo/imports"),
       },
       {
         id: "requests",
         label: "Solicitudes",
-        icon: <ClipboardList className="h-4 w-4" aria-hidden />,
+        icono: "list-check",
         href: "/pmo/requests",
         match: (p) => p.startsWith("/pmo/requests"),
       },
@@ -136,14 +108,14 @@ const GRUPOS_NAV: GrupoNav[] = [
         // es una pregunta de la organización, no un módulo del proyecto.
         id: "resources",
         label: "Recursos",
-        icon: <Gauge className="h-4 w-4" aria-hidden />,
+        icono: "users",
         href: "/pmo/resources",
         match: (p) => p.startsWith("/pmo/resources"),
       },
       {
         id: "reports",
         label: "Reportes",
-        icon: <BarChart3 className="h-4 w-4" aria-hidden />,
+        icono: "file-spreadsheet",
         href: "/pmo/reports",
         match: (p) => p === "/pmo/reports" || p.startsWith("/pmo/reports/"),
       },
@@ -156,21 +128,21 @@ const GRUPOS_NAV: GrupoNav[] = [
       {
         id: "raid",
         label: "RAID",
-        icon: <ShieldAlert className="h-4 w-4" aria-hidden />,
+        icono: "triangle-alert",
         href: "/pmo/raid",
         match: (p) => p.startsWith("/pmo/raid"),
       },
       {
         id: "changes",
         label: "Cambios",
-        icon: <GitBranch className="h-4 w-4" aria-hidden />,
+        icono: "git-branch",
         href: "/pmo/changes",
         match: (p) => p.startsWith("/pmo/changes"),
       },
       {
         id: "minutes",
         label: "Minutas",
-        icon: <MessageSquareText className="h-4 w-4" aria-hidden />,
+        icono: "file-text",
         href: "/pmo/minutes",
         match: (p) => p === "/pmo/minutes" || p.startsWith("/pmo/minutes/"),
       },
@@ -179,7 +151,7 @@ const GRUPOS_NAV: GrupoNav[] = [
         // una organización ni de un proyecto — es de quien la recibe.
         id: "notifications",
         label: "Notificaciones",
-        icon: <Bell className="h-4 w-4" aria-hidden />,
+        icono: "bell",
         href: "/notifications",
         match: (p) => p.startsWith("/notifications"),
       },
@@ -199,7 +171,7 @@ function buildAdminNav(): NavItem {
   return {
     id: "admin",
     label: "Admin",
-    icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+    icono: "settings",
     href: "/admin",
     match: (p) =>
       p === "/admin" ||
@@ -215,7 +187,7 @@ function buildAdminNav(): NavItem {
       {
         id: "tenant-mgmt",
         label: "Tenant",
-        icon: <Building2 className="h-4 w-4" aria-hidden />,
+        icono: "building",
         href: "/admin/tenant",
         match: (p) =>
           p.startsWith("/admin/tenant") ||
@@ -225,14 +197,17 @@ function buildAdminNav(): NavItem {
       {
         id: "tenant-ai",
         label: "IA",
-        icon: <Sparkles className="h-4 w-4" aria-hidden />,
+        // Sin equivalente de Sparkles en el set Keyline; el mockup usa
+        // "info" (no "star") para este ítem de nav en las 5 pantallas que
+        // lo muestran (superadmin y admin del tenant).
+        icono: "info",
         href: "/admin/ai",
         match: (p) => p.startsWith("/admin/ai"),
       },
       {
         id: "orgs-mgmt",
         label: "Organizaciones",
-        icon: <Building2 className="h-4 w-4" aria-hidden />,
+        icono: "building",
         href: "/admin/organizations",
         match: (p) =>
           p.startsWith("/admin/organizations") && !p.includes("/panel"),
@@ -240,14 +215,14 @@ function buildAdminNav(): NavItem {
       {
         id: "users",
         label: "Usuarios",
-        icon: <Users className="h-4 w-4" aria-hidden />,
+        icono: "users",
         href: "/admin/users",
         match: (p) => p.startsWith("/admin/users"),
       },
       {
         id: "permissions",
         label: "Permisos",
-        icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
+        icono: "lock",
         href: "/admin/permissions",
         match: (p) => p.startsWith("/admin/permissions"),
       },
@@ -256,14 +231,14 @@ function buildAdminNav(): NavItem {
         // configuración de la cuenta, no un registro que se consulta.
         id: "plan",
         label: "Plan",
-        icon: <CreditCard className="h-4 w-4" aria-hidden />,
+        icono: "credit-card",
         href: "/admin/plan",
         match: (p) => p.startsWith("/admin/plan"),
       },
       {
         id: "audit",
         label: "Auditoría",
-        icon: <ClipboardCheck className="h-4 w-4" aria-hidden />,
+        icono: "file-text",
         href: "/admin/audit-logs",
         match: (p) => p.startsWith("/admin/audit-logs"),
       },
@@ -271,49 +246,96 @@ function buildAdminNav(): NavItem {
   };
 }
 
-// 4 ítems raíz, en este orden (US-041, issue #19).
-const SUPERADMIN_NAV: NavItem[] = [
+// Navegación agrupada de superadmin (patrón fijado en la ronda 6 de la
+// especificación de revamp): los 4 rótulos Plataforma/Tenants/Seguridad/
+// Sistema son idénticos en las 5 pantallas de superadmin — cualquier
+// pantalla nueva hereda este árbol completo, no un subconjunto.
+const SUPERADMIN_GRUPOS: GrupoNav[] = [
   {
-    id: "sa-overview",
-    label: "Visión General",
-    icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
-    href: "/superadmin",
-    match: (p) => p === "/superadmin",
+    id: "sa-plataforma",
+    titulo: "Plataforma",
+    items: [
+      {
+        id: "sa-overview",
+        label: "Visión General",
+        icono: "layout-dashboard",
+        href: "/superadmin",
+        match: (p) => p === "/superadmin",
+      },
+    ],
   },
   {
-    id: "sa-tenants",
-    label: "Tenants",
-    icon: <Server className="h-4 w-4" aria-hidden />,
-    href: "/superadmin/tenants",
-    match: (p) => p.startsWith("/superadmin/tenants"),
+    id: "sa-tenants-grupo",
+    titulo: "Tenants",
+    items: [
+      {
+        id: "sa-tenants",
+        label: "Tenants",
+        icono: "server",
+        href: "/superadmin/tenants",
+        match: (p) => p.startsWith("/superadmin/tenants"),
+      },
+      {
+        id: "sa-users",
+        label: "Usuarios",
+        icono: "users",
+        href: "/superadmin/users",
+        match: (p) => p.startsWith("/superadmin/users"),
+      },
+      {
+        id: "sa-permission-requests",
+        label: "Permisos",
+        icono: "lock",
+        href: "/superadmin/permission-requests",
+        match: (p) => p.startsWith("/superadmin/permission-requests"),
+      },
+    ],
   },
   {
-    id: "sa-users",
-    label: "Usuarios",
-    icon: <Users className="h-4 w-4" aria-hidden />,
-    href: "/superadmin/users",
-    match: (p) => p.startsWith("/superadmin/users"),
+    id: "sa-seguridad",
+    titulo: "Seguridad",
+    items: [
+      {
+        // Mockup 6e — agregado a nivel plataforma de cuentas bloqueadas y
+        // auditoría de superadmin (ver /superadmin/security).
+        id: "sa-security",
+        label: "Seguridad",
+        icono: "circle-alert",
+        href: "/superadmin/security",
+        match: (p) => p.startsWith("/superadmin/security"),
+      },
+    ],
   },
   {
-    id: "sa-permission-requests",
-    label: "Permisos",
-    icon: <KeyRound className="h-4 w-4" aria-hidden />,
-    href: "/superadmin/permission-requests",
-    match: (p) => p.startsWith("/superadmin/permission-requests"),
-  },
-  {
-    id: "sa-ai",
-    label: "IA",
-    icon: <Sparkles className="h-4 w-4" aria-hidden />,
-    href: "/superadmin/ai",
-    match: (p) => p.startsWith("/superadmin/ai"),
-  },
-  {
-    id: "sa-logs",
-    label: "Logs platform",
-    icon: <ScrollText className="h-4 w-4" aria-hidden />,
-    href: "/superadmin/logs",
-    match: (p) => p.startsWith("/superadmin/logs"),
+    id: "sa-sistema",
+    titulo: "Sistema",
+    items: [
+      {
+        // Mockup 6f — reemplaza el redirect legacy de /superadmin/health
+        // (US-026) por la vista de versión, migraciones, colas e incidentes.
+        id: "sa-system",
+        label: "Sistema",
+        icono: "settings",
+        href: "/superadmin/health",
+        match: (p) => p.startsWith("/superadmin/health"),
+      },
+      {
+        id: "sa-logs",
+        label: "Logs platform",
+        icono: "file-text",
+        href: "/superadmin/logs",
+        match: (p) => p.startsWith("/superadmin/logs"),
+      },
+      {
+        // Sin equivalente de Sparkles en el set Keyline; el mockup usa
+        // "info" (no "star") para este ítem de nav específico.
+        id: "sa-ai",
+        label: "IA",
+        icono: "info",
+        href: "/superadmin/ai",
+        match: (p) => p.startsWith("/superadmin/ai"),
+      },
+    ],
   },
 ];
 
@@ -343,7 +365,7 @@ function RotuloDeGrupo({ titulo, oculto }: { titulo: string; oculto: boolean }) 
   return (
     <p
       aria-hidden
-      className="px-3 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--chrome-text-muted)]"
+      className="px-3 pb-1 pt-2.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--chrome-text-muted)]"
     >
       {titulo}
     </p>
@@ -380,14 +402,14 @@ function NavTree({
         const isOpen = hasChildren && expanded.has(item.id);
         const active = item.match?.(pathname) ?? false;
         const rowClass = cn(
-          "flex h-9 items-center gap-2.5 rounded-[var(--radius-md)] text-[13px] transition-colors",
+          "flex h-8 items-center gap-2.5 rounded-[var(--radius-md)] text-[13px] transition-colors",
           collapsed ? "justify-center px-0" : "pr-1.5",
           active
             ? "bg-[var(--chrome-active)] font-semibold text-[var(--chrome-text-strong)]"
-            : "text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text-strong)]",
+            : "text-[var(--chrome-text)] hover:bg-[var(--chrome-hover)]",
         );
 
-        // Rail colapsado (76px): solo iconos centrados. Un item de grupo
+        // Rail colapsado (68px): solo iconos centrados. Un item de grupo
         // re-expande el sidebar al hacer click (no hay flyout).
         if (collapsed) {
           return (
@@ -400,7 +422,7 @@ function NavTree({
                   aria-label={item.label}
                   className={rowClass}
                 >
-                  {item.icon}
+                  <Icono nombre={item.icono} size={17} />
                 </Link>
               ) : (
                 <button
@@ -413,7 +435,7 @@ function NavTree({
                   }}
                   className={cn(rowClass, "w-full")}
                 >
-                  {item.icon}
+                  <Icono nombre={item.icono} size={17} />
                 </button>
               )}
             </li>
@@ -434,7 +456,7 @@ function NavTree({
                   onClick={onNavigate}
                   className="flex min-w-0 flex-1 items-center gap-2.5"
                 >
-                  {item.icon}
+                  <Icono nombre={item.icono} size={17} />
                   <span className="truncate">{item.label}</span>
                 </Link>
               ) : (
@@ -443,7 +465,7 @@ function NavTree({
                   onClick={() => hasChildren && toggle(item.id)}
                   className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                 >
-                  {item.icon}
+                  <Icono nombre={item.icono} size={17} />
                   <span
                     className={cn(
                       "truncate",
@@ -460,11 +482,12 @@ function NavTree({
                   onClick={() => toggle(item.id)}
                   aria-label={isOpen ? `Colapsar ${item.label}` : `Expandir ${item.label}`}
                   aria-expanded={isOpen}
-                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text-strong)]"
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text)]"
                 >
-                  <ChevronRight
-                    className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-90")}
-                    aria-hidden
+                  <Icono
+                    nombre="chevron-right"
+                    size={14}
+                    className={cn("transition-transform", isOpen && "rotate-90")}
                   />
                 </button>
               ) : null}
@@ -573,7 +596,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       // que el recorrido sigue: se hace por grupo en vez de sobre una lista.
       for (const grupo of GRUPOS_NAV) collectExpandedIds(grupo.items, pathname, next);
       if (adminVisible) collectExpandedIds([adminNav], pathname, next);
-      collectExpandedIds(SUPERADMIN_NAV, pathname, next);
+      for (const grupo of SUPERADMIN_GRUPOS) collectExpandedIds(grupo.items, pathname, next);
       return next;
     });
   }, [pathname, adminVisible, adminNav]);
@@ -592,8 +615,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen flex-col bg-[var(--color-app)]">
-      {/* Topbar full-width sobre el lienzo cream (US-164). */}
-      <header className="flex h-[60px] shrink-0 items-center justify-between gap-2 px-3 lg:px-4">
+      {/* Topbar a sangre: se separa del cuerpo con filete + luz, sin sombra
+          (Revamp v2 — el sidebar y el topbar dejan de flotar). */}
+      <header
+        className="flex h-[56px] shrink-0 items-center justify-between gap-2 border-b border-[var(--border-default)] px-3 shadow-[var(--linea-surco)] lg:px-4"
+      >
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
@@ -601,7 +627,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             aria-label="Abrir menú"
             className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
           >
-            <Menu className="h-5 w-5" aria-hidden />
+            <Icono nombre="menu" size={19} />
           </button>
           <Link
             href={homeHref}
@@ -645,17 +671,29 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             aria-label="Buscar"
-            title="Buscar"
-            className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
+            title="Buscar (⌘K)"
+            className="hidden sm:flex h-8 w-[260px] items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2.5 text-left shadow-[var(--hundido)]"
           >
-            <Search className="h-4 w-4" aria-hidden />
+            <Icono nombre="search" size={15} className="text-[var(--text-faint)]" />
+            <span className="flex-1 truncate text-[13px] text-[var(--text-faint)]">Buscar</span>
+            <kbd className="rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-subtle)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-tertiary)]">
+              ⌘K
+            </kbd>
+          </button>
+          <button
+            type="button"
+            aria-label="Buscar"
+            title="Buscar"
+            className="sm:hidden inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
+          >
+            <Icono nombre="search" size={15} />
           </button>
           {userReady && user ? <NotificationBell /> : null}
           <UserMenu user={user} variant="surface" />
         </div>
       </header>
 
-      {/* Cuerpo: sidebar azul flotante + área de trabajo en el lienzo. */}
+      {/* Cuerpo: sidebar claro a sangre + área de trabajo. */}
       <div className="flex min-h-0 flex-1">
         {open ? (
           <button
@@ -668,9 +706,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 flex h-full w-60 flex-col rounded-r-[14px] bg-[var(--chrome-bg)] shadow-[var(--sb-shadow)] transition-transform",
-            "lg:static lg:z-auto lg:h-auto lg:translate-x-0 lg:mb-3 lg:ml-3 lg:mt-1.5 lg:rounded-[14px]",
-            collapsed ? "lg:w-[76px]" : "lg:w-60",
+            "fixed inset-y-0 left-0 z-40 flex h-full w-[216px] flex-col border-r border-[var(--chrome-border)] bg-[var(--chrome-bg)] transition-transform",
+            "lg:static lg:z-auto lg:h-auto lg:translate-x-0",
+            collapsed ? "lg:w-[68px]" : "lg:w-[216px]",
             open ? "translate-x-0" : "-translate-x-full",
           )}
         >
@@ -684,22 +722,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               type="button"
               onClick={close}
               aria-label="Cerrar menú"
-              className="lg:hidden inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text-strong)]"
+              className="lg:hidden inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)]"
             >
-              <X className="h-4 w-4" aria-hidden />
+              <Icono nombre="x" size={16} />
             </button>
             <button
               type="button"
               onClick={() => setCollapsedPersisted(!collapsed)}
               aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
               title={collapsed ? "Expandir menú" : "Colapsar menú"}
-              className="hidden lg:inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)] hover:text-[var(--chrome-text-strong)]"
+              className="hidden lg:inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)]"
             >
-              {collapsed ? (
-                <PanelLeftOpen className="h-4 w-4" aria-hidden />
-              ) : (
-                <PanelLeftClose className="h-4 w-4" aria-hidden />
-              )}
+              <Icono nombre={collapsed ? "panel-left" : "panel-left-close-dashed"} size={16} />
             </button>
           </div>
           <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3">
@@ -734,20 +768,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                 />
               </div>
             ) : null}
-            {userReady && user?.is_superadmin ? (
-              <div className="mt-0.5">
-                <RotuloDeGrupo titulo="Plataforma" oculto={collapsed} />
-                <NavTree
-                  items={SUPERADMIN_NAV}
-                  pathname={pathname}
-                  onNavigate={close}
-                  expanded={expanded}
-                  toggle={toggle}
-                  collapsed={collapsed}
-                  onExpandSidebar={() => setCollapsedPersisted(false)}
-                />
-              </div>
-            ) : null}
+            {userReady && user?.is_superadmin
+              ? SUPERADMIN_GRUPOS.map((grupo) => (
+                  <div key={grupo.id} className="mt-0.5">
+                    <RotuloDeGrupo titulo={grupo.titulo} oculto={collapsed} />
+                    <NavTree
+                      items={grupo.items}
+                      pathname={pathname}
+                      onNavigate={close}
+                      expanded={expanded}
+                      toggle={toggle}
+                      collapsed={collapsed}
+                      onExpandSidebar={() => setCollapsedPersisted(false)}
+                    />
+                  </div>
+                ))
+              : null}
           </nav>
         </aside>
 

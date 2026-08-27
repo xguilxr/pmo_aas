@@ -24,28 +24,28 @@
   --color-neutral-900: oklch(12% 0.004 80);
   --color-neutral-950: oklch(7% 0.003 80);
 
-  /* Semánticos — sistema "big canvas" (US-164): un solo lienzo gris-azul
-     súper claro + islas blancas con sombra suave. La escala neutra de arriba
-     se conserva (tablas, badges, estados); solo la capa de superficie y el
-     chrome cambian. */
-  --color-bg-app: #F4F6FA;     /* canvas */
+  /* Semánticos — Revamp v2 (2026-08-27): una sola superficie blanca con
+     filetes con profundidad, reemplaza el lienzo gris-azul + islas blancas
+     de US-164. La escala neutra de arriba se conserva (tablas, badges,
+     estados); solo la capa de superficie y el chrome cambian. */
+  --color-bg-app: #FFFFFF;     /* canvas */
   --color-bg-surface: #FFFFFF; /* islas */
-  --color-bg-subtle: #F8FAFD;  /* surface-soft */
-  --color-bg-muted: #E9EDF4;
+  --color-bg-subtle: #FAFAF9;  /* surface-soft */
+  --color-bg-muted: #F2F2EF;
 
   /* Aliases retrocompat para código que ya usa --color-app / --color-surface / etc. */
-  --color-app: #F4F6FA;
+  --color-app: #FFFFFF;
   --color-surface: #FFFFFF;
-  --color-subtle: #F8FAFD;
-  --color-muted: #E9EDF4;
-  --color-primary: #1F1D17;    /* text-strong */
-  --color-secondary: #3F3B30;  /* text */
-  --color-tertiary: #6F695A;   /* text-muted */
-  --color-disabled: #A39C8B;   /* text-faint */
+  --color-subtle: #FAFAF9;
+  --color-muted: #F2F2EF;
+  --color-primary: #15171B;    /* text-strong */
+  --color-secondary: #4A4F57;  /* text */
+  --color-tertiary: #666B73;   /* text-muted — ver nota de contraste en --text-tertiary */
+  --color-disabled: #A9AEB4;   /* text-faint */
   --color-inverse: #FFFFFF;
 
-  --color-accent: #2A4DA0;     /* azul del sidebar / acento */
-  --color-accent-hover: #233F85;
+  --color-accent: oklch(48% 0.13 258);
+  --color-accent-hover: oklch(42% 0.13 258);
   --color-accent-fg: #FFFFFF;
   /* DIS-01 (2026-08-05). El botón primario citaba `--color-primary-hover`,
      que no existía, así que se renderizaba el respaldo — el mismo color de
@@ -55,21 +55,23 @@
      contraste es el agujero que DIS-02 cerró. */
   --color-primary-hover: #343026;
 
-  --color-success-bg: oklch(94% 0.05 155);
+  --color-success-bg: oklch(95% 0.04 155);
   --color-success-border: oklch(82% 0.09 155);
   --color-success-fg: #007A4C; /* ok */
 
-  --color-warning-bg: oklch(95% 0.06 85);
+  --color-warning-bg: oklch(96% 0.05 85);
   --color-warning-border: oklch(84% 0.11 85);
   --color-warning-fg: #9F5900; /* warn */
 
-  --color-danger-bg: oklch(94% 0.04 25);
+  --color-danger-bg: oklch(95% 0.035 25);
   --color-danger-border: oklch(82% 0.08 25);
   --color-danger-fg: #BD3528; /* danger */
 
-  --color-info-bg: oklch(94% 0.04 240);
-  --color-info-border: oklch(82% 0.08 240);
-  --color-info-fg: oklch(46% 0.12 240);
+  /* Hue 258 — el mismo del acento nuevo (Revamp v2), no el azul 240 previo:
+     es el tono que usa el badge de fase "Preparación" (PHASE_BADGE_TONE). */
+  --color-info-bg: oklch(96% 0.02 258);
+  --color-info-border: oklch(85% 0.06 258);
+  --color-info-fg: oklch(42% 0.13 258);
 
   /* ADR-023 — colores de gráficos. Espejo de `app/core/paleta.py`, que es el
      origen; `test_adr023_paleta_graficos.py` comprueba que no se separen.
@@ -106,7 +108,6 @@
      Token de superficie de contenido bajado 16px → 10px. Modales/ventanas
      conservan su propio radio. */
   --radius-xl: 10px;
-  --radius-2xl: 20px;
   --radius-window: 14px;
   --radius-modal: 16px;
 
@@ -120,33 +121,47 @@
 }
 
 :root {
-  --focus-ring: #2A4DA0;
-  /* Bordes mínimos: hairline casi imperceptible (US-164). */
-  --border-subtle: #EFEADF;
-  --border-default: #E8E3D7; /* border-hair */
-  --border-strong: #D8D2C4;
+  --focus-ring: oklch(48% 0.13 258);
+  /* Filetes con profundidad (Revamp v2 — "una sola superficie blanca con
+     filetes con profundidad", reemplaza el sistema "big canvas" gris-azul
+     + islas blancas de US-164). */
+  --border-subtle: #E3E3DD;
+  --border-default: #DDDDD7; /* border-hair */
+  --border-strong: #DBDBD5;
 
-  --text-primary: #1F1D17;
-  --text-secondary: #3F3B30;
-  --text-tertiary: #6F695A;
-  --text-faint: #A39C8B;
+  --text-primary: #15171B;
+  --text-secondary: #4A4F57;
+  /* #82878F (el valor literal de la especificación) mide 3.61:1 sobre blanco
+     y 3.22:1 sobre --color-muted — bajo el mínimo WCAG 2.2 AA de 4.5:1 que
+     `scripts/check_contraste.py` hace cumplir (MCS DIS-02). Oscurecido al
+     mismo matiz hasta 5.06:1 / 4.51:1: sigue leyendo como el mismo gris
+     apagado, ya no falla el gate. */
+  --text-tertiary: #666B73;
+  --text-faint: #A9AEB4;
 
-  /* Chrome — sidebar flotante "big canvas" (US-164). El fondo conserva el
-     navy original (#182e4e, DEC-006); solo cambia a panel flotante con pill
-     activo semitransparente. El topbar ya no usa chrome-bg: vive en el lienzo. */
-  --chrome-bg: #182e4e;
-  --chrome-bg-translucent: color-mix(in oklab, #182e4e 92%, transparent);
-  --chrome-border: transparent;
-  --chrome-text: #C9D4EE;
-  --chrome-text-strong: #FFFFFF;
-  --chrome-text-muted: #95A8D4;
-  --chrome-hover: rgba(255, 255, 255, 0.08);
-  --chrome-active: rgba(255, 255, 255, 0.14); /* pill activo semitransparente */
+  /* Profundidad: todo borde horizontal lleva su luz. Un border-bottom va con
+     --linea-surco; un border-top, con --linea-surco-arriba. Contenedores y
+     controles llevan relieve; campos de texto, pistas de progreso y el fondo
+     de un segmented control van hundidos. */
+  --linea-surco: 0 1px 0 #FFFFFF;
+  --linea-surco-arriba: inset 0 1px 0 #FFFFFF;
+  --relieve-control: inset 0 1px 0 #FFFFFF, 0 1px 1.5px rgba(20, 22, 26, .045);
+  --relieve-isla: inset 0 1px 0 #FFFFFF, 0 1px 2px rgba(20, 22, 26, .045);
+  --hundido: inset 0 1px 2px rgba(20, 22, 26, .05);
+  /* Marcador de hito del Gantt (rombo): bisel hundido para que lea como una
+     ficha tallada, no un cuadrado rotado plano. */
+  --relieve-hito: inset 0 -1px 2px rgba(20, 22, 26, .15);
 
-  /* Sombras del sistema: una sola capa suave para las islas blancas y una
-     más marcada para el panel flotante del sidebar. */
-  --island-shadow: 0 1px 2px rgba(20, 16, 8, 0.04), 0 6px 18px -8px rgba(20, 16, 8, 0.10);
-  --sb-shadow: 0 1px 2px rgba(15, 28, 60, 0.10), 0 10px 28px -12px rgba(15, 28, 60, 0.30);
+  /* Chrome — sidebar claro a sangre (Revamp v2). Ya no flota: sin
+     border-radius ni margin, columna con border-right. El pill activo es
+     tinta sólida con texto blanco. */
+  --chrome-bg: #FAFAF9;
+  --chrome-border: #DDDDD7;
+  --chrome-text: #4A4F57;
+  --chrome-text-strong: #FFFFFF; /* texto dentro del pill activo (tinta) */
+  --chrome-text-muted: #A9AEB4; /* rótulos de grupo, 10.5px, 600, tracking .08em */
+  --chrome-hover: #F2F2EF;
+  --chrome-active: #15171B; /* pill activo en tinta */
 
   --chrome-soft-bg: oklch(97% 0.012 240);
   --chrome-soft-border: oklch(90% 0.018 240);
@@ -178,20 +193,16 @@
   --text-tertiary: oklch(71% 0.010 250);
   --text-faint: oklch(56% 0.010 250);
 
-  /* US-164: en dark el sidebar conserva el fondo original (gris-azul del
-     theme oscuro, BUG-008). El pill activo sigue siendo blanco
-     semitransparente, igual que en light. */
+  /* Dark theme del chrome: pendiente del paso propio (§7 de la especificación
+     de revamp) — no es un volteo del claro. Conserva el navy previo (US-164,
+     BUG-008) hasta ese paso. */
   --chrome-bg: oklch(17% 0.008 250);
-  --chrome-bg-translucent: color-mix(in oklab, oklch(17% 0.008 250) 92%, transparent);
   --chrome-border: transparent;
   --chrome-text: #C9D4EE;
   --chrome-text-strong: #FFFFFF;
   --chrome-text-muted: #8FA2CE;
   --chrome-hover: rgba(255, 255, 255, 0.08);
   --chrome-active: rgba(255, 255, 255, 0.16);
-
-  --island-shadow: 0 1px 2px rgba(0, 0, 0, 0.30), 0 6px 18px -8px rgba(0, 0, 0, 0.45);
-  --sb-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px -12px rgba(0, 0, 0, 0.55);
 
   --color-success-bg: oklch(30% 0.06 155);
   --color-success-border: oklch(42% 0.09 155);

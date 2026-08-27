@@ -34,10 +34,10 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarClock, Diamond } from "lucide-react";
 
 import { RaidKanban, type KanbanColumn, type KanbanItem } from "@/components/raid-kanban";
 import { Banner } from "@/components/ui/banner";
+import { Icono } from "@/components/ui/icono";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { ApiError } from "@/lib/api";
 import { listTasks, updateTask, type Task, type TaskStatus } from "@/lib/api/tasks";
@@ -148,33 +148,34 @@ export default function ProjectBoardPage() {
         title: t.name,
         href: `/pmo/projects/${id}/plan`,
         accent: (
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1.5">
             {t.is_milestone ? (
-              <Diamond
-                className="h-3 w-3 text-[var(--color-primary)]"
-                aria-label="Hito"
+              <span
+                aria-hidden
+                title="Hito"
+                className="inline-block h-2 w-2 shrink-0 rotate-45 rounded-[1px] bg-[var(--color-info-fg)]"
               />
             ) : null}
             {vencida ? (
               <span
-                className="flex items-center gap-0.5 text-[10px] text-[var(--color-danger-fg)]"
+                className="flex items-center gap-0.75 font-mono text-[10px] text-[var(--color-danger-fg)]"
                 title={`Venció hace ${Math.abs(restantes as number)} días`}
               >
-                <AlertTriangle className="h-3 w-3" aria-hidden />
+                <Icono nombre="triangle-alert" size={11} />
                 {Math.abs(restantes as number)}d
               </span>
             ) : enElCorte ? (
               <span
-                className="flex items-center gap-0.5 text-[10px] text-[var(--color-warning-fg)]"
+                className="flex items-center gap-0.75 font-mono text-[10px] text-[var(--color-warning-fg)]"
                 title={`Vence antes del próximo corte (cadencia ${etiquetaDeCadencia(cadencia)})`}
               >
-                <CalendarClock className="h-3 w-3" aria-hidden />
+                <Icono nombre="clock" size={11} />
                 {restantes}d
               </span>
             ) : null}
             {avanceIncoherente ? (
               <span
-                className="text-[10px] text-[var(--color-warning-fg)]"
+                className="font-mono text-[10px] text-[var(--color-warning-fg)]"
                 title="Está completada y su avance es menor al 100 %. El board no lo corrige solo: los dos campos son separados y cuál está mal lo sabe quien conoce la tarea."
               >
                 {t.progress}%
@@ -228,16 +229,16 @@ export default function ProjectBoardPage() {
         error ? null : (
           <span
             aria-hidden
-            className="block h-48 animate-pulse rounded-[var(--radius-lg)] bg-[var(--color-muted)]"
+            className="block h-48 animate-pulse rounded-[var(--radius-xl)] bg-[var(--color-muted)]"
           />
         )
       ) : tareas.length === 0 ? (
-        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] p-8 text-center text-sm text-[var(--color-secondary)]">
+        <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] p-8 text-center text-sm text-[var(--text-secondary)]">
           Este proyecto todavía no tiene tareas. El board las muestra por estado;
           para cargarlas, usa{" "}
           <Link
             href={`/pmo/projects/${id}/plan`}
-            className="text-[var(--color-primary)] underline"
+            className="text-[var(--text-primary)] underline"
           >
             el plan
           </Link>
@@ -245,7 +246,7 @@ export default function ProjectBoardPage() {
         </div>
       ) : (
         <>
-          <p className="text-xs text-[var(--color-tertiary)]">
+          <p className="text-xs text-[var(--text-tertiary)]">
             {enElCorte === 0
               ? `Ninguna tarea vence antes del próximo corte (${etiquetaDeCadencia(cadencia)}).`
               : `${enElCorte} tarea${enElCorte === 1 ? "" : "s"} vence${enElCorte === 1 ? "" : "n"} antes del próximo corte (${etiquetaDeCadencia(cadencia)}).`}{" "}

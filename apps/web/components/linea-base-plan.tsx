@@ -27,10 +27,11 @@
  * sumarlas en un solo número pierde la conversación que hay que tener.
  */
 import { useCallback, useEffect, useState } from "react";
-import { CameraOff, Camera, ChevronDown, Trash2 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { Modal } from "@/components/ui/modal";
@@ -75,12 +76,15 @@ function deriva(dias: number | null): { texto: string; clase: string } {
   return { texto: `${dias} d`, clase: "font-medium text-[var(--color-success-fg)]" };
 }
 
-const CLASE_ESTADO: Record<EstadoBaseline, string> = {
-  corrida: "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]",
-  adelantada: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
-  nueva: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
-  retirada: "bg-[var(--color-muted)] text-[var(--color-tertiary)]",
-  sin_cambio: "bg-[var(--color-muted)] text-[var(--color-secondary)]",
+const VARIANTE_ESTADO: Record<
+  EstadoBaseline,
+  "danger" | "success" | "warning" | "neutral"
+> = {
+  corrida: "danger",
+  adelantada: "success",
+  nueva: "warning",
+  retirada: "neutral",
+  sin_cambio: "neutral",
 };
 
 /** El orden de lectura: primero lo que duele. */
@@ -205,11 +209,11 @@ export function LineaBasePlan({
   return (
     <section
       aria-label="Línea base del plan"
-      className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]"
+      className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+          <h2 className="text-[13px] font-semibold text-[var(--color-primary)]">
             Línea base
           </h2>
           <p className="text-[11px] text-[var(--color-tertiary)]">
@@ -222,7 +226,7 @@ export function LineaBasePlan({
               value={elegida}
               onChange={(e) => void cargar(e.target.value)}
               aria-label="Contra qué línea base comparar"
-              className="max-w-[16rem] text-xs"
+              className="max-w-[16rem]"
             >
               {lineas.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -233,7 +237,7 @@ export function LineaBasePlan({
           ) : null}
           {puedeEditar ? (
             <Button type="button" size="sm" onClick={() => setAbierta(true)}>
-              <Camera className="h-4 w-4" aria-hidden />
+              <Icono nombre="camera" size={15} />
               Capturar
             </Button>
           ) : null}
@@ -263,9 +267,10 @@ export function LineaBasePlan({
           esa diferencia se puede explicar. */}
       {!r || !base ? (
         <div className="mt-3 flex items-start gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] p-3">
-          <CameraOff
-            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-tertiary)]"
-            aria-hidden
+          <Icono
+            nombre="camera-off"
+            size={16}
+            className="mt-0.5 shrink-0 text-[var(--color-tertiary)]"
           />
           <p className="text-[13px] text-[var(--color-secondary)]">
             Este plan no tiene línea base. Mientras no la tenga, su desviación no
@@ -278,7 +283,7 @@ export function LineaBasePlan({
         </div>
       ) : (
         <>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)] sm:grid-cols-4 [&>*+*]:border-l [&>*+*]:border-[var(--border-default)]">
             <Dato
               etiqueta="Fin prometido"
               valor={fecha(r.baseline_finish)}
@@ -330,9 +335,10 @@ export function LineaBasePlan({
               onClick={() => setVerTabla((v) => !v)}
               aria-expanded={verTabla}
             >
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${verTabla ? "rotate-180" : ""}`}
-                aria-hidden
+              <Icono
+                nombre="chevron-down"
+                size={14}
+                className={verTabla ? "rotate-180 transition-transform" : "transition-transform"}
               />
               {verTabla ? "Ocultar comparación" : `Comparar tarea por tarea (${filas.length})`}
             </Button>
@@ -344,7 +350,7 @@ export function LineaBasePlan({
                 onClick={() => void borrar(base)}
                 aria-label="Borrar esta línea base"
               >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                <Icono nombre="bin" size={14} />
               </Button>
             ) : null}
           </div>
@@ -356,16 +362,16 @@ export function LineaBasePlan({
               </p>
             ) : (
               <div className="mt-3 overflow-x-auto">
-                <table className="w-full text-[13px]">
-                  <thead className="bg-[var(--color-muted)] text-left text-[11px] uppercase tracking-wide text-[var(--color-tertiary)]">
+                <table className="w-full table-fixed text-[13px]">
+                  <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)] shadow-[var(--linea-surco)]">
                     <tr>
-                      <th className="px-2 py-1.5">WBS</th>
-                      <th className="px-2 py-1.5">Tarea</th>
-                      <th className="px-2 py-1.5">Fin base</th>
-                      <th className="px-2 py-1.5">Fin plan</th>
-                      <th className="px-2 py-1.5 text-right">Deriva plan</th>
-                      <th className="px-2 py-1.5 text-right">Deriva real</th>
-                      <th className="px-2 py-1.5">Estado</th>
+                      <th className="h-8.5 w-[9%] px-2">WBS</th>
+                      <th className="h-8.5 w-[29%] px-2">Tarea</th>
+                      <th className="h-8.5 w-[13%] px-2">Fin base</th>
+                      <th className="h-8.5 w-[13%] px-2">Fin plan</th>
+                      <th className="h-8.5 w-[14%] px-2 pr-3.5 text-right">Deriva plan</th>
+                      <th className="h-8.5 w-[14%] px-2 pr-3.5 text-right">Deriva real</th>
+                      <th className="h-8.5 w-[8%] px-2">Estado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -450,11 +456,11 @@ function Dato({
   clasePie?: string;
 }) {
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-2">
-      <div className="text-[11px] uppercase tracking-wide text-[var(--color-tertiary)]">
+    <div className="flex flex-col gap-1 p-4">
+      <div className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
         {etiqueta}
       </div>
-      <div className="mt-0.5 text-base font-semibold text-[var(--color-primary)]">
+      <div className="font-mono text-[15px] font-semibold tabular-nums text-[var(--color-primary)]">
         {valor}
       </div>
       <div
@@ -470,11 +476,11 @@ function Fila({ f }: { f: FilaBaseline }) {
   const plan = deriva(f.slip_days);
   const real = deriva(f.actual_slip_days);
   return (
-    <tr className="border-t border-[var(--border-subtle)]">
-      <td className="px-2 py-1.5 text-[11px] text-[var(--color-tertiary)]">
+    <tr className="h-10.5 border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]">
+      <td className="overflow-hidden text-ellipsis whitespace-nowrap px-2 text-[11px] text-[var(--color-tertiary)]">
         {f.wbs_code ?? "—"}
       </td>
-      <td className="px-2 py-1.5">
+      <td className="overflow-hidden text-ellipsis whitespace-nowrap px-2 text-[var(--color-primary)]">
         {f.name}
         {f.is_milestone ? (
           <span className="ml-1 text-[11px] text-[var(--color-tertiary)]">
@@ -482,18 +488,22 @@ function Fila({ f }: { f: FilaBaseline }) {
           </span>
         ) : null}
       </td>
-      <td className="px-2 py-1.5">{fecha(f.baseline_end)}</td>
-      <td className="px-2 py-1.5">{fecha(f.plan_end)}</td>
-      <td className={`px-2 py-1.5 text-right ${plan.clase}`}>{plan.texto}</td>
-      <td className={`px-2 py-1.5 text-right ${real.clase}`}>
+      <td className="px-2 font-mono text-[12px] text-[var(--color-secondary)]">
+        {fecha(f.baseline_end)}
+      </td>
+      <td className="px-2 font-mono text-[12px] text-[var(--color-secondary)]">
+        {fecha(f.plan_end)}
+      </td>
+      <td className={`px-2 pr-3.5 text-right font-mono text-[12px] ${plan.clase}`}>
+        {plan.texto}
+      </td>
+      <td className={`px-2 pr-3.5 text-right font-mono text-[12px] ${real.clase}`}>
         {f.actual_slip_days === null ? "sin cerrar" : real.texto}
       </td>
-      <td className="px-2 py-1.5">
-        <span
-          className={`inline-block rounded px-1.5 py-0.5 text-[11px] ${CLASE_ESTADO[f.state]}`}
-        >
+      <td className="px-2">
+        <Badge variant={VARIANTE_ESTADO[f.state]}>
           {ESTADO_BASELINE_LABEL[f.state]}
-        </span>
+        </Badge>
       </td>
     </tr>
   );

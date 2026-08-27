@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Activity, ArrowRightLeft, Brain, Pencil } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Gauge } from "@/components/dashboard-charts";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -265,7 +265,7 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4.5">
       <header className="space-y-3">
         <div className="flex items-center gap-2">
           <BackLink
@@ -306,29 +306,27 @@ export default function ProjectDetailPage() {
             )}
           </nav>
         </div>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.25">
+              <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
                 {project.name}
               </h1>
               <PhaseBadge phase={project.phase} />
               {project.type ? <Badge>{TYPE_LABEL[project.type]}</Badge> : null}
             </div>
-            <p className="mt-1 font-mono text-[11px] text-[var(--text-tertiary)]">{project.folio}</p>
+            <p className="mt-1.5 text-[12px] tracking-[0.01em] text-[var(--text-faint)]">
+              {project.folio}
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-none flex-wrap items-center gap-2">
             <Link href={`/pmo/projects/${project.id}/edit`}>
               <Button variant="secondary">
-                <Pencil className="h-4 w-4" aria-hidden /> Editar
+                <Icono nombre="settings" size={15} /> Editar
               </Button>
             </Link>
-            <Button
-              onClick={() => setPhaseModal(true)}
-              disabled={validTargets.length === 0}
-              variant="secondary"
-            >
-              <ArrowRightLeft className="h-4 w-4" aria-hidden />
+            <Button onClick={() => setPhaseModal(true)} disabled={validTargets.length === 0}>
+              <Icono nombre="arrow-right" size={15} />
               Cambiar fase
             </Button>
           </div>
@@ -336,13 +334,13 @@ export default function ProjectDetailPage() {
 
         {/* ENH-128: Descripción + datos clave + stakeholders como parte de
             la hoja (bajo el ID), no como panel separado. */}
-        <div className="space-y-3 border-t border-[var(--border-subtle)] pt-3">
+        <div className="space-y-3 border-t border-[var(--border-default)] pt-3.5 shadow-[var(--linea-surco-arriba)]">
           {project.description ? (
-            <p className="max-w-3xl whitespace-pre-wrap text-[14px] text-[var(--text-secondary)]">
+            <p className="max-w-[820px] whitespace-pre-wrap text-[13.5px] leading-[1.6] text-[var(--text-secondary)]">
               {project.description}
             </p>
           ) : null}
-          <dl className="flex flex-wrap gap-x-8 gap-y-2">
+          <dl className="flex flex-wrap gap-x-10 gap-y-2">
             <SheetField label="Organización" value={org?.name ?? "—"} />
             <SheetField label="Sponsor" value={project.sponsor ?? "—"} />
             <SheetField label="Prioridad" value={String(project.priority ?? "—")} />
@@ -366,7 +364,7 @@ export default function ProjectDetailPage() {
         </Banner>
       ) : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <AvanceCard progress={project.progress} kpis={project.task_kpis} />
         <HealthStatusCard
           value={project.health_status}
@@ -376,10 +374,16 @@ export default function ProjectDetailPage() {
           onDeclare={() => setHealthModal(true)}
           onEvaluate={() => setEvalModal(true)}
         />
-        <MetricCard label="Fase" value={PHASE_LABEL[project.phase]} />
+        <MetricCard
+          label="Fase"
+          value={PHASE_LABEL[project.phase]}
+          hint={validTargets.length ? `siguiente válida: ${PHASE_LABEL[validTargets[0]]}` : undefined}
+        />
         <MetricCard
           label="Presupuesto restante"
           value={formatImporte(remainingBudget(project.budget, project.actual_budget), project.currency)}
+          hint={`de ${formatImporte(project.budget, project.currency)} · real ${formatImporte(project.actual_budget, project.currency)}`}
+          mono
         />
       </section>
 
@@ -408,9 +412,11 @@ export default function ProjectDetailPage() {
         />
       ) : null}
 
-      {/* ENH-130: tarjetas RAID (con link a detalle) + mini-Gantt nivel 1. */}
-      <section aria-label="RAID y cronograma" className="grid gap-3 lg:grid-cols-[300px_1fr]">
-        <div className="grid gap-3">
+      {/* ENH-130: tarjetas RAID (con link a detalle) + mini-Gantt nivel 1.
+          ENH-131 + US-149: el feed de actividad real vive dentro de la misma
+          tarjeta que el cronograma (composición del mockup 2a), no aparte. */}
+      <section aria-label="RAID y cronograma" className="grid gap-3.5 lg:grid-cols-[300px_1fr]">
+        <div className="grid content-start gap-2">
           <RaidCard
             label="Riesgos"
             count={project.module_counts.risks}
@@ -438,19 +444,14 @@ export default function ProjectDetailPage() {
           {/* US-185: memoria de contexto persistente para IA (minutas/reportes). */}
           <Link
             href={`/pmo/projects/${project.id}/ai-context`}
-            className="group flex items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-4 py-3 text-[13px] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
+            className="group flex h-11 items-center gap-2.25 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3.5 text-[13px] font-medium text-[var(--text-secondary)] shadow-[var(--relieve-isla)] transition-colors hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
           >
-            <Brain className="h-4 w-4" aria-hidden />
+            <Icono nombre="info" size={16} />
             Memoria IA
           </Link>
         </div>
-        <MiniGantt tasks={tasks} />
+        <MiniGantt tasks={tasks} activity={activity} />
       </section>
-
-      {/* ENH-131 + US-149: feed de actividad real del proyecto. */}
-      <Card title="Actividad">
-        <ActivityFeed items={activity} />
-      </Card>
 
       <Modal
         open={phaseModal}
@@ -507,16 +508,23 @@ function PhaseBadge({ phase }: { phase: ProjectPhase }) {
 function MetricCard({
   label,
   value,
+  hint,
+  mono,
   manualEdit,
 }: {
   label: string;
   value: string;
+  /** Subtítulo opcional bajo el valor (ej. "siguiente válida: Hypercare"). */
+  hint?: string;
+  /** TIPOGRAFIA: font-mono solo para cifras (importes) — el nombre de la
+   *  fase es texto, no cifra, y se queda en DM Sans. */
+  mono?: boolean;
   manualEdit?: { edited_at: string; edited_by: string } | null;
 }) {
   return (
-    <article className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
+    <article className="flex flex-col gap-1.5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-4 py-3.5 shadow-[var(--relieve-isla)]">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
           {label}
         </p>
         {manualEdit ? (
@@ -528,9 +536,15 @@ function MetricCard({
           </span>
         ) : null}
       </div>
-      <p className="mt-1 text-[22px] font-semibold tracking-tight text-[var(--text-primary)] tabular-nums">
+      <p
+        className={cn(
+          "text-[22px] tracking-[-0.02em] text-[var(--text-primary)] tabular-nums",
+          mono ? "font-mono font-medium" : "font-semibold",
+        )}
+      >
         {value}
       </p>
+      {hint ? <p className="text-[11.5px] text-[var(--text-tertiary)]">{hint}</p> : null}
     </article>
   );
 }
@@ -564,31 +578,23 @@ function formatActivityWhen(s: string): string {
 function ActivityFeed({ items }: { items: ActivityItem[] }) {
   if (items.length === 0) {
     return (
-      <div className="flex items-start gap-3">
-        <Activity className="mt-0.5 h-4 w-4 text-[var(--text-tertiary)]" aria-hidden />
-        <p className="text-[13px] text-[var(--text-tertiary)]">
-          Sin actividad registrada todavía. Los cambios de fase, salud y asignaciones aparecerán
-          aquí.
-        </p>
-      </div>
+      <p className="text-[12.5px] text-[var(--text-tertiary)]">
+        Sin actividad registrada todavía. Los cambios de fase, salud y asignaciones aparecerán
+        aquí.
+      </p>
     );
   }
   return (
-    <ul className="space-y-3">
+    <ul className="flex flex-col gap-2">
       {items.map((it) => (
-        <li key={it.id} className="flex items-start gap-3">
-          <Activity className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-tertiary)]" aria-hidden />
-          <div className="min-w-0">
-            <p className="text-[13px] text-[var(--text-primary)]">
-              {ACTION_LABEL[it.action] ?? it.action}
-              {it.user_name ? (
-                <span className="text-[var(--text-tertiary)]"> · {it.user_name}</span>
-              ) : null}
-            </p>
-            <p className="text-[11px] text-[var(--text-tertiary)]">
-              {formatActivityWhen(it.occurred_at)}
-            </p>
-          </div>
+        <li key={it.id} className="flex items-baseline gap-2 text-[12.5px] text-[var(--text-primary)]">
+          <span className="min-w-0 truncate">{ACTION_LABEL[it.action] ?? it.action}</span>
+          {it.user_name ? (
+            <span className="shrink-0 text-[var(--text-tertiary)]">· {it.user_name}</span>
+          ) : null}
+          <span className="ml-auto shrink-0 text-[11px] text-[var(--text-faint)]">
+            {formatActivityWhen(it.occurred_at)}
+          </span>
         </li>
       ))}
     </ul>
@@ -623,15 +629,15 @@ function RaidCard({
   return (
     <Link
       href={href}
-      className="group flex items-center justify-between rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-4 py-3 transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--color-subtle)]"
+      className="group flex h-11 items-center justify-between rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3.5 shadow-[var(--relieve-isla)] transition-colors hover:bg-[var(--color-subtle)]"
     >
-      <span className="flex items-center gap-2">
+      <span className="flex items-center gap-2.25">
         <span className={cn("h-2 w-2 rounded-full", dot)} />
         <span className="text-[13px] font-medium text-[var(--text-primary)]">{label}</span>
       </span>
       <span
         className={cn(
-          "text-[18px] font-semibold tabular-nums text-[var(--text-primary)]",
+          "font-mono text-[17px] font-medium tabular-nums text-[var(--text-primary)]",
           esSinDato(count) ? "opacity-50" : "",
         )}
         aria-label={esSinDato(count) ? SIN_DATO_ETIQUETA : undefined}
@@ -645,7 +651,9 @@ function RaidCard({
 
 // ENH-130: mini-Gantt resumido del plan (tareas de nivel 1, columnas por
 // mes). Read-only; vista panorámica sin entrar al tab Plan.
-function MiniGantt({ tasks }: { tasks: Task[] }) {
+// ENH-131 + US-149: comparte tarjeta con el feed de actividad (composición
+// del mockup 2a) en vez de una `Card` aparte debajo.
+function MiniGantt({ tasks, activity }: { tasks: Task[]; activity: ActivityItem[] }) {
   const level1 = tasks.filter((t) =>
     t.outline_level != null ? t.outline_level === 1 : !!t.wbs_code && !t.wbs_code.includes("."),
   );
@@ -681,50 +689,58 @@ function MiniGantt({ tasks }: { tasks: Task[] }) {
     return { left: Math.max(0, left), width };
   }
   return (
-    <article className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
-      <h2 className="mb-3 text-[14px] font-semibold text-[var(--text-primary)]">
-        Cronograma (nivel 1)
-      </h2>
+    <article className="flex flex-col gap-3 overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-4 py-3.5 shadow-[var(--relieve-isla)]">
+      <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">Cronograma (nivel 1)</h2>
       {dated.length === 0 ? (
         <p className="text-[13px] text-[var(--text-tertiary)]">
           Sin tareas de nivel 1 con fechas para mostrar.
         </p>
       ) : (
         <>
-          <div className="flex border-b border-[var(--border-subtle)] text-[10px] text-[var(--text-tertiary)]">
-            {months.map((mo) => (
-              <div
-                key={`${mo.getFullYear()}-${mo.getMonth()}`}
-                className="flex-1 border-l border-[var(--border-subtle)] px-1 py-1 text-center first:border-l-0"
-              >
-                {mo.toLocaleDateString("es-MX", { month: "short", year: "2-digit" })}
-              </div>
-            ))}
+          <div className="grid grid-cols-[220px_1fr] items-center gap-3">
+            <span />
+            <div
+              className="grid border-b border-[var(--border-subtle)] text-center text-[10px] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]"
+              style={{ gridTemplateColumns: `repeat(${months.length}, 1fr)` }}
+            >
+              {months.map((mo, i) => (
+                <span
+                  key={`${mo.getFullYear()}-${mo.getMonth()}`}
+                  className={cn("pb-1.25", i > 0 && "border-l border-[var(--border-subtle)]")}
+                >
+                  {mo.toLocaleDateString("es-MX", { month: "short", year: "2-digit" })}
+                </span>
+              ))}
+            </div>
           </div>
-          <ul className="mt-2 space-y-2">
+          <div className="flex flex-col gap-2.25">
             {level1.map((t) => {
               const p = barPos(t);
               return (
-                <li key={t.id}>
-                  <div className="mb-0.5 truncate text-[12px] text-[var(--text-secondary)]">
+                <div key={t.id} className="grid grid-cols-[220px_1fr] items-center gap-3">
+                  <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[12px] text-[var(--text-secondary)]">
                     {t.wbs_code ? `${t.wbs_code} ` : ""}
                     {t.name}
-                  </div>
-                  <div className="relative h-2.5 rounded bg-[var(--color-muted)]">
+                  </span>
+                  <span className="relative h-2.5 rounded-[3px] bg-[var(--color-muted)] shadow-[var(--hundido)]">
                     {p ? (
-                      <div
-                        className="absolute h-2.5 rounded bg-[var(--text-primary)]"
+                      <span
+                        className="absolute h-2.5 rounded-[3px] bg-[var(--text-primary)]"
                         style={{ left: `${p.left}%`, width: `${p.width}%` }}
                         title={`${t.start_date} → ${t.end_date}`}
                       />
                     ) : null}
-                  </div>
-                </li>
+                  </span>
+                </div>
               );
             })}
-          </ul>
+          </div>
         </>
       )}
+      <div className="flex flex-col gap-2 border-t border-[var(--border-subtle)] pt-3 shadow-[var(--linea-surco-arriba)]">
+        <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">Actividad</h3>
+        <ActivityFeed items={activity} />
+      </div>
     </article>
   );
 }
@@ -747,19 +763,19 @@ function AvanceCard({
     { label: "Atrasados", value: String(overdue), danger: overdue > 0 },
   ];
   return (
-    <article className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+    <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-4 py-3.5 shadow-[var(--relieve-isla)]">
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
         Avance
       </p>
-      <div className="mt-2 flex items-center gap-4">
-        <Gauge value={progress} size={80} thickness={8} tone="primary" ariaLabel="Avance del proyecto" />
+      <div className="mt-2.5 flex items-center gap-4">
+        <Gauge value={progress} size={72} thickness={8} tone="primary" ariaLabel="Avance del proyecto" />
         <dl className="space-y-1">
           {lines.map((l) => (
-            <div key={l.label} className="flex items-baseline justify-between gap-3 text-[12px]">
+            <div key={l.label} className="flex items-baseline justify-between gap-3.5 text-[12px]">
               <dt className="text-[var(--text-tertiary)]">{l.label}</dt>
               <dd
                 className={cn(
-                  "font-semibold tabular-nums",
+                  "font-mono font-medium tabular-nums",
                   l.danger ? "text-[var(--color-danger-fg)]" : "text-[var(--text-primary)]",
                 )}
               >
@@ -773,33 +789,13 @@ function AvanceCard({
   );
 }
 
-function Card({
-  title,
-  children,
-  full,
-}: {
-  title: string;
-  children: React.ReactNode;
-  full?: boolean;
-}) {
-  return (
-    <article
-      className={cn(
-        "rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5",
-        full ? "lg:col-span-2" : undefined,
-      )}
-    >
-      <h2 className="mb-3 text-[14px] font-semibold text-[var(--text-primary)]">{title}</h2>
-      <div className="space-y-2">{children}</div>
-    </article>
-  );
-}
-
 // ENH-128: dato clave como parte de la hoja (definición inline, no panel).
 function SheetField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-[11px] uppercase tracking-wide text-[var(--text-tertiary)]">{label}</dt>
+      <dt className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
+        {label}
+      </dt>
       <dd className="text-[13px] text-[var(--text-primary)]">{value}</dd>
     </div>
   );

@@ -12,19 +12,12 @@
 // total sin ese número miente por omisión.
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Coins,
-  Crown,
-  Plus,
-  RefreshCw,
-  ShieldCheck,
-  Star,
-  Trash2,
-  UserPlus,
-} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -193,117 +186,138 @@ export function DirectoryView({ projectId }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <Input
-          placeholder="Buscar persona, email o empresa…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
+        <div className="relative max-w-sm flex-1">
+          <Icono
+            nombre="search"
+            size={14}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)]"
+          />
+          <Input
+            placeholder="Buscar persona, email o empresa…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8"
+          />
+        </div>
         <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-1 h-4 w-4" /> Agregar al proyecto
+          <Icono nombre="plus" size={15} /> Agregar al proyecto
         </Button>
       </div>
 
-      {error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
-      )}
+      {error ? <Banner variant="danger">{error}</Banner> : null}
 
       {rows.length > 0 && <ResumenRaci rows={rows} />}
 
       {costo && <ResumenDeCosto c={costo} />}
 
       {rows.length === 0 ? (
-        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] p-8 text-center text-sm text-[var(--text-tertiary)]">
           No hay personas en el directorio del proyecto. Usá "Agregar al
           proyecto" para empezar.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs uppercase">
+        <div className="overflow-x-auto rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col />
+              <col style={{ width: 140 }} />
+              <col style={{ width: 112 }} />
+              <col style={{ width: 112 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 56 }} />
+              <col style={{ width: 128 }} />
+              <col style={{ width: 64 }} />
+              <col style={{ width: 116 }} />
+              <col style={{ width: 84 }} />
+            </colgroup>
+            <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
               <tr>
-                <SortableTh<Row> sortKey="name" getter={(r) => r.actor?.name ?? ""} ctrl={sortCtrl}>Persona</SortableTh>
-                <SortableTh<Row> sortKey="company" getter={(r) => r.actor?.company ?? ""} ctrl={sortCtrl}>Empresa / Cargo</SortableTh>
-                <SortableTh<Row> sortKey="area" getter={(r) => r.participation.functional_area_id ? areasById[r.participation.functional_area_id]?.name ?? "" : ""} ctrl={sortCtrl}>Área funcional</SortableTh>
-                <SortableTh<Row> sortKey="team" getter={(r) => r.participation.operational_team_id ? teamsById[r.participation.operational_team_id]?.name ?? "" : ""} ctrl={sortCtrl}>Equipo operativo</SortableTh>
-                <SortableTh<Row> sortKey="role" getter={(r) => r.participation.project_role_id ? rolesById[r.participation.project_role_id]?.name ?? "" : ""} ctrl={sortCtrl}>Rol</SortableTh>
+                <SortableTh<Row> sortKey="name" getter={(r) => r.actor?.name ?? ""} ctrl={sortCtrl} className="h-8.5">Persona</SortableTh>
+                <SortableTh<Row> sortKey="company" getter={(r) => r.actor?.company ?? ""} ctrl={sortCtrl} className="h-8.5">Empresa / Cargo</SortableTh>
+                <SortableTh<Row> sortKey="area" getter={(r) => r.participation.functional_area_id ? areasById[r.participation.functional_area_id]?.name ?? "" : ""} ctrl={sortCtrl} className="h-8.5">Área funcional</SortableTh>
+                <SortableTh<Row> sortKey="team" getter={(r) => r.participation.operational_team_id ? teamsById[r.participation.operational_team_id]?.name ?? "" : ""} ctrl={sortCtrl} className="h-8.5">Equipo operativo</SortableTh>
+                <SortableTh<Row> sortKey="role" getter={(r) => r.participation.project_role_id ? rolesById[r.participation.project_role_id]?.name ?? "" : ""} ctrl={sortCtrl} className="h-8.5">Rol</SortableTh>
                 {/* US-217: ordena por rango, no alfabético — la A tiene que
                     quedar arriba, y "A" antes de "C" es coincidencia. */}
-                <SortableTh<Row> sortKey="raci" getter={(r) => RACI_RANGO[r.participation.raci ?? ""] ?? 9} ctrl={sortCtrl}>RACI</SortableTh>
-                <SortableTh<Row> sortKey="period" getter={(r) => r.participation.start_date ?? ""} ctrl={sortCtrl}>Periodo</SortableTh>
-                <SortableTh<Row> sortKey="allocation" getter={(r) => r.participation.allocation_pct ?? -1} ctrl={sortCtrl} align="right">FTE %</SortableTh>
+                <SortableTh<Row> sortKey="raci" getter={(r) => RACI_RANGO[r.participation.raci ?? ""] ?? 9} ctrl={sortCtrl} align="center" className="h-8.5">RACI</SortableTh>
+                <SortableTh<Row> sortKey="period" getter={(r) => r.participation.start_date ?? ""} ctrl={sortCtrl} className="h-8.5">Periodo</SortableTh>
+                <SortableTh<Row> sortKey="allocation" getter={(r) => r.participation.allocation_pct ?? -1} ctrl={sortCtrl} align="right" className="h-8.5 pr-3.5">FTE %</SortableTh>
                 {/* US-215: ordena con -1 para lo desconocido, igual que FTE %,
                     para que «sin tarifa» no se mezcle con «cuesta 0». */}
-                <SortableTh<Row> sortKey="costo" getter={(r) => r.participation.cost_total ?? -1} ctrl={sortCtrl} align="right">Costo</SortableTh>
-                <th className="px-3 py-2"></th>
+                <SortableTh<Row> sortKey="costo" getter={(r) => r.participation.cost_total ?? -1} ctrl={sortCtrl} align="right" className="h-8.5 pr-3.5">Costo</SortableTh>
+                <th className="h-8.5 px-3"></th>
               </tr>
             </thead>
             <tbody>
               {sortedRows.map(({ participation: p, actor }) => (
-                <tr key={p.id} className="border-t hover:bg-muted/30">
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{actor?.name ?? "—"}</span>
+                <tr
+                  key={p.id}
+                  className="h-10.5 border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] even:bg-[var(--color-subtle)] hover:bg-[var(--color-subtle)]"
+                >
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-[var(--text-primary)]">{actor?.name ?? "—"}</span>
                       {p.is_area_lead && (
-                        <Badge className="gap-1">
-                          <Crown className="h-3 w-3" /> Líder área
-                        </Badge>
+                        <span title="Líder de área">
+                          <Icono nombre="award" size={13} className="text-[var(--color-warning-fg)]" />
+                        </span>
                       )}
                       {p.is_primary && (
-                        <Star
-                          className="h-3 w-3 text-yellow-500"
-                          aria-label="Participación primaria"
-                        />
+                        <span title="Participación primaria">
+                          <Icono nombre="star" size={13} className="text-[var(--color-warning-fg)]" />
+                        </span>
                       )}
                       {p.is_key_stakeholder && (
-                        <Badge className="gap-1">
-                          <ShieldCheck className="h-3 w-3" /> Stakeholder clave
-                        </Badge>
+                        <span title="Stakeholder clave">
+                          <Icono nombre="user-check" size={13} className="text-[var(--color-info-fg)]" />
+                        </span>
                       )}
                     </div>
                     {actor?.email && (
-                      <div className="text-xs text-muted-foreground">{actor.email}</div>
+                      <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] text-[var(--text-tertiary)]">
+                        {actor.email}
+                      </div>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-xs">
-                    <div>{actor?.company ?? "—"}</div>
-                    <div className="text-muted-foreground">{actor?.job_title ?? ""}</div>
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12.5px]">
+                    <div className="text-[var(--text-secondary)]">{actor?.company ?? "—"}</div>
+                    <div className="text-[var(--text-tertiary)]">{actor?.job_title ?? ""}</div>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--text-secondary)]">
                     {p.functional_area_id
                       ? areasById[p.functional_area_id]?.name ?? "—"
                       : "—"}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--text-secondary)]">
                     {p.operational_team_id
                       ? teamsById[p.operational_team_id]?.name ?? "—"
                       : "—"}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--text-secondary)]">
                     {p.project_role_id
                       ? rolesById[p.project_role_id]?.name ?? "—"
                       : "—"}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="text-center">
                     {p.raci ? (
                       <span
-                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                        className={`mx-auto inline-flex h-5.5 w-5.5 items-center justify-center rounded-full text-[11px] font-semibold ${
                           p.raci === "A"
-                            ? "bg-[var(--color-primary)] text-white"
-                            : "bg-muted text-foreground"
+                            ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
+                            : "bg-[var(--color-muted)] text-[var(--text-primary)]"
                         }`}
                         title={RACI_DESCRIPCION[p.raci]}
                       >
                         {p.raci}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Sin papel</span>
+                      <span className="text-[11px] text-[var(--text-faint)]">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12px] text-[var(--text-secondary)]">
                     {p.start_date ?? "—"} → {p.end_date ?? "—"}
                   </td>
-                  <td className="px-3 py-2 text-right text-xs">
+                  <td className="pr-3.5 text-right font-mono text-[12.5px] text-[var(--text-secondary)]">
                     {p.allocation_pct ?? "—"}
                   </td>
                   <CeldaDeCosto
@@ -311,21 +325,24 @@ export function DirectoryView({ projectId }: Props) {
                     projectId={projectId}
                     onCongelado={refresh}
                   />
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-3 text-right">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setEditing(p)}
+                      title="Editar"
+                      aria-label={`Editar ${actor?.name ?? "participación"}`}
                     >
-                      Editar
+                      <Icono nombre="pen" size={14} />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemove(p, actor?.name)}
                       title="Quitar del proyecto"
+                      aria-label={`Quitar del proyecto a ${actor?.name ?? "esta persona"}`}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Icono nombre="bin" size={14} />
                     </Button>
                   </td>
                 </tr>
@@ -417,12 +434,12 @@ function CeldaDeCosto({
 
   if (p.cost_total !== null) {
     return (
-      <td className="px-3 py-2 text-right text-xs">
-        <span className="font-medium">
+      <td className="pr-3.5 text-right">
+        <span className="font-mono text-[12.5px] font-medium text-[var(--text-primary)]">
           {importe(p.cost_total, p.cost_currency)}
         </span>
         <span
-          className="ml-1 block text-[10px] text-[var(--color-tertiary)]"
+          className="block text-[10px] text-[var(--text-faint)]"
           title={`Tarifa congelada el ${p.cost_rate_captured_at?.slice(0, 10) ?? "—"}`}
         >
           {p.cost_rate_snapshot !== null
@@ -444,7 +461,7 @@ function CeldaDeCosto({
   // catálogo, o poner fechas y % en esta asignación.
   const faltaTarifa = p.cost_rate_snapshot === null;
   return (
-    <td className="px-3 py-2 text-right text-xs">
+    <td className="pr-3.5 text-right">
       {faltaTarifa ? (
         <>
           <Button
@@ -454,16 +471,16 @@ function CeldaDeCosto({
             disabled={congelando}
             title="Copiar la tarifa del catálogo a esta asignación"
           >
-            <Coins className="mr-1 h-3.5 w-3.5" />
+            <Icono nombre="receipt" size={14} />
             {congelando ? "…" : "Congelar tarifa"}
           </Button>
           {error && (
-            <span className="block text-[10px] text-red-600">{error}</span>
+            <span className="block text-[10px] text-[var(--color-danger-fg)]">{error}</span>
           )}
         </>
       ) : (
         <span
-          className="text-[var(--color-tertiary)]"
+          className="text-[11.5px] text-[var(--text-tertiary)]"
           title="La tarifa está congelada, pero falta el % de dedicación o las fechas de la asignación"
         >
           Sin fechas o % FTE
@@ -484,32 +501,32 @@ function CeldaDeCosto({
 function ResumenDeCosto({ c }: { c: ResumenCosto }) {
   const monedas = Object.entries(c.by_currency);
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-muted)] px-3.5 py-2.5 text-[12.5px]">
       <div className="flex items-center gap-2">
-        <Coins className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-        <span className="text-muted-foreground">Costo de recursos</span>
+        <Icono nombre="receipt" size={14} className="text-[var(--text-tertiary)]" />
+        <span className="text-[var(--text-tertiary)]">Costo de recursos</span>
         {monedas.length === 0 ? (
-          <span className="font-medium text-muted-foreground">
+          <span className="font-medium text-[var(--text-tertiary)]">
             Sin tarifas congeladas
           </span>
         ) : (
-          <span className="font-medium">
+          <span className="font-mono font-medium text-[var(--text-primary)]">
             {monedas.map(([m, v]) => importe(v, m)).join(" + ")}
           </span>
         )}
       </div>
-      <span className="text-muted-foreground">
+      <span className="text-[var(--text-tertiary)]">
         {c.assignments} asignación{c.assignments === 1 ? "" : "es"} activa
         {c.assignments === 1 ? "" : "s"}
       </span>
       {c.without_rate > 0 && (
         <span className="flex items-center gap-1 text-[var(--color-warning-fg)]">
-          <RefreshCw className="h-3 w-3" aria-hidden />
+          <Icono nombre="refresh-cw" size={12} />
           {c.without_rate} sin costo calculable — el total está incompleto
         </span>
       )}
       {monedas.length > 1 && (
-        <span className="text-muted-foreground">
+        <span className="text-[var(--text-tertiary)]">
           Dos monedas no se suman: convertirlas exigiría un tipo de cambio con
           fecha, que es una estimación y no un dato.
         </span>
@@ -539,30 +556,30 @@ function ResumenRaci({ rows }: { rows: Row[] }) {
   const clave = rows.filter((r) => r.participation.is_key_stakeholder);
 
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-muted)] px-3.5 py-2.5 text-[12.5px]">
       <div className="flex items-center gap-2">
-        <span className="text-muted-foreground">Responsable último (A)</span>
+        <span className="text-[var(--text-tertiary)]">Responsable último (A)</span>
         {a ? (
-          <span className="font-medium">{a.actor?.name ?? "—"}</span>
+          <span className="font-medium text-[var(--text-primary)]">{a.actor?.name ?? "—"}</span>
         ) : (
           <span className="font-medium text-[var(--color-warning-fg)]">
             Sin asignar — nadie responde por el resultado
           </span>
         )}
       </div>
-      <div className="flex items-center gap-3 text-muted-foreground">
+      <div className="flex items-center gap-3 text-[var(--text-tertiary)]">
         {(["R", "C", "I"] as RaciPapel[]).map((papel) => (
           <span key={papel} title={RACI_DESCRIPCION[papel]}>
-            {papel}: <span className="font-medium text-foreground">{porPapel(papel)}</span>
+            {papel}: <span className="font-medium text-[var(--text-primary)]">{porPapel(papel)}</span>
           </span>
         ))}
         <span title="Personas marcadas como stakeholder clave del proyecto">
           Stakeholders clave:{" "}
-          <span className="font-medium text-foreground">{clave.length}</span>
+          <span className="font-medium text-[var(--text-primary)]">{clave.length}</span>
         </span>
       </div>
       {conPapel.length === 0 && (
-        <span className="text-muted-foreground">
+        <span className="text-[var(--text-tertiary)]">
           Ninguna persona tiene papel RACI. Se asigna al editar su participación.
         </span>
       )}
@@ -711,7 +728,7 @@ function AddPersonModal({
             size="sm"
             onClick={() => setMode("new")}
           >
-            <UserPlus className="mr-1 h-4 w-4" /> Crear nueva
+            <Icono nombre="user-plus" size={14} /> Crear nueva
           </Button>
         </div>
 
@@ -876,33 +893,29 @@ function AddPersonModal({
         <SelectorRaci valor={raci} onChange={setRaci} />
 
         <div className="flex flex-wrap gap-4 text-xs">
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+            <Checkbox
               checked={isAreaLead}
               onChange={(e) => setIsAreaLead(e.target.checked)}
             />
             Líder de área
           </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+            <Checkbox
               checked={isPrimary}
               onChange={(e) => setIsPrimary(e.target.checked)}
             />
             Participación primaria
           </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+            <Checkbox
               checked={isKeyStakeholder}
               onChange={(e) => setIsKeyStakeholder(e.target.checked)}
             />
             Stakeholder clave
           </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+            <Checkbox
               checked={isCritical}
               onChange={(e) => setIsCritical(e.target.checked)}
             />
@@ -910,7 +923,7 @@ function AddPersonModal({
           </label>
         </div>
 
-        {error && <div className="text-sm text-red-600">{error}</div>}
+        {error && <Banner variant="danger">{error}</Banner>}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>
@@ -1060,8 +1073,8 @@ function EditParticipationModal({
     <Modal open={true} title="Editar persona y participación" onClose={onClose}>
       <div className="space-y-3">
         {/* ENH-087: edición de campos del actor */}
-        <div className="space-y-2 rounded border border-[var(--border-default)] p-2">
-          <div className="text-xs font-semibold text-[var(--text-secondary)]">
+        <div className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-subtle)] p-2.5">
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
             Datos de la persona
           </div>
           <Input
@@ -1218,33 +1231,29 @@ function EditParticipationModal({
         <SelectorRaci valor={raci} onChange={setRaci} />
 
         <div className="flex flex-wrap gap-4 text-xs">
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+            <Checkbox
               checked={isAreaLead}
               onChange={(e) => setIsAreaLead(e.target.checked)}
             />
             Líder de área
           </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+            <Checkbox
               checked={isPrimary}
               onChange={(e) => setIsPrimary(e.target.checked)}
             />
             Primaria
           </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+            <Checkbox
               checked={isKeyStakeholder}
               onChange={(e) => setIsKeyStakeholder(e.target.checked)}
             />
             Stakeholder clave
           </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+            <Checkbox
               checked={isCritical}
               onChange={(e) => setIsCritical(e.target.checked)}
             />
@@ -1252,11 +1261,11 @@ function EditParticipationModal({
           </label>
         </div>
 
-        {error && <div className="text-sm text-red-600">{error}</div>}
+        {error && <Banner variant="danger">{error}</Banner>}
 
         <div className="flex justify-between pt-2">
           <Button variant="secondary" onClick={removeFromProject} disabled={saving}>
-            <Trash2 className="mr-1 h-4 w-4" /> Quitar del proyecto
+            <Icono nombre="bin" size={14} /> Quitar del proyecto
           </Button>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>
@@ -1356,7 +1365,7 @@ function CatalogPickerWithCreate({
               {busy ? "…" : "Crear"}
             </Button>
           </div>
-          {err ? <p className="text-red-600">{err}</p> : null}
+          {err ? <p className="text-[var(--color-danger-fg)]">{err}</p> : null}
         </div>
       ) : (
         <Select value={value} onChange={(e) => onChange(e.target.value)}>

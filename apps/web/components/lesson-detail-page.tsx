@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Lightbulb, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -219,7 +219,7 @@ export function LessonDetailPage({
             disabled={saving}
             aria-label="Borrar lección"
           >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+            <Icono nombre="bin" size={14} /> Borrar
           </Button>
         </div>
       </div>
@@ -229,7 +229,7 @@ export function LessonDetailPage({
         <header className="flex flex-col gap-2 px-4.5 py-3.5">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 flex-none items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)]">
-              <Lightbulb className="h-5 w-5 text-[var(--color-tertiary)]" aria-hidden />
+              <Icono nombre="info" size={20} className="text-[var(--color-tertiary)]" />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
@@ -418,7 +418,7 @@ export function LessonDetailPage({
               Cancelar
             </Button>
             <Button variant="danger" onClick={handleDelete} loading={deleting}>
-              <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+              <Icono nombre="bin" size={14} /> Borrar
             </Button>
           </>
         }
@@ -480,7 +480,7 @@ export function LessonBackLink({ href, label }: { href: string; label: string })
       href={href}
       className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
     >
-      <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+      <Icono nombre="arrow-left" size={14} />
       {label}
     </Link>
   );

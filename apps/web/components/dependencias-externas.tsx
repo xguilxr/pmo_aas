@@ -25,10 +25,10 @@
  */
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Trash2 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { confirmarDestructivo } from "@/lib/confirmar";
 import { ApiError } from "@/lib/api";
 import {
@@ -156,9 +156,9 @@ export function DependenciasExternasPanel({
   return (
     <section
       aria-label="Dependencias con otros proyectos"
-      className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]"
+      className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
     >
-      <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+      <h2 className="text-[13px] font-semibold text-[var(--color-primary)]">
         Dependencias con otros proyectos
       </h2>
       {error ? (
@@ -178,8 +178,8 @@ export function DependenciasExternasPanel({
         <div className="mt-3 space-y-4">
           {entrantes.length > 0 ? (
             <div>
-              <h3 className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
-                <ArrowDownLeft className="h-3.5 w-3.5" aria-hidden />
+              <h3 className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
+                <Icono nombre="arrow-down-left" size={13} />
                 Este proyecto espera ({entrantes.length})
               </h3>
               <ul className="mt-1.5 divide-y divide-[var(--border-subtle)]">
@@ -206,7 +206,7 @@ export function DependenciasExternasPanel({
                         onClick={() => void quitar(d)}
                         aria-label="Quitar la dependencia"
                       >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        <Icono nombre="bin" size={14} />
                       </Button>
                     ) : null}
                   </li>
@@ -217,8 +217,8 @@ export function DependenciasExternasPanel({
 
           {salientes.length > 0 ? (
             <div>
-              <h3 className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
-                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+              <h3 className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
+                <Icono nombre="arrow-up-right" size={13} />
                 Esperan a este proyecto ({salientes.length})
               </h3>
               <ul className="mt-1.5 divide-y divide-[var(--border-subtle)]">
@@ -244,7 +244,7 @@ export function DependenciasExternasPanel({
                         onClick={() => void quitar(d)}
                         aria-label="Quitar la dependencia"
                       >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        <Icono nombre="bin" size={14} />
                       </Button>
                     ) : null}
                   </li>

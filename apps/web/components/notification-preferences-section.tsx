@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Check } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
+import { Icono } from "@/components/ui/icono";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api";
@@ -79,7 +79,7 @@ export function NotificationPreferencesSection() {
   return (
     <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
       <header className="mb-4 flex items-center gap-2">
-        <Bell className="h-5 w-5 text-[var(--color-tertiary)]" aria-hidden />
+        <Icono nombre="bell" size={20} className="text-[var(--color-tertiary)]" />
         <h2 className="text-lg font-semibold text-[var(--color-primary)]">
           Notificaciones
         </h2>
@@ -152,7 +152,7 @@ export function NotificationPreferencesSection() {
 
           {saved ? (
             <div className="inline-flex items-center gap-1 text-xs text-[var(--color-success-fg)]">
-              <Check className="h-3.5 w-3.5" aria-hidden /> Guardado
+              <Icono nombre="check" size={14} /> Guardado
             </div>
           ) : null}
         </div>

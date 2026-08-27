@@ -17,20 +17,38 @@ revisar_cada: 90d
 Next.js 15.5 App Router (rutas por carpeta en `app/`, grupo `(app)`
 autenticado), React 19, todo `"use client"` (sin RSC de datos). Tailwind v4
 con tokens CSS en `app/globals.css` (fuente de verdad; espejo de gráficos en
-`apps/api/app/core/paleta.py`). Iconos lucide-react. Sin librería de charts
-ni tablas: SVG y HTML propios. Export XLSX con exceljs en cliente; PDF en
-backend. `@dnd-kit` solo en report builder. Fetch al API vía `lib/api/*.ts`.
+`apps/api/app/core/paleta.py`). Iconos Keyline (MIT, stroke, `public/icons/stroke/`)
+vía el componente `<Icono nombre="..." />` (`components/ui/icono.tsx`), que
+resuelve por `mask-image` — `lucide-react` se retiró del todo (revamp v2,
+2026-08-27). Sin librería de charts ni tablas: SVG y HTML propios. Export XLSX
+con exceljs en cliente; PDF en backend. `@dnd-kit` solo en report builder.
+Fetch al API vía `lib/api/*.ts`.
 
 ## Tokens (globals.css) — los que se usan al escribir UI
 
-DM Sans (`--font-sans`) · canvas `#F4F6FA` · surface blanca · chrome sidebar
-`#182e4e` (texto `#C9D4EE`, activo `rgba(255,255,255,0.14)`) · acento
-`#2A4DA0` · semáforo: ok `#007A4C`, warn `#9F5900`, danger `#BD3528` ·
-gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
+**Revamp v2 (2026-08-27)**: reemplaza el sistema "big canvas" (lienzo
+gris-azul + islas blancas + sidebar navy) por una sola superficie blanca con
+filetes con profundidad. DM Sans (`--font-sans`) · superficie `--color-app`/
+`--color-surface` blanca, `--color-subtle` `#FAFAF9` (rieles/cabeceras),
+`--color-muted` `#F2F2EF` (pistas/chips) · texto `--text-primary` `#15171B`,
+`--text-secondary` `#4A4F57`, `--text-tertiary` `#666B73` (nota: NO el
+`#82878F` que numéricamente "debería" ser — ese valor falla WCAG AA contra
+blanco, se oscureció al mismo matiz), `--text-faint` `#A9AEB4` · chrome
+sidebar claro `--chrome-bg` `#FAFAF9` con pill activo en tinta
+`--chrome-active` `#15171B` (ya no navy ni flotante: sidebar 216px/68px
+colapsado, a sangre, sin sombra) · acento `oklch(48% 0.13 258)` · semáforo:
+ok `#007A4C`, warn `#9F5900`, danger `#BD3528` (sin cambios) · profundidad
+nueva: `--linea-surco`/`--linea-surco-arriba` (luz junto a un
+border-bottom/-top), `--relieve-control`/`--relieve-isla` (controles y
+contenedores), `--hundido` (campos, pistas, segmented control) · gráficos
+categóricos (ADR-023, orden fijo, sin tocar): `#294c9f #008a9b #7c34a7
 #ca62a1`; ordinal azul `#c4d1ec→#203d81`; neutral `#6F695A` · hairlines
-`#E8E3D7` · radio tarjetas `--radius-xl: 10px`. CI vigila contraste
-(`check_contraste.py`) y literales fuera de tokens (`check_tokens.py`).
-`docs/design-system/tokens.md` está desactualizado — no usarlo como fuente.
+`--border-default` `#DDDDD7` · radios `--radius-md` 8px (controles),
+`--radius-xl` 10px (contenedores), `--radius-window` 14px. Densidad: fila de
+tabla 42–44px, cabecera de tabla 34px, botón/campo/select 32px, topbar 56px.
+CI vigila contraste (`check_contraste.py`) y literales fuera de tokens
+(`check_tokens.py`). `docs/design-system/tokens.md` sigue desactualizado (paleta
+previa a esto y a D-7/ADR-023) — no usarlo como fuente.
 
 ## Rutas (grupo `(app)`)
 
@@ -54,7 +72,10 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
 ## Componentes reutilizables (components/)
 
 - **Shell/nav**: `app-shell.tsx` (sidebar en grupos con rótulo `GRUPOS_NAV`
-  —Organización · Transversal— + admin nav, US-204; header 60px con el switcher
+  —Organización · Transversal— + admin nav, US-204; sidebar claro 216px
+  expandido / 68px colapsado, a sangre, pill activo en tinta (revamp v2);
+  superadmin agrupado en 4 rótulos —Plataforma · Tenants · Seguridad ·
+  Sistema, ronda 6 de la especificación—; header 56px con el switcher
   de organización, US-205 — el de inquilino es US-214),
   `project-tabs-bar.tsx` (tabs «Recursos» y «Artefactos» desde US-204, rutas
   `/areas` y `/documents` sin cambio), `module-shell.tsx` (lista+CRUD genérico
@@ -133,7 +154,8 @@ gráficos categóricos (ADR-023, orden fijo): `#294c9f #008a9b #7c34a7
   AreasAndTeamsPanel, TenantActorsPanel),
   `admin/user-scope-assignment-picker.tsx`.
 - **UI base**: `ui/` (button, input, select, modal, badge, banner, skeleton,
-  breadcrumb, estados Vacío/Cargando/Error/SinPermiso, marca-de-datos).
+  breadcrumb, password-input, estados Vacío/Cargando/Error/SinPermiso,
+  marca-de-datos, `icono.tsx` — el componente de iconos Keyline, revamp v2).
 - **Forms de dominio**: `project-form.tsx`, `organization-form.tsx`,
   `request-form.tsx`, `program-modal.tsx`.
 

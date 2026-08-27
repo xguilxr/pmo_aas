@@ -8,23 +8,23 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Download, GitPullRequest, XCircle } from "lucide-react";
 
 import { InlineSelectCell, InlineTextCell } from "@/components/inline-select-cell";
+import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SortableTh } from "@/components/ui/sortable-th";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, apiBase } from "@/lib/api";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
-import { cn } from "@/lib/cn";
 import {
   CHANGE_FINAL_STATUSES,
-  CHANGE_STATUS_BADGE,
   CHANGE_STATUS_LABEL,
   CHANGE_TYPE_LABEL,
   approveChange,
@@ -37,6 +37,16 @@ import {
   type ChangeStatus,
   type ChangeType,
 } from "@/lib/api/modules";
+
+// ENH-186 (rediseño 7a): tono de badge por estado — mismo mapeo de color
+// que CHANGE_STATUS_BADGE, expresado como variant de <Badge>.
+const CHANGE_STATUS_VARIANT: Record<ChangeStatus, "warning" | "success" | "danger" | "neutral"> = {
+  in_review: "warning",
+  approved: "success",
+  rejected: "danger",
+  implemented: "success",
+  cancelled: "neutral",
+};
 
 export default function ChangesPage() {
   const { id } = useParams<{ id: string }>();
@@ -201,8 +211,7 @@ export default function ChangesPage() {
               <span className="mx-1">/</span>
               <span>Cambios</span>
             </nav>
-            <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-              <GitPullRequest className="h-5 w-5" aria-hidden />
+            <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
               Cambios
             </h1>
             <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
@@ -210,37 +219,34 @@ export default function ChangesPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            <Button type="button" onClick={() => setOpen(true)}>
+              <Icono nombre="plus" size={15} />
+              Nuevo cambio
+            </Button>
+            <Button
               type="button"
-              onClick={() => setOpen(true)}
-              className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--color-primary)] px-3 text-sm font-medium text-[var(--color-inverse)] shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-hover)]"
-            >
-              + Nuevo cambio
-            </button>
-            <button
-              type="button"
+              variant="secondary"
               onClick={() => void downloadChanges()}
               disabled={exporting}
-              className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <Download className="h-4 w-4" aria-hidden />
+              <Icono nombre="download" size={15} />
               {exporting ? "Exportando…" : "Exportar"}
-            </button>
+            </Button>
           </div>
         </header>
 
         {error ? <Banner variant="danger">{error}</Banner> : null}
 
         {/* ENH-186: filtros estilo RAID (estado + tipo) + toggle finalizados. */}
-        <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-2 py-1.5 text-[13px]">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+        <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-2.5 py-1.5 text-[13px]">
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)]">
             Filtros
           </span>
-          <select
+          <Select
             aria-label="Estado"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+            className="w-[150px] text-[12.5px]"
           >
             <option value="">Todos los estados</option>
             {(Object.keys(CHANGE_STATUS_LABEL) as ChangeStatus[]).map((s) => (
@@ -248,12 +254,12 @@ export default function ChangesPage() {
                 {CHANGE_STATUS_LABEL[s]}
               </option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
             aria-label="Tipo"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+            className="w-[130px] text-[12.5px]"
           >
             <option value="">Todos los tipos</option>
             {(Object.keys(CHANGE_TYPE_LABEL) as ChangeType[]).map((t) => (
@@ -261,16 +267,15 @@ export default function ChangesPage() {
                 {CHANGE_TYPE_LABEL[t]}
               </option>
             ))}
-          </select>
+          </Select>
           {/* ENH-186: oculta finalizados (approved/rejected/cancelled) por default. */}
-          <label className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-[var(--color-secondary)]">
-            <input
-              type="checkbox"
+          <div className="ml-auto">
+            <Switch
               checked={includeFinalized}
-              onChange={(e) => setIncludeFinalized(e.target.checked)}
+              onChange={setIncludeFinalized}
+              label="Mostrar finalizados"
             />
-            Mostrar finalizados
-          </label>
+          </div>
         </div>
 
         {loading ? (
@@ -289,27 +294,43 @@ export default function ChangesPage() {
             Ningún cambio coincide con los filtros activos.
           </div>
         ) : (
-          <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+          <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
             <div className="overflow-x-auto">
-              <table className="w-full text-[13px]">
-                <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+              <table className="w-full table-fixed text-[13px]">
+                <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
                   <tr>
-                    <SortableTh<ChangeRequest> sortKey="folio" getter={(r) => r.folio} ctrl={sortCtrl}>
+                    <SortableTh<ChangeRequest>
+                      sortKey="folio"
+                      getter={(r) => r.folio}
+                      ctrl={sortCtrl}
+                      className="h-8.5 w-[110px]"
+                    >
                       Folio
                     </SortableTh>
-                    <SortableTh<ChangeRequest> sortKey="title" getter={(r) => r.title} ctrl={sortCtrl}>
+                    <SortableTh<ChangeRequest> sortKey="title" getter={(r) => r.title} ctrl={sortCtrl} className="h-8.5">
                       Cambio
                     </SortableTh>
-                    <SortableTh<ChangeRequest> sortKey="type" getter={(r) => r.type} ctrl={sortCtrl}>
+                    <SortableTh<ChangeRequest>
+                      sortKey="type"
+                      getter={(r) => r.type}
+                      ctrl={sortCtrl}
+                      className="h-8.5 w-[100px]"
+                    >
                       Tipo
                     </SortableTh>
-                    <SortableTh<ChangeRequest> sortKey="status" getter={(r) => r.status} ctrl={sortCtrl}>
+                    <SortableTh<ChangeRequest>
+                      sortKey="status"
+                      getter={(r) => r.status}
+                      ctrl={sortCtrl}
+                      className="h-8.5 w-[130px]"
+                    >
                       Estado
                     </SortableTh>
                     <SortableTh<ChangeRequest>
                       sortKey="requested"
                       getter={(r) => r.requested_at}
                       ctrl={sortCtrl}
+                      className="h-8.5 w-[150px]"
                     >
                       Solicitado por
                     </SortableTh>
@@ -317,29 +338,30 @@ export default function ChangesPage() {
                       sortKey="approved"
                       getter={(r) => r.approved_at ?? ""}
                       ctrl={sortCtrl}
+                      className="h-8.5 w-[150px]"
                     >
                       Aprobado por
                     </SortableTh>
-                    <th className="px-2 py-1.5 text-right">Acciones</th>
+                    <th className="h-8.5 w-[150px] px-3 pr-3.5 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedRows.map((r) => (
                     <tr
                       key={r.id}
-                      className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+                      className="border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]"
                     >
                       {/* US-178 (patrón RAID): folio = único link que abre el detalle. */}
-                      <td className="px-2 py-1.5 font-mono text-xs text-[var(--color-tertiary)]">
+                      <td className="h-11 px-3 align-middle">
                         <Link
                           href={`/pmo/projects/${id}/changes/${r.id}`}
-                          className="hover:text-[var(--color-accent)] hover:underline"
+                          className="text-[12px] tracking-[0.01em] text-[var(--text-secondary)] hover:text-[var(--color-accent)] hover:underline"
                         >
                           {r.folio}
                         </Link>
                       </td>
                       {/* ENH-186: título editable inline. */}
-                      <td className="px-2 py-1.5 text-[var(--color-primary)]">
+                      <td className="h-11 px-3 align-middle text-[var(--text-primary)]">
                         <InlineTextCell
                           value={r.title}
                           onChange={(v) => patchChange(r.id, { title: v })}
@@ -348,7 +370,7 @@ export default function ChangesPage() {
                         />
                       </td>
                       {/* ENH-186: tipo editable inline. */}
-                      <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                      <td className="h-11 px-3 align-middle text-[12.5px] text-[var(--text-secondary)]">
                         <InlineSelectCell
                           value={r.type}
                           options={(Object.keys(CHANGE_TYPE_LABEL) as ChangeType[]).map((t) => ({
@@ -362,71 +384,54 @@ export default function ChangesPage() {
                       </td>
                       {/* Estado: chip de color, NO editable inline — el flujo de
                           aprobación (EP019) gobierna la transición. */}
-                      <td className="px-2 py-1.5">
-                        <span
-                          className={cn(
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                            CHANGE_STATUS_BADGE[r.status] ?? "bg-[var(--color-subtle)]",
-                          )}
-                        >
+                      <td className="h-11 px-3 align-middle">
+                        <Badge variant={CHANGE_STATUS_VARIANT[r.status] ?? "neutral"}>
                           {CHANGE_STATUS_LABEL[r.status] ?? r.status}
-                        </span>
+                        </Badge>
                       </td>
-                      <td className="px-2 py-1.5">
-                        <div className="text-[12px] leading-tight">
-                          <div className="text-[var(--text-primary)]">
-                            {r.requester?.full_name ?? r.requester?.email ?? "—"}
-                          </div>
-                          <div className="text-[var(--text-tertiary)]">
-                            {new Date(r.requested_at).toLocaleDateString("es-MX")}
-                          </div>
-                        </div>
+                      <td className="h-11 px-3 align-middle text-[12.5px] text-[var(--text-secondary)]">
+                        {r.requester?.full_name ?? r.requester?.email ?? "—"}
                       </td>
-                      <td className="px-2 py-1.5">
+                      <td className="h-11 px-3 align-middle">
                         {r.approver ? (
-                          <div className="text-[12px] leading-tight">
-                            <div className="text-[var(--text-primary)]">
-                              {r.approver.full_name ?? r.approver.email}
-                            </div>
-                            <div className="text-[var(--text-tertiary)]">
-                              {r.approved_at ? new Date(r.approved_at).toLocaleDateString("es-MX") : ""}
-                            </div>
-                          </div>
+                          <span className="text-[12.5px] text-[var(--text-secondary)]">
+                            {r.approver.full_name ?? r.approver.email}
+                          </span>
                         ) : (
-                          <span className="text-[11px] text-[var(--text-tertiary)]">—</span>
+                          <span className="text-[12px] text-[var(--text-faint)]">—</span>
                         )}
                       </td>
                       {/* Aprobar/Rechazar se conservan igual que antes (EP019). */}
-                      <td className="px-2 py-1.5">
+                      <td className="h-11 px-3 pr-3.5 align-middle">
                         {r.status === "in_review" ? (
                           <div className="flex justify-end gap-1.5">
                             <Button
                               size="sm"
                               variant="secondary"
+                              className="text-[11px] text-[var(--text-secondary)]"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setReviewFor(r);
                                 setReviewDecision("approve");
                               }}
                             >
-                              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
                               Aprobar
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
+                              className="text-[11px] text-[var(--text-tertiary)]"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setReviewFor(r);
                                 setReviewDecision("reject");
                               }}
                             >
-                              <XCircle className="h-3.5 w-3.5" aria-hidden />
                               Rechazar
                             </Button>
                           </div>
                         ) : (
-                          <span className="flex justify-end text-[11px] text-[var(--text-tertiary)]">
+                          <span className="flex justify-end text-[11px] text-[var(--text-faint)]">
                             —
                           </span>
                         )}

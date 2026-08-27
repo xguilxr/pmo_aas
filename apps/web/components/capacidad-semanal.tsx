@@ -26,6 +26,16 @@
  * 100 %. Los tramos son fijos y no derivados de los umbrales del inquilino a
  * propósito — los umbrales configuran cuándo **avisar**, y esta escala dice
  * cuánto hay asignado, que es un hecho.
+ *
+ * Por lo mismo los tramos usan la escala secuencial de ADR-023
+ * (`--chart-ord-*`, claro → oscuro) y no el semáforo: esta celda no es un
+ * veredicto de salud, es una magnitud. El semáforo (éxito/alerta/peligro) se
+ * queda donde sí hay un juicio de estado — el punto de `GapDot` en la tabla de
+ * personas, las tarjetas de conflicto — para no repetir el error que ADR-023
+ * ya corrigió en `PALETTE.series` (ver `dashboard-charts.tsx`): un color de
+ * semáforo en un lugar que no es un semáforo termina significando cosas que
+ * no quiso decir. La celda en cero es la pista base, sin asignación: usa
+ * `--color-muted`, el token que este sistema reserva para pistas.
  */
 import { useMemo, useState } from "react";
 
@@ -40,11 +50,11 @@ import type {
 
 /** Los cinco tramos del mockup: 0 · ≤50 · ≤80 · ≤100 · >100. */
 const TRAMOS: { tope: number; etiqueta: string; fondo: string; texto: string }[] = [
-  { tope: 0, etiqueta: "0", fondo: "var(--color-subtle)", texto: "var(--color-tertiary)" },
-  { tope: 50, etiqueta: "≤50", fondo: "var(--color-success-bg)", texto: "var(--color-success-fg)" },
-  { tope: 80, etiqueta: "≤80", fondo: "var(--color-info-bg)", texto: "var(--color-info-fg)" },
-  { tope: 100, etiqueta: "≤100", fondo: "var(--color-warning-bg)", texto: "var(--color-warning-fg)" },
-  { tope: Infinity, etiqueta: ">100", fondo: "var(--color-danger-bg)", texto: "var(--color-danger-fg)" },
+  { tope: 0, etiqueta: "0", fondo: "var(--color-muted)", texto: "var(--text-tertiary)" },
+  { tope: 50, etiqueta: "≤50", fondo: "var(--chart-ord-1)", texto: "var(--text-primary)" },
+  { tope: 80, etiqueta: "≤80", fondo: "var(--chart-ord-2)", texto: "var(--text-primary)" },
+  { tope: 100, etiqueta: "≤100", fondo: "var(--chart-ord-3)", texto: "var(--text-primary)" },
+  { tope: Infinity, etiqueta: ">100", fondo: "var(--chart-ord-4)", texto: "var(--color-inverse)" },
 ];
 
 function tramo(valor: number) {
@@ -176,7 +186,7 @@ export function CapacidadSemanal({
 
       <section
         aria-label="Carga por persona y semana"
-        className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]"
+        className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]"
       >
         <div className="max-h-[60vh] overflow-auto">
           <table className="w-full min-w-max border-separate border-spacing-0 text-[12px]">
@@ -184,14 +194,14 @@ export function CapacidadSemanal({
               <tr>
                 {/* Igual que en la vista maestra: el nombre pegado a la
                     izquierda o al hacer scroll uno pierde de quién es la fila. */}
-                <th className="sticky left-0 top-0 z-20 border-b border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+                <th className="sticky left-0 top-0 z-20 border-b border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-[var(--color-tertiary)] shadow-[var(--linea-surco)]">
                   Recurso
                 </th>
                 {sem.map((s) => (
                   <th
                     key={s.label}
                     title={`${s.start} a ${s.end}`}
-                    className="sticky top-0 z-10 border-b border-[var(--border-default)] bg-[var(--color-surface)] px-2 py-2 text-center text-[11px] font-medium text-[var(--color-tertiary)]"
+                    className="sticky top-0 z-10 border-b border-[var(--border-default)] bg-[var(--color-surface)] px-2 py-2 text-center text-[11px] font-medium text-[var(--color-tertiary)] shadow-[var(--linea-surco)]"
                   >
                     {s.label}
                   </th>
@@ -203,7 +213,7 @@ export function CapacidadSemanal({
                 <tr key={`${f.kind}-${f.id}`} className="group">
                   <th
                     scope="row"
-                    className="sticky left-0 z-10 max-w-[240px] border-b border-[var(--border-subtle)] bg-[var(--color-surface)] px-3 py-1.5 text-left font-normal group-hover:bg-[var(--color-subtle)]"
+                    className="sticky left-0 z-10 max-w-[240px] border-b border-[var(--border-subtle)] bg-[var(--color-surface)] px-3 py-1.5 text-left font-normal shadow-[var(--linea-surco)] group-hover:bg-[var(--color-subtle)]"
                   >
                     <span className="block truncate text-[var(--color-primary)]">
                       {f.name}
@@ -228,7 +238,7 @@ export function CapacidadSemanal({
                     return (
                       <td
                         key={i}
-                        className="border-b border-[var(--border-subtle)] px-0.5 py-0.5"
+                        className="border-b border-[var(--border-subtle)] px-0.5 py-0.5 shadow-[var(--linea-surco)]"
                       >
                         <button
                           type="button"
@@ -259,7 +269,7 @@ export function CapacidadSemanal({
             </tbody>
           </table>
         </div>
-        <p className="border-t border-[var(--border-default)] px-3 py-2 text-[11px] text-[var(--color-tertiary)]">
+        <p className="border-t border-[var(--border-default)] px-3 py-2 text-[11px] text-[var(--color-tertiary)] shadow-[var(--linea-surco-arriba)]">
           Clic en una celda: los proyectos que componen esa carga. Las filas de
           equipo promedian a sus miembros. La demanda de cada persona cuenta{" "}
           <strong>todos</strong> sus proyectos, no solo los de la organización
@@ -281,7 +291,7 @@ export function CapacidadSemanal({
       {celda ? (
         <section
           aria-label="Desglose de la carga"
-          className="rounded-[var(--radius-xl)] border border-[var(--color-accent)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]"
+          className="rounded-[var(--radius-xl)] border border-[var(--color-accent)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-sm font-semibold text-[var(--color-primary)]">
@@ -334,7 +344,7 @@ export function CapacidadSemanal({
       <div className="grid gap-4 lg:grid-cols-3">
         <section
           aria-label="Capacidad vs demanda"
-          className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]"
+          className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
         >
           <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
             Capacidad vs demanda (FTE)
@@ -361,7 +371,7 @@ export function CapacidadSemanal({
                       {m.demand_fte.toFixed(1)} / {m.capacity_fte.toFixed(1)}
                     </span>
                   </div>
-                  <div className="relative mt-1 h-2 rounded-full bg-[var(--color-subtle)]">
+                  <div className="relative mt-1 h-2 rounded-full bg-[var(--color-muted)] shadow-[var(--hundido)]">
                     <span
                       className="absolute inset-y-0 left-0 rounded-full"
                       style={{
@@ -389,7 +399,7 @@ export function CapacidadSemanal({
 
         <section
           aria-label="Recursos críticos compartidos"
-          className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]"
+          className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
         >
           <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
             Recursos críticos compartidos
@@ -429,7 +439,7 @@ export function CapacidadSemanal({
 
         <section
           aria-label="Acciones sugeridas"
-          className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]"
+          className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
         >
           <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
             Acciones sugeridas
@@ -453,7 +463,7 @@ export function CapacidadSemanal({
           )}
           {/* El propio mockup marca los escenarios como «próximamente». Se dice
               aquí para que quien lo conoce sepa que no falta: no está hecho. */}
-          <p className="mt-3 border-t border-[var(--border-subtle)] pt-2 text-[11px] text-[var(--color-tertiary)]">
+          <p className="mt-3 border-t border-[var(--border-subtle)] pt-2 text-[11px] text-[var(--color-tertiary)] shadow-[var(--linea-surco-arriba)]">
             Escenarios what-if (mover una asignación y ver el efecto): pendiente.
           </p>
         </section>

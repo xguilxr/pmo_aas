@@ -13,7 +13,6 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Boxes, Building2, Download, FileText, Layers, Loader2 } from "lucide-react";
 
 import {
   TenantCrossFilters,
@@ -22,9 +21,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { downloadPortfolioStatusReport } from "@/lib/api/analytics";
 import {
   listPortfolios,
@@ -51,28 +52,12 @@ type TenantReportsTab =
   | "program"
   | "projects";
 
-const TABS: Array<{ v: TenantReportsTab; label: string; icon: React.ReactNode }> = [
-  { v: "pmo", label: "PMO", icon: <Layers className="h-3.5 w-3.5" aria-hidden /> },
-  {
-    v: "organization",
-    label: "Organizaciones",
-    icon: <Building2 className="h-3.5 w-3.5" aria-hidden />,
-  },
-  {
-    v: "portfolio",
-    label: "Portafolios",
-    icon: <Boxes className="h-3.5 w-3.5" aria-hidden />,
-  },
-  {
-    v: "program",
-    label: "Programas",
-    icon: <Layers className="h-3.5 w-3.5" aria-hidden />,
-  },
-  {
-    v: "projects",
-    label: "Proyectos",
-    icon: <FileText className="h-3.5 w-3.5" aria-hidden />,
-  },
+const TABS: Array<{ v: TenantReportsTab; label: string; icono: string }> = [
+  { v: "pmo", label: "PMO", icono: "layout-dashboard" },
+  { v: "organization", label: "Organizaciones", icono: "building" },
+  { v: "portfolio", label: "Portafolios", icono: "folders" },
+  { v: "program", label: "Programas", icono: "route" },
+  { v: "projects", label: "Proyectos", icono: "file-text" },
 ];
 
 export default function TenantReportsPage() {
@@ -85,23 +70,22 @@ export default function TenantReportsPage() {
 
   return (
     <div className="space-y-5">
-      <header className="space-y-2">
-        <div className="flex items-center gap-3">
-          <FileText className="h-6 w-6 text-[var(--color-tertiary)]" aria-hidden />
-          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
-            Reportes
-          </h1>
-        </div>
-        <p className="text-sm text-[var(--color-tertiary)]">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+          Reportes
+        </h1>
+        <p className="text-[13px] text-[var(--text-tertiary)]">
           Reportes a nivel PMO, organización, portafolio, programa y proyecto —
           los cinco niveles de la jerarquía.
         </p>
       </header>
 
+      {/* Bandeja con pestañas de nivel — filete inferior 2px en la activa,
+          mismo patrón que /pmo/requests y el RAID de proyecto. */}
       <div
         role="tablist"
         aria-label="Niveles de reportes"
-        className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+        className="flex flex-wrap items-center gap-5 border-b border-[var(--border-default)] shadow-[var(--linea-surco)]"
       >
         {TABS.map((opt) => {
           const active = activeTab === opt.v;
@@ -112,13 +96,14 @@ export default function TenantReportsPage() {
               href={href}
               role="tab"
               aria-selected={active}
-              className={`inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-4 py-1.5 text-xs font-medium transition-colors ${
+              className={cn(
+                "-mb-px flex h-9 items-center gap-1.5 border-b-2 text-[13px] transition-colors",
                 active
-                  ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]"
-              }`}
+                  ? "border-[var(--text-primary)] font-semibold text-[var(--text-primary)]"
+                  : "border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-primary)]",
+              )}
             >
-              {opt.icon}
+              <Icono nombre={opt.icono} size={14} />
               {opt.label}
             </Link>
           );
@@ -190,9 +175,9 @@ function PmoScopePlaceholder() {
     <div className="space-y-5">
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
         <div className="flex items-start gap-3">
-          <Layers className="mt-0.5 h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+          <Icono nombre="layout-dashboard" size={17} className="mt-0.5 text-[var(--color-accent)]" />
           <div className="flex-1">
             <h2 className="text-base font-semibold text-[var(--text-primary)]">
               Reporte Status PMO
@@ -234,11 +219,7 @@ function PmoScopePlaceholder() {
                   loading={exporting === tpl.id}
                   disabled={exporting !== null}
                 >
-                  {exporting === tpl.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                  ) : (
-                    <Download className="h-3.5 w-3.5" aria-hidden />
-                  )}
+                  <Icono nombre="download" size={14} />
                   Descargar
                 </Button>
               </li>
@@ -320,9 +301,9 @@ function OrgScopePlaceholder() {
     <div className="space-y-5">
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
         <div className="flex items-start gap-3">
-          <Building2 className="mt-0.5 h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+          <Icono nombre="building" size={17} className="mt-0.5 text-[var(--color-accent)]" />
           <div className="flex-1">
             <h2 className="text-base font-semibold text-[var(--text-primary)]">
               Reporte por Organización
@@ -364,11 +345,7 @@ function OrgScopePlaceholder() {
                   loading={exporting === tpl.id}
                   disabled={exporting !== null || !orgId}
                 >
-                  {exporting === tpl.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                  ) : (
-                    <Download className="h-3.5 w-3.5" aria-hidden />
-                  )}
+                  <Icono nombre="download" size={14} />
                   Descargar
                 </Button>
               </li>
@@ -528,9 +505,9 @@ function ReportesDePortafolio() {
     <div className="space-y-5">
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
         <div className="flex items-start gap-3">
-          <Boxes className="mt-0.5 h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+          <Icono nombre="folders" size={17} className="mt-0.5 text-[var(--color-accent)]" />
           <div className="flex-1">
             <h2 className="text-base font-semibold text-[var(--text-primary)]">
               Reporte por Portafolio
@@ -577,12 +554,9 @@ function ReportesDePortafolio() {
             size="sm"
             onClick={statusPdf}
             disabled={!portfolioId || generando !== null}
+            loading={generando === "status"}
           >
-            {generando === "status" ? (
-              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />
-            ) : (
-              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
-            )}
+            <Icono nombre="download" size={14} />
             Status del portafolio (PDF)
           </Button>
         </div>
@@ -617,12 +591,9 @@ function ReportesDePortafolio() {
                   size="sm"
                   onClick={() => plantillaPdf(tpl)}
                   disabled={!portfolioId || generando !== null}
+                  loading={generando === tpl.id}
                 >
-                  {generando === tpl.id ? (
-                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />
-                  ) : (
-                    <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
-                  )}
+                  <Icono nombre="download" size={14} />
                   PDF
                 </Button>
               </li>
@@ -725,9 +696,9 @@ function ProgramScopePlaceholder() {
     <div className="space-y-5">
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
         <div className="flex items-start gap-3">
-          <Layers className="mt-0.5 h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+          <Icono nombre="route" size={17} className="mt-0.5 text-[var(--color-accent)]" />
           <div className="flex-1">
             <h2 className="text-base font-semibold text-[var(--text-primary)]">
               Reporte por Programa
@@ -795,11 +766,7 @@ function ProgramScopePlaceholder() {
                   loading={exporting === tpl.id}
                   disabled={exporting !== null || !programId}
                 >
-                  {exporting === tpl.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                  ) : (
-                    <Download className="h-3.5 w-3.5" aria-hidden />
-                  )}
+                  <Icono nombre="download" size={14} />
                   Descargar
                 </Button>
               </li>
@@ -850,14 +817,14 @@ function ProjectsReportsView() {
     <>
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]">
         <TenantCrossFilters value={filter} onChange={setFilter} />
         <p className="mt-2 text-[11px] text-[var(--text-tertiary)]">
           Sólo se muestran reportes guardados (no borradores).
         </p>
       </section>
 
-      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
         {loading ? (
           <div className="space-y-2 p-4">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -865,69 +832,72 @@ function ProjectsReportsView() {
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <div className="p-10 text-center text-sm text-[var(--color-tertiary)]">
+          <div className="p-10 text-center text-sm text-[var(--text-tertiary)]">
             Sin reportes guardados para los filtros actuales.
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-              <tr>
-                <th className="px-3 py-2 font-medium">Folio</th>
-                <th className="px-3 py-2 font-medium">Título</th>
-                <th className="px-3 py-2 font-medium">Tipo</th>
-                <th className="px-3 py-2 font-medium">Período</th>
-                <th className="px-3 py-2 font-medium">Estado</th>
-                <th className="px-3 py-2 font-medium">Proyecto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
-                >
-                  <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
-                    {r.folio}
-                  </td>
-                  <td className="px-3 py-2">
-                    {/* ENH-120: link al detail del reporte específico, no al listing del proyecto */}
-                    <Link
-                      href={`/pmo/projects/${r.project_id}/reports/${r.id}`}
-                      className="text-[var(--color-primary)] hover:underline"
-                    >
-                      {r.title}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2">
-                    {/* ENH-120: label "Builder" para reportes de US-140 */}
-                    <Badge
-                      variant={r.report_type === "Builder" ? "info" : "neutral"}
-                    >
-                      {r.report_type ?? "—"}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-2 text-[var(--color-secondary)]">
-                    {r.period ?? "—"}
-                  </td>
-                  <td className="px-3 py-2 text-[var(--color-secondary)]">
-                    {r.status}
-                  </td>
-                  <td className="px-3 py-2">
-                    <Link
-                      href={`/pmo/projects/${r.project_id}`}
-                      className="text-xs text-[var(--color-accent)] hover:underline"
-                      title={r.project_name}
-                    >
-                      <span className="font-mono">{r.project_folio}</span>
-                      <span className="ml-1 text-[var(--color-secondary)]">
-                        — {r.project_name}
-                      </span>
-                    </Link>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed text-[13px]">
+              <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
+                <tr>
+                  <th className="h-8.5 w-24 px-3 font-semibold">Folio</th>
+                  <th className="h-8.5 px-3 font-semibold">Título</th>
+                  <th className="h-8.5 w-28 px-3 font-semibold">Tipo</th>
+                  <th className="h-8.5 w-28 px-3 font-semibold">Período</th>
+                  <th className="h-8.5 w-28 px-3 font-semibold">Estado</th>
+                  <th className="h-8.5 w-56 px-3 font-semibold">Proyecto</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]"
+                  >
+                    <td className="h-11 px-3 align-middle text-[12px] tracking-[0.01em] text-[var(--text-tertiary)]">
+                      {r.folio}
+                    </td>
+                    <td className="h-11 px-3 align-middle">
+                      {/* ENH-120: link al detail del reporte específico, no al listing del proyecto */}
+                      <Link
+                        href={`/pmo/projects/${r.project_id}/reports/${r.id}`}
+                        className="block overflow-hidden text-ellipsis whitespace-nowrap text-[var(--text-primary)] hover:underline"
+                        title={r.title}
+                      >
+                        {r.title}
+                      </Link>
+                    </td>
+                    <td className="h-11 px-3 align-middle">
+                      {/* ENH-120: label "Builder" para reportes de US-140 */}
+                      <Badge
+                        variant={r.report_type === "Builder" ? "info" : "neutral"}
+                      >
+                        {r.report_type ?? "—"}
+                      </Badge>
+                    </td>
+                    <td className="h-11 px-3 align-middle text-[12.5px] text-[var(--text-secondary)]">
+                      {r.period ?? "—"}
+                    </td>
+                    <td className="h-11 px-3 align-middle text-[12.5px] text-[var(--text-secondary)]">
+                      {r.status}
+                    </td>
+                    <td className="h-11 px-3 align-middle">
+                      <Link
+                        href={`/pmo/projects/${r.project_id}`}
+                        className="block overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--color-accent)] hover:underline"
+                        title={r.project_name}
+                      >
+                        <span className="text-[12px] tracking-[0.01em]">{r.project_folio}</span>
+                        <span className="ml-1 text-[var(--text-secondary)]">
+                          — {r.project_name}
+                        </span>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </>

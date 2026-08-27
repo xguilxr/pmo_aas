@@ -17,13 +17,14 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Settings, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import {
   SectionParamsForm,
   type SectionParams,
 } from "@/components/reports/builder/SectionParamsPanel";
+import { cn } from "@/lib/cn";
 import type { ReportSection } from "@/lib/api/report-builder";
 
 type Props = {
@@ -71,8 +72,8 @@ export function SectionCanvas({
   if (codes.length === 0) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="rounded-lg border-2 border-dashed border-zinc-300 bg-white p-12 text-center text-sm text-zinc-500">
-          <p className="mb-1 font-medium text-zinc-700">Canvas vacío</p>
+        <div className="rounded-[var(--radius-xl)] border-2 border-dashed border-[var(--border-default)] bg-[var(--color-surface)] p-12 text-center text-[13px] text-[var(--text-tertiary)]">
+          <p className="mb-1 font-medium text-[var(--text-secondary)]">Canvas vacío</p>
           <p>Arrastra secciones del catálogo para empezar tu reporte.</p>
         </div>
       </div>
@@ -136,30 +137,33 @@ function SortableSectionItem({
     <li
       ref={setNodeRef}
       style={style}
-      className={`group rounded-lg border bg-white shadow-sm transition ${
-        expanded ? "border-zinc-900 ring-1 ring-zinc-900" : "border-zinc-200 hover:border-zinc-400"
-      }`}
+      className={cn(
+        "group rounded-[var(--radius-xl)] border bg-[var(--color-surface)] shadow-[var(--relieve-isla)] transition-colors",
+        expanded
+          ? "border-[var(--color-accent)] ring-1 ring-[var(--color-accent)]"
+          : "border-[var(--border-default)] hover:border-[var(--border-strong)]",
+      )}
     >
-      <div className="flex items-start gap-2 p-3">
+      <div className="flex items-start gap-2.5 p-3">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="flex h-6 w-4 cursor-grab items-center justify-center text-zinc-400 hover:text-zinc-700"
+          className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center text-[var(--text-faint)] hover:text-[var(--text-secondary)] active:cursor-grabbing"
           title="Arrastrar"
         >
-          <GripVertical className="h-4 w-4" />
+          <Icono nombre="more-vertical" size={15} />
         </button>
         <button
           type="button"
           onClick={onToggle}
           className="min-w-0 flex-1 text-left"
         >
-          <p className="text-sm font-medium text-zinc-800">
-            <span className="text-zinc-400">{code}</span> · {section?.name ?? "(sin catalogar)"}
+          <p className="truncate text-[13px] font-medium text-[var(--text-primary)]">
+            <span className="text-[var(--text-faint)]">{code}</span> · {section?.name ?? "(sin catalogar)"}
           </p>
           {section?.description && (
-            <p className="line-clamp-1 text-xs text-zinc-500">{section.description}</p>
+            <p className="line-clamp-1 text-[11.5px] text-[var(--text-tertiary)]">{section.description}</p>
           )}
         </button>
         <Button
@@ -169,7 +173,7 @@ function SortableSectionItem({
           onClick={onToggle}
           title="Parámetros de la sección"
         >
-          <Settings className="h-3.5 w-3.5" />
+          <Icono nombre="settings" size={14} />
         </Button>
         <Button
           type="button"
@@ -178,11 +182,11 @@ function SortableSectionItem({
           onClick={onRemove}
           title="Quitar sección"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Icono nombre="bin" size={14} />
         </Button>
       </div>
       {expanded && (
-        <div className="border-t border-zinc-200 bg-zinc-50 p-3">
+        <div className="border-t border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3">
           <SectionParamsForm
             section={section ?? null}
             params={params}

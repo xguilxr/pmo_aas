@@ -3,10 +3,10 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ExternalLink, FileText, Upload } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -155,7 +155,7 @@ export default function DocumentsPage() {
       projectId={id}
       title="Documentos"
       subtitle="Documentación del proyecto con control de versiones."
-      icon={<FileText className="h-5 w-5" aria-hidden />}
+      icon={<Icono nombre="file-text" size={18} />}
       records={rows}
       loading={loading}
       error={error}
@@ -191,8 +191,8 @@ export default function DocumentsPage() {
           </div>
           <Field label="Archivo">
             <div className="flex items-center gap-3">
-              <label className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] shadow-[var(--shadow-sm)] transition-colors hover:bg-[var(--color-subtle)]">
-                <Upload className="h-4 w-4" aria-hidden />
+              <label className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.75 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-[13px] font-medium text-[var(--text-primary)] shadow-[var(--relieve-control)] transition-colors hover:bg-[var(--color-subtle)]">
+                <Icono nombre="upload" size={15} />
                 {form.file ? "Cambiar archivo" : "Seleccionar archivo…"}
                 <input
                   type="file"
@@ -204,14 +204,14 @@ export default function DocumentsPage() {
                 />
               </label>
               {form.file ? (
-                <span className="truncate text-sm text-[var(--color-secondary)]">
+                <span className="truncate text-sm text-[var(--text-secondary)]">
                   {form.file.name}
-                  <span className="ml-2 text-xs text-[var(--color-tertiary)]">
+                  <span className="ml-2 text-xs text-[var(--text-tertiary)]">
                     ({Math.round((form.file.size / 1024) * 10) / 10} KB)
                   </span>
                 </span>
               ) : (
-                <span className="text-sm text-[var(--color-tertiary)]">
+                <span className="text-sm text-[var(--text-tertiary)]">
                   PDF, XLSX, DOCX, PPTX, PNG, JPG o CSV · máx. 1 MB
                 </span>
               )}
@@ -255,14 +255,22 @@ export default function DocumentsPage() {
         {
           key: "version",
           label: "Versión",
+          align: "right",
           render: (r) => (
-            <span className="tabular-nums text-[var(--text-secondary)]">v{r.version}</span>
+            <span className="font-mono text-[12.5px] tabular-nums text-[var(--text-secondary)]">
+              v{r.version}
+            </span>
           ),
         },
         {
           key: "size",
           label: "Tamaño",
-          render: (r) => <span className="tabular-nums">{formatSize(r.size_bytes)}</span>,
+          align: "right",
+          render: (r) => (
+            <span className="font-mono text-[12.5px] tabular-nums text-[var(--text-secondary)]">
+              {formatSize(r.size_bytes)}
+            </span>
+          ),
         },
         {
           key: "link",
@@ -287,7 +295,7 @@ export default function DocumentsPage() {
                     void openDocumentForDownload(r.id);
                   }}
                 >
-                  Abrir <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  Abrir <Icono nombre="arrow-up-right" size={14} />
                 </button>,
               );
             }
@@ -299,14 +307,14 @@ export default function DocumentsPage() {
                   className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  Editar <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  Editar <Icono nombre="arrow-up-right" size={14} />
                 </Link>,
               );
             }
             if (parts.length === 0) {
               return (
                 <span
-                  className="text-[12px] italic text-[var(--color-tertiary)]"
+                  className="text-[12px] italic text-[var(--text-tertiary)]"
                   title="Este documento no tiene archivo adjunto. Sube un archivo para poder abrirlo."
                 >
                   Sin archivo

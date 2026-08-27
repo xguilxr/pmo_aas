@@ -7,11 +7,12 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Download, Lightbulb } from "lucide-react";
 
 import { InlineSelectCell, InlineTextCell } from "@/components/inline-select-cell";
+import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -21,11 +22,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError, apiBase } from "@/lib/api";
 import { listEligibleActors, type ActorMini } from "@/lib/api/project-directory";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
-import { cn } from "@/lib/cn";
 import {
-  LESSON_CATEGORY_BADGE,
   LESSON_CATEGORY_LABEL,
-  LESSON_PHASE_BADGE,
   LESSON_PHASE_LABEL,
   LESSON_PHASE_ORDER,
   createLesson,
@@ -33,7 +31,6 @@ import {
   updateLesson,
   type Lesson,
   type LessonCategory,
-  type LessonPhase,
   type LessonUpdateBody,
 } from "@/lib/api/modules";
 
@@ -246,8 +243,7 @@ export default function LessonsPage() {
               <span className="mx-1">/</span>
               <span>Lecciones</span>
             </nav>
-            <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-              <Lightbulb className="h-5 w-5" aria-hidden />
+            <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
               Lecciones aprendidas
             </h1>
             <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
@@ -255,37 +251,34 @@ export default function LessonsPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            <Button type="button" onClick={() => setOpen(true)}>
+              <Icono nombre="plus" size={15} />
+              Nueva lección
+            </Button>
+            <Button
               type="button"
-              onClick={() => setOpen(true)}
-              className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] bg-[var(--color-primary)] px-3 text-sm font-medium text-[var(--color-inverse)] shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-hover)]"
-            >
-              + Nueva lección
-            </button>
-            <button
-              type="button"
+              variant="secondary"
               onClick={() => void downloadLessons()}
               disabled={exporting}
-              className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <Download className="h-4 w-4" aria-hidden />
+              <Icono nombre="download" size={15} />
               {exporting ? "Exportando…" : "Exportar"}
-            </button>
+            </Button>
           </div>
         </header>
 
         {error ? <Banner variant="danger">{error}</Banner> : null}
 
         {/* ENH-187: filtros estilo RAID (categoría + fase) + búsqueda simple. */}
-        <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-surface)] px-2 py-1.5 text-[13px]">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)]">
             Filtros
           </span>
-          <select
+          <Select
             aria-label="Categoría"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+            className="w-[150px] text-[12.5px]"
           >
             <option value="">Todas las categorías</option>
             {(Object.keys(LESSON_CATEGORY_LABEL) as LessonCategory[]).map((c) => (
@@ -293,12 +286,12 @@ export default function LessonsPage() {
                 {LESSON_CATEGORY_LABEL[c]}
               </option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
             aria-label="Fase"
             value={phaseFilter}
             onChange={(e) => setPhaseFilter(e.target.value)}
-            className="h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
+            className="w-[120px] text-[12.5px]"
           >
             <option value="">Todas las fases</option>
             {LESSON_PHASE_ORDER.map((p) => (
@@ -306,15 +299,22 @@ export default function LessonsPage() {
                 {LESSON_PHASE_LABEL[p]}
               </option>
             ))}
-          </select>
-          <input
-            type="search"
-            aria-label="Buscar"
-            placeholder="Buscar por título, descripción, recomendación o tag…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="ml-auto h-8 w-64 max-w-full rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[12px] text-[var(--color-primary)]"
-          />
+          </Select>
+          <div className="relative ml-auto w-[220px]">
+            <Icono
+              nombre="search"
+              size={13}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)]"
+            />
+            <Input
+              type="search"
+              aria-label="Buscar"
+              placeholder="Buscar título, tag…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 text-[12.5px]"
+            />
+          </div>
         </div>
 
         {loading ? (
@@ -333,45 +333,62 @@ export default function LessonsPage() {
             Ninguna lección coincide con los filtros activos.
           </div>
         ) : (
-          <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+          <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
             <div className="overflow-x-auto">
-              <table className="w-full text-[13px]">
-                <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+              <table className="w-full table-fixed text-[13px]">
+                <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
                   <tr>
-                    <SortableTh<Lesson> sortKey="folio" getter={(r) => r.folio} ctrl={sortCtrl}>
+                    <SortableTh<Lesson>
+                      sortKey="folio"
+                      getter={(r) => r.folio}
+                      ctrl={sortCtrl}
+                      className="h-8.5 w-[110px] px-4"
+                    >
                       Folio
                     </SortableTh>
-                    <SortableTh<Lesson> sortKey="title" getter={(r) => r.title} ctrl={sortCtrl}>
+                    <SortableTh<Lesson>
+                      sortKey="title"
+                      getter={(r) => r.title}
+                      ctrl={sortCtrl}
+                      className="h-8.5 px-4"
+                    >
                       Lección
                     </SortableTh>
                     <SortableTh<Lesson>
                       sortKey="category"
                       getter={(r) => r.category ?? ""}
                       ctrl={sortCtrl}
+                      className="h-8.5 w-[110px] px-4"
                     >
                       Categoría
                     </SortableTh>
-                    <SortableTh<Lesson> sortKey="phase" getter={(r) => r.phase ?? ""} ctrl={sortCtrl}>
+                    <SortableTh<Lesson>
+                      sortKey="phase"
+                      getter={(r) => r.phase ?? ""}
+                      ctrl={sortCtrl}
+                      className="h-8.5 w-[110px] px-4"
+                    >
                       Fase
                     </SortableTh>
                     <SortableTh<Lesson>
                       sortKey="responsible"
                       getter={(r) => actorLabel(r.owner_actor_id)}
                       ctrl={sortCtrl}
+                      className="h-8.5 w-[140px] px-4"
                     >
                       Responsable
                     </SortableTh>
-                    <th className="px-2 py-1.5">Tags</th>
+                    <th className="h-8.5 w-[160px] px-4">Tags</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedRows.map((r) => (
                     <tr
                       key={r.id}
-                      className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+                      className="h-11 border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]"
                     >
                       {/* US-178 (patrón RAID): folio = único link que abre el detalle. */}
-                      <td className="px-2 py-1.5 font-mono text-xs text-[var(--color-tertiary)]">
+                      <td className="truncate px-4 text-[12px] tracking-[0.01em] text-[var(--color-tertiary)]">
                         <Link
                           href={`/pmo/projects/${id}/lessons/${r.id}`}
                           className="hover:text-[var(--color-accent)] hover:underline"
@@ -380,7 +397,7 @@ export default function LessonsPage() {
                         </Link>
                       </td>
                       {/* ENH-187: título editable inline. */}
-                      <td className="px-2 py-1.5 text-[var(--color-primary)]">
+                      <td className="px-4 text-[var(--color-primary)]">
                         <InlineTextCell
                           value={r.title}
                           onChange={(v) => patchLesson(r.id, { title: v })}
@@ -389,13 +406,15 @@ export default function LessonsPage() {
                         />
                       </td>
                       {/* ENH-187: categoría — chip de color, editable inline. */}
-                      <td className="px-2 py-1.5">
+                      <td className="px-4">
                         <ChipSelectCell
                           label={r.category ? LESSON_CATEGORY_LABEL[r.category] : null}
-                          badgeClass={
-                            r.category
-                              ? LESSON_CATEGORY_BADGE[r.category]
-                              : "bg-[var(--color-subtle)] text-[var(--color-tertiary)]"
+                          variant={
+                            r.category === "success"
+                              ? "success"
+                              : r.category === "error"
+                                ? "danger"
+                                : "warning"
                           }
                           options={categoryOpts()}
                           value={r.category ?? ""}
@@ -404,29 +423,20 @@ export default function LessonsPage() {
                           ariaLabel={`Categoría de ${r.folio}`}
                         />
                       </td>
-                      {/* ENH-187: fase — chip de color, editable inline. */}
-                      <td className="px-2 py-1.5">
-                        <ChipSelectCell
-                          label={
-                            r.phase
-                              ? (LESSON_PHASE_LABEL[r.phase as LessonPhase] ?? r.phase)
-                              : null
-                          }
-                          badgeClass={
-                            r.phase
-                              ? (LESSON_PHASE_BADGE[r.phase as LessonPhase] ??
-                                "bg-[var(--color-subtle)] text-[var(--color-secondary)]")
-                              : "bg-[var(--color-subtle)] text-[var(--color-tertiary)]"
-                          }
-                          options={phaseOpts(r)}
+                      {/* ENH-187: fase — texto plano, editable inline (sin chip: mockup 7b
+                          sólo colorea la categoría). */}
+                      <td className="px-4 text-[12.5px] text-[var(--color-secondary)]">
+                        <InlineSelectCell
                           value={r.phase ?? ""}
+                          options={phaseOpts(r)}
                           onChange={(v) => patchLesson(r.id, { phase: v || null })}
+                          placeholder="—"
                           title="Fase"
                           ariaLabel={`Fase de ${r.folio}`}
                         />
                       </td>
                       {/* ENH-187: responsable (Actor del catálogo) editable inline. */}
-                      <td className="px-2 py-1.5 text-[var(--color-secondary)]">
+                      <td className="px-4 text-[12.5px] text-[var(--color-secondary)]">
                         <InlineSelectCell
                           value={r.owner_actor_id ?? ""}
                           options={respOpts(r)}
@@ -437,13 +447,13 @@ export default function LessonsPage() {
                         />
                       </td>
                       {/* Tags: sólo lectura (chips de texto). */}
-                      <td className="px-2 py-1.5">
+                      <td className="px-4">
                         {r.tags.length ? (
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-1.25">
                             {r.tags.map((t) => (
                               <span
                                 key={t}
-                                className="inline-flex items-center rounded-full bg-[var(--color-subtle)] px-2 py-0.5 text-[11px] text-[var(--color-secondary)]"
+                                className="inline-flex items-center rounded-full bg-[var(--color-muted)] px-2 py-0.5 text-[11px] text-[var(--color-secondary)]"
                               >
                                 {t}
                               </span>
@@ -541,13 +551,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 /**
- * ENH-187: chip de color + edición inline on-click — mismo patrón visual que
- * `TaskStatusInlineCell` del Plan (ENH-188). En modo lectura muestra el chip
- * de color; al hacer click se convierte en `<select>` nativo.
+ * ENH-187: chip de color (Badge) + edición inline on-click — mismo patrón
+ * visual que `TaskStatusInlineCell` del Plan (ENH-188). En modo lectura
+ * muestra el chip de color; al hacer click se convierte en `<select>` nativo.
  */
 function ChipSelectCell({
   label,
-  badgeClass,
+  variant,
   options,
   value,
   onChange,
@@ -556,7 +566,7 @@ function ChipSelectCell({
   placeholder = "—",
 }: {
   label: string | null;
-  badgeClass: string;
+  variant: "success" | "warning" | "danger";
   options: InlineOption[];
   value: string;
   onChange: (value: string) => void;
@@ -576,14 +586,7 @@ function ChipSelectCell({
         className="rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
       >
         {label ? (
-          <span
-            className={cn(
-              "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-              badgeClass,
-            )}
-          >
-            {label}
-          </span>
+          <Badge variant={variant}>{label}</Badge>
         ) : (
           <span className="text-[11px] text-[var(--color-tertiary)]">{placeholder}</span>
         )}

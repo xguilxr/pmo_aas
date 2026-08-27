@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Download, Eye, MessageSquare, Sparkles, Trash2 } from "lucide-react";
-
 import { ItemPreviewModal } from "@/components/item-preview-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Modal } from "@/components/ui/modal";
 import { ModuleShell } from "@/components/module-shell";
 import { ApiError } from "@/lib/api";
@@ -66,7 +65,7 @@ export default function MinutesPage() {
       projectId={id}
       title="Minutas"
       subtitle="Minutas de reunión con temas, participantes y acuerdos."
-      icon={<MessageSquare className="h-5 w-5" aria-hidden />}
+      icon={<Icono nombre="message" size={18} />}
       records={rows}
       loading={loading}
       error={error}
@@ -78,7 +77,7 @@ export default function MinutesPage() {
           title="Genera una minuta nueva desde transcript, minuta existente, o llenado manual."
         >
           <Button>
-            <Sparkles className="h-4 w-4" aria-hidden /> Generar Minuta
+            <Icono nombre="info" size={15} /> Generar Minuta
           </Button>
         </Link>
       }
@@ -131,7 +130,7 @@ export default function MinutesPage() {
               title="Vista rápida"
               className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]"
             >
-              <Eye className="h-3.5 w-3.5" aria-hidden />
+              <Icono nombre="eye" size={15} />
             </button>
           ),
         },
@@ -149,7 +148,7 @@ export default function MinutesPage() {
               title="Borrar minuta"
               className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-danger-bg)] hover:text-[var(--color-danger-fg)]"
             >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              <Icono nombre="bin" size={15} />
             </button>
           ),
         },
@@ -169,7 +168,7 @@ export default function MinutesPage() {
             Cancelar
           </Button>
           <Button variant="danger" onClick={handleDelete} loading={deleting}>
-            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+            <Icono nombre="bin" size={15} /> Borrar
           </Button>
         </>
       }
@@ -251,13 +250,13 @@ function ExportMinuteButtons({ minuteId }: { minuteId: string }) {
             void download(f.key);
           }}
           disabled={busy !== null}
-          className="inline-flex h-7 items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 text-[11px] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)] disabled:opacity-60"
+          className="inline-flex h-7 items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2 text-[11px] text-[var(--color-secondary)] shadow-[var(--relieve-control)] hover:bg-[var(--color-subtle)] disabled:opacity-60"
           aria-label={`Descargar minuta en ${f.label}`}
         >
           {busy === f.key ? (
             <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)]" />
           ) : (
-            <Download className="h-3 w-3" aria-hidden />
+            <Icono nombre="download" size={13} />
           )}
           {f.label}
         </button>

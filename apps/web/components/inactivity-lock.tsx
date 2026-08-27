@@ -1,10 +1,12 @@
 "use client";
 
-import { Eye, EyeOff, Lock } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useInactivityLock } from "@/hooks/use-inactivity-lock";
 import { ApiError } from "@/lib/api";
 import { esDesafio, login, logout } from "@/lib/auth";
@@ -56,7 +58,6 @@ function ReauthOverlay({ onUnlock }: { onUnlock: () => void }) {
   const identifier = user?.email || user?.username || "";
 
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,7 +111,7 @@ function ReauthOverlay({ onUnlock }: { onUnlock: () => void }) {
       <div className="relative z-10 w-full max-w-md rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-lg)]">
         <div className="px-6 pt-6 text-center">
           <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
-            <Lock className="h-6 w-6" aria-hidden />
+            <Icono nombre="lock" size={22} />
           </div>
           <h2 className="text-lg font-semibold text-[var(--color-primary)]">
             Sesión bloqueada por inactividad
@@ -143,44 +144,20 @@ function ReauthOverlay({ onUnlock }: { onUnlock: () => void }) {
             >
               Contraseña
             </label>
-            <div className="relative">
-              <Input
-                id="reauth-password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                autoFocus
-                required
-                disabled={submitting}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                disabled={submitting}
-                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-[var(--radius-xs)] text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" aria-hidden />
-                ) : (
-                  <Eye className="h-4 w-4" aria-hidden />
-                )}
-              </button>
-            </div>
+            <PasswordInput
+              id="reauth-password"
+              name="password"
+              autoComplete="current-password"
+              autoFocus
+              required
+              disabled={submitting}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
           </div>
 
-          {error ? (
-            <div
-              role="alert"
-              className="rounded-[var(--radius-md)] border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger-fg)]"
-            >
-              {error}
-            </div>
-          ) : null}
+          {error ? <Banner variant="danger">{error}</Banner> : null}
 
           <Button
             type="submit"

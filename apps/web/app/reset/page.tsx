@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState, type FormEvent } from "react";
-import { CheckCircle2, KeyRound, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { PasswordInput } from "@/components/ui/password-input";
 import { ApiError } from "@/lib/api";
 import { resetPassword } from "@/lib/auth";
@@ -56,9 +56,9 @@ function ResetInner() {
 
   if (!token) {
     return (
-      <div className="w-full max-w-md">
-        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
-          <p className="text-sm text-[var(--color-secondary)]">
+      <div className="flex w-full max-w-[480px] flex-col gap-6">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5.5 shadow-[var(--relieve-isla)]">
+          <p className="text-[13px] text-[var(--text-secondary)]">
             Este link no incluye un token de restablecimiento. Solicita uno
             nuevo desde <Link href="/forgot-password" className="text-[var(--color-accent)] hover:underline">"Olvidé mi contraseña"</Link>.
           </p>
@@ -68,25 +68,25 @@ function ResetInner() {
   }
 
   return (
-    <div className="w-full max-w-md">
-      <div className="mb-8 text-center">
-        <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
-          <KeyRound className="h-6 w-6" aria-hidden />
+    <div className="flex w-full max-w-[480px] flex-col gap-6">
+      <div className="flex flex-col items-center gap-2.5 text-center">
+        <div className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
+          <Icono nombre="lock" size={20} />
         </div>
-        <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
           Nueva contraseña
         </h1>
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+        <p className="text-[13px] text-[var(--text-tertiary)]">
           Elige una contraseña nueva para tu cuenta.
         </p>
       </div>
 
-      <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5.5 shadow-[var(--relieve-isla)]">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3.5">
           <div>
             <label
               htmlFor="password"
-              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
             >
               Nueva contraseña
             </label>
@@ -105,7 +105,7 @@ function ResetInner() {
           <div>
             <label
               htmlFor="confirm"
-              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
             >
               Confirmar contraseña
             </label>
@@ -127,14 +127,10 @@ function ResetInner() {
                 className={
                   c.ok
                     ? "inline-flex w-full items-center gap-1.5 text-[var(--color-success-fg)]"
-                    : "inline-flex w-full items-center gap-1.5 text-[var(--color-tertiary)]"
+                    : "inline-flex w-full items-center gap-1.5 text-[var(--text-tertiary)]"
                 }
               >
-                {c.ok ? (
-                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                ) : (
-                  <XCircle className="h-3.5 w-3.5" aria-hidden />
-                )}
+                <Icono nombre={c.ok ? "circle-check" : "circle-x"} size={13} />
                 {c.label}
               </li>
             ))}
@@ -142,14 +138,10 @@ function ResetInner() {
               className={
                 matches
                   ? "inline-flex w-full items-center gap-1.5 text-[var(--color-success-fg)]"
-                  : "inline-flex w-full items-center gap-1.5 text-[var(--color-tertiary)]"
+                  : "inline-flex w-full items-center gap-1.5 text-[var(--text-tertiary)]"
               }
             >
-              {matches ? (
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-              ) : (
-                <XCircle className="h-3.5 w-3.5" aria-hidden />
-              )}
+              <Icono nombre={matches ? "circle-check" : "circle-x"} size={13} />
               Las contraseñas coinciden
             </li>
           </ul>
@@ -176,7 +168,7 @@ function ResetInner() {
           <div className="text-center text-xs">
             <Link
               href="/login"
-              className="text-[var(--color-tertiary)] hover:text-[var(--color-primary)] hover:underline"
+              className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:underline"
             >
               Volver a iniciar sesión
             </Link>
@@ -189,9 +181,9 @@ function ResetInner() {
 
 export default function ResetPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--color-app)] px-4 py-12">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--color-subtle)] px-4 py-12">
       <Suspense
-        fallback={<div className="text-sm text-[var(--color-tertiary)]">Cargando…</div>}
+        fallback={<div className="text-sm text-[var(--text-tertiary)]">Cargando…</div>}
       >
         <ResetInner />
       </Suspense>

@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -114,27 +114,28 @@ export default function UsersListPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">Usuarios</h1>
-          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">Usuarios</h1>
+          <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
             Da de alta, edita y administra el acceso de tu equipo.
           </p>
         </div>
         {canCreateUser ? (
           <Link href="/admin/users/new">
             <Button size="md">
-              <Plus className="h-4 w-4" aria-hidden />
+              <Icono nombre="plus" size={15} />
               Nuevo usuario
             </Button>
           </Link>
         ) : null}
       </header>
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-        <div className="grid gap-3 border-b border-[var(--border-default)] p-4 sm:grid-cols-[1fr_180px_160px]">
+      <section className="rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
+        <div className="grid gap-3 border-b border-[var(--border-subtle)] p-4 sm:grid-cols-[1fr_180px_160px]">
           <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-tertiary)]"
-              aria-hidden
+            <Icono
+              nombre="search"
+              size={15}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
             />
             <Input
               type="search"
@@ -182,34 +183,34 @@ export default function UsersListPage() {
         ) : null}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+          <table className="w-full table-fixed text-[13px]">
+            <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
               <tr>
-                <SortableTh<AdminUser> sortKey="user" getter={(u) => u.full_name ?? u.email} ctrl={usersCtrl} className="px-4 py-3">Usuario</SortableTh>
-                <SortableTh<AdminUser> sortKey="roles" getter={(u) => (u.roles ?? []).join(",")} ctrl={usersCtrl} className="px-4 py-3">Roles</SortableTh>
-                <SortableTh<AdminUser> sortKey="status" getter={(u) => (u.is_active ? "activo" : "inactivo")} ctrl={usersCtrl} className="px-4 py-3">Estado</SortableTh>
-                <SortableTh<AdminUser> sortKey="last_login" getter={(u) => (u as any).last_login_at ?? ""} ctrl={usersCtrl} className="px-4 py-3">Último ingreso</SortableTh>
-                <th className="px-4 py-3" aria-label="Acciones" />
+                <SortableTh<AdminUser> sortKey="user" getter={(u) => u.full_name ?? u.email} ctrl={usersCtrl} className="h-8.5 px-4">Usuario</SortableTh>
+                <SortableTh<AdminUser> sortKey="roles" getter={(u) => (u.roles ?? []).join(",")} ctrl={usersCtrl} className="h-8.5 px-4 w-25">Rol</SortableTh>
+                <SortableTh<AdminUser> sortKey="status" getter={(u) => (u.is_active ? "activo" : "inactivo")} ctrl={usersCtrl} className="h-8.5 px-4 w-44">Estado</SortableTh>
+                <SortableTh<AdminUser> sortKey="last_login" getter={(u) => (u as any).last_login_at ?? ""} ctrl={usersCtrl} className="h-8.5 px-4 w-43">Último ingreso</SortableTh>
+                <th className="h-8.5 w-20 px-4" aria-label="Acciones" />
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-[var(--border-subtle)]">
-                    <td className="px-4 py-3">
+                  <tr key={i} className="h-11 border-b border-[var(--border-subtle)]">
+                    <td className="px-4">
                       <Skeleton className="h-4 w-40" />
                       <Skeleton className="mt-1 h-3 w-56" />
                     </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-24" />
-                    </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4">
                       <Skeleton className="h-4 w-16" />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4">
+                      <Skeleton className="h-4 w-20" />
+                    </td>
+                    <td className="px-4">
                       <Skeleton className="h-4 w-24" />
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 text-right">
                       <Skeleton className="ml-auto h-4 w-12" />
                     </td>
                   </tr>
@@ -218,38 +219,42 @@ export default function UsersListPage() {
                 sortedUsers.map((u: AdminUser) => (
                   <tr
                     key={u.id}
-                    className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+                    className="h-11 border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--color-subtle)]/60"
                   >
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-[var(--color-primary)]">{u.full_name}</div>
-                      <div className="text-xs text-[var(--color-tertiary)]">
-                        {u.username} · {u.email}
+                    <td className="min-w-0 px-4">
+                      <div className="flex min-w-0 flex-col">
+                        <span className="overflow-hidden text-ellipsis whitespace-nowrap font-medium text-[var(--text-primary)]">
+                          {u.full_name}
+                        </span>
+                        <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] text-[var(--text-tertiary)]">
+                          {u.username} · {u.email}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4">
                       <Badge>
                         {u.role_type ? ROLE_TYPE_LABEL[u.role_type as keyof typeof ROLE_TYPE_LABEL] ?? u.role_type : "PM"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3">
-                      {u.is_active ? (
-                        <Badge variant="success">Activo</Badge>
-                      ) : (
-                        <Badge variant="danger">Inactivo</Badge>
-                      )}
-                      {u.must_change_password ? (
-                        <Badge variant="warning" className="ml-1">
-                          Cambio pendiente
-                        </Badge>
-                      ) : null}
+                    <td className="px-4">
+                      <div className="flex items-center gap-1.5">
+                        {u.is_active ? (
+                          <Badge variant="success">Activo</Badge>
+                        ) : (
+                          <Badge variant="danger">Inactivo</Badge>
+                        )}
+                        {u.must_change_password ? (
+                          <Badge variant="warning">Cambio pendiente</Badge>
+                        ) : null}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-[var(--color-secondary)]">
+                    <td className="px-4 text-[12.5px] text-[var(--text-secondary)]">
                       {formatDate(u.last_login)}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 text-right">
                       <Link
                         href={`/admin/users/${u.id}`}
-                        className="text-sm font-medium text-[var(--color-primary)] hover:underline"
+                        className="text-[12.5px] font-medium text-[var(--text-primary)] hover:underline"
                       >
                         Editar
                       </Link>
@@ -258,7 +263,7 @@ export default function UsersListPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--color-tertiary)]">
+                  <td colSpan={5} className="px-4 py-16 text-center text-[var(--text-tertiary)]">
                     No hay usuarios que coincidan con los filtros.
                   </td>
                 </tr>
@@ -268,10 +273,10 @@ export default function UsersListPage() {
         </div>
 
         {data && data.total > 0 ? (
-          <div className="flex items-center justify-between gap-3 border-t border-[var(--border-default)] px-4 py-3 text-sm text-[var(--color-secondary)]">
+          <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] px-4 py-3 text-[13px] text-[var(--text-secondary)]">
             <div>
-              Página <span className="font-medium text-[var(--color-primary)]">{data.page}</span> de{" "}
-              <span className="font-medium text-[var(--color-primary)]">{totalPages}</span> ·{" "}
+              Página <span className="font-medium text-[var(--text-primary)]">{data.page}</span> de{" "}
+              <span className="font-medium text-[var(--text-primary)]">{totalPages}</span> ·{" "}
               {data.total} resultados
             </div>
             <div className="flex gap-2">

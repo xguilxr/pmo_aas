@@ -3,14 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import {
-  AlertOctagon,
-  BarChart3,
-  Briefcase,
-  CircleDollarSign,
-  TrendingUp,
-  Users,
-} from "lucide-react";
+import { Icono } from "@/components/ui/icono";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -27,7 +20,7 @@ import {
   Treemap,
   colorSalud,
 } from "@/components/dashboard-charts";
-import { KpiCard } from "@/components/kpi-card";
+import { KpiBand, KpiCard } from "@/components/kpi-card";
 import { ApiError } from "@/lib/api";
 import {
   getDashboardCharts,
@@ -719,13 +712,11 @@ function DashboardInner() {
           se actúa sobre ella. Este tablero contesta «cómo va la cartera», y
           para eso el par plan/real, lo consumido y los recursos sobreasignados
           dicen más que cuántos ítems hay abiertos en cada bandeja. */}
-      <section aria-label="Indicadores" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <KpiBand className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <KpiCard
           label="Proyectos activos"
           value={kpis?.active_projects}
           loading={loadingKpis}
-          icon={<Briefcase className="h-4 w-4" aria-hidden />}
-          tone="accent"
           hint={enPreparacion}
           href="/pmo/projects?phase=preparacion&phase=ejecucion&phase=hypercare"
         />
@@ -739,8 +730,6 @@ function DashboardInner() {
           value={kpis?.progress_avg}
           loading={loadingKpis}
           format="percent"
-          icon={<TrendingUp className="h-4 w-4" aria-hidden />}
-          tone={desviacionDePlan !== null && desviacionDePlan < 0 ? "warning" : "success"}
           hint={pieDePlan}
         />
         {/* BUG-092 — con una sola moneda se pinta el importe. Con varias NO hay
@@ -753,13 +742,11 @@ function DashboardInner() {
           format="currency"
           moneda={monedaUnica(kpis?.budget_by_currency ?? {}) ?? undefined}
           hint={pieDePresupuesto}
-          icon={<CircleDollarSign className="h-4 w-4" aria-hidden />}
         />
         <KpiCard
           label="Riesgos severos"
           value={kpis?.severe_risks}
           loading={loadingKpis}
-          icon={<AlertOctagon className="h-4 w-4" aria-hidden />}
           tone="danger"
           hint={pieDeRiesgos}
           href="/pmo/raid?kind=risks&severity_min=13"
@@ -768,12 +755,11 @@ function DashboardInner() {
           label="Sobreasignados"
           value={sobreasignados}
           loading={cargandoEjecutivo}
-          icon={<Users className="h-4 w-4" aria-hidden />}
           tone={sobreasignados ? "warning" : undefined}
           hint="recursos por encima de su capacidad"
           href="/pmo/resources"
         />
-      </section>
+      </KpiBand>
 
       {/* US-206 · fila 2 — las tres listas cortas. Un agregado dice que algo
           pasa; estas dicen dónde. */}
@@ -1030,7 +1016,7 @@ function DashboardInner() {
         </div>
         <Link href={rutaVistaMaestra}>
           <Button type="button" variant="secondary" size="sm">
-            <BarChart3 className="mr-1 h-3.5 w-3.5" aria-hidden />
+            <Icono nombre="file-spreadsheet" size={14} className="mr-1" />
             Abrir la vista maestra
           </Button>
         </Link>

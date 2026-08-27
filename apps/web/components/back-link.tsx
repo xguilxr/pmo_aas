@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 
 type Props = {
   /** Fallback href usado si no hay historial disponible (p. ej. deep-link). */
@@ -42,7 +42,7 @@ export function BackLink({ fallbackHref, label = "Volver" }: Props) {
       }}
       aria-label={label}
     >
-      <ArrowLeft className="h-4 w-4" aria-hidden />
+      <Icono nombre="arrow-left" size={15} />
       {label}
     </Button>
   );
@@ -59,7 +59,7 @@ export function BackLinkStatic({ href, label = "Volver" }: { href: string; label
       className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
       aria-label={label}
     >
-      <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+      <Icono nombre="arrow-left" size={13} />
       {label}
     </Link>
   );

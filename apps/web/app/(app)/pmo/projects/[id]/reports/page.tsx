@@ -3,24 +3,11 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
-import {
-  ArrowLeft,
-  CalendarClock,
-  Download,
-  Eye,
-  FileText,
-  LayoutGrid,
-  Mail,
-  Pencil,
-  Plus,
-  Send,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -233,7 +220,7 @@ function ReportsInner() {
         <div className="flex items-center gap-2">
           <Link href={`/pmo/projects/${id}/reports/builder`}>
             <Button>
-              <LayoutGrid className="h-4 w-4" aria-hidden />
+              <Icono nombre="grid-2x2" size={15} />
               Builder
             </Button>
           </Link>
@@ -245,11 +232,12 @@ function ReportsInner() {
       {/* ENH-121: 3 tabs. Generar (default) | Historial | Programar.
           Sub-tabs Builder y Creación deprecados; Builder vive standalone
           en /reports/builder; la lógica de Creación se fusiona en el
-          builder. */}
+          builder. Mismo patrón de filete inferior que /pmo/requests y
+          /pmo/reports. */}
       <div
-        role="radiogroup"
+        role="tablist"
         aria-label="Vista de reportes"
-        className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+        className="flex items-center gap-5 border-b border-[var(--border-default)] shadow-[var(--linea-surco)]"
       >
         {(
           [
@@ -263,14 +251,14 @@ function ReportsInner() {
             <button
               key={opt.v}
               type="button"
-              role="radio"
-              aria-checked={active}
+              role="tab"
+              aria-selected={active}
               onClick={() => setViewAndHash(opt.v)}
               className={cn(
-                "rounded-[var(--radius-sm)] px-4 py-1.5 text-xs font-medium transition-colors",
+                "-mb-px flex h-9 items-center border-b-2 text-[13px] transition-colors",
                 active
-                  ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+                  ? "border-[var(--text-primary)] font-semibold text-[var(--text-primary)]"
+                  : "border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-primary)]",
               )}
             >
               {opt.label}
@@ -382,14 +370,11 @@ function ScheduledReportsSection({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <CalendarClock
-            className="h-4 w-4 text-[var(--color-tertiary)]"
-            aria-hidden
-          />
-          <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+          <Icono nombre="calendar" size={15} className="text-[var(--text-tertiary)]" />
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">
             Envíos automáticos programados
           </h2>
         </div>
@@ -400,7 +385,7 @@ function ScheduledReportsSection({ projectId }: { projectId: string }) {
             setFormOpen(true);
           }}
         >
-          <Plus className="h-4 w-4" aria-hidden /> Nueva programación
+          <Icono nombre="plus" size={15} /> Nueva programación
         </Button>
       </header>
       {error ? (
@@ -415,7 +400,7 @@ function ScheduledReportsSection({ projectId }: { projectId: string }) {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="px-4 py-6 text-center text-sm text-[var(--color-tertiary)]">
+        <div className="px-4 py-6 text-center text-sm text-[var(--text-tertiary)]">
           Sin programaciones aún. Crea una para enviar Reportes de Avance o
           Seguimiento a los involucrados en una cadencia fija.
         </div>
@@ -428,7 +413,7 @@ function ScheduledReportsSection({ projectId }: { projectId: string }) {
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="font-medium text-[var(--color-primary)]">
+                  <span className="font-medium text-[var(--text-primary)]">
                     {REPORT_TYPE_LABEL[r.report_type]}
                   </span>
                   <Badge variant="neutral">{CADENCE_LABEL[r.cadence]}</Badge>
@@ -438,9 +423,9 @@ function ScheduledReportsSection({ projectId }: { projectId: string }) {
                     <Badge variant="neutral">Pausada</Badge>
                   )}
                 </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--color-tertiary)]">
+                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--text-tertiary)]">
                   <span className="inline-flex items-center gap-1">
-                    <Mail className="h-3 w-3" aria-hidden />
+                    <Icono nombre="mail" size={13} />
                     {r.recipients.length} destinatarios
                   </span>
                   <span>Próximo: {fmtDate(r.next_run_at)}</span>
@@ -484,7 +469,7 @@ function ScheduledReportsSection({ projectId }: { projectId: string }) {
                   aria-label="Editar"
                   title="Editar"
                 >
-                  <Pencil className="h-4 w-4" aria-hidden />
+                  <Icono nombre="pen" size={15} />
                 </Button>
                 <Button
                   type="button"
@@ -494,7 +479,7 @@ function ScheduledReportsSection({ projectId }: { projectId: string }) {
                   aria-label="Eliminar"
                   title="Eliminar"
                 >
-                  <Trash2 className="h-4 w-4" aria-hidden />
+                  <Icono nombre="bin" size={15} />
                 </Button>
               </div>
             </li>
@@ -677,7 +662,7 @@ function ScheduledReportForm({
         <div>
           <label
             htmlFor="sched-type"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
           >
             Tipo de reporte
           </label>
@@ -705,7 +690,7 @@ function ScheduledReportForm({
         <div>
           <label
             htmlFor="sched-cadence"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
           >
             Cadencia
           </label>
@@ -728,7 +713,7 @@ function ScheduledReportForm({
             <div>
               <label
                 htmlFor="sched-dow"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
               >
                 Día de la semana
               </label>
@@ -749,7 +734,7 @@ function ScheduledReportForm({
             <div>
               <label
                 htmlFor="sched-hod"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
               >
                 Hora (24h)
               </label>
@@ -770,7 +755,7 @@ function ScheduledReportForm({
           <div>
             <label
               htmlFor="sched-hod-d"
-              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
             >
               Hora (24h)
             </label>
@@ -791,7 +776,7 @@ function ScheduledReportForm({
             <div>
               <label
                 htmlFor="sched-dom"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
               >
                 Día del mes (1-31)
               </label>
@@ -806,14 +791,14 @@ function ScheduledReportForm({
                   </option>
                 ))}
               </Select>
-              <p className="mt-1 text-[11px] text-[var(--color-tertiary)]">
+              <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
                 Si el mes seleccionado no tiene ese día, se enviará el último día del mes.
               </p>
             </div>
             <div>
               <label
                 htmlFor="sched-hod-m"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
               >
                 Hora (24h)
               </label>
@@ -835,7 +820,7 @@ function ScheduledReportForm({
             <div>
               <label
                 htmlFor="sched-runat-date"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
               >
                 Fecha
               </label>
@@ -849,7 +834,7 @@ function ScheduledReportForm({
             <div>
               <label
                 htmlFor="sched-runat-time"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
               >
                 Hora
               </label>
@@ -867,7 +852,7 @@ function ScheduledReportForm({
         <div>
           <label
             htmlFor="sched-recipients"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
           >
             Destinatarios (emails separados por coma)
           </label>
@@ -887,7 +872,7 @@ function ScheduledReportForm({
           />
           <label
             htmlFor="sched-enabled"
-            className="text-sm text-[var(--color-secondary)]"
+            className="text-sm text-[var(--text-secondary)]"
           >
             Activa
           </label>
@@ -962,7 +947,7 @@ function CreateReportModal({
         <div>
           <label
             htmlFor="rep-title"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
           >
             Título (opcional)
           </label>
@@ -976,7 +961,7 @@ function CreateReportModal({
         <div>
           <label
             htmlFor="rep-period"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
           >
             Periodo
           </label>
@@ -993,7 +978,7 @@ function CreateReportModal({
         <div>
           <label
             htmlFor="rep-recipients"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
           >
             Destinatarios (emails separados por coma)
           </label>
@@ -1070,7 +1055,7 @@ function GenerateWithAIButton({
         onClick={generate}
         loading={working}
       >
-        <Sparkles className="h-4 w-4" aria-hidden /> Generar con IA
+        <Icono nombre="info" size={15} /> Generar con IA
       </Button>
       {polling.isPolling ? (
         <span className="text-[11px] text-[var(--text-tertiary)]">
@@ -1118,7 +1103,7 @@ function GenerateAvanceButton({
         onClick={generate}
         loading={working}
       >
-        <Download className="h-4 w-4" aria-hidden /> Reporte de Avance (PDF)
+        <Icono nombre="download" size={15} /> Reporte de Avance (PDF)
       </Button>
       {error ? (
         <span className="text-[11px] text-[var(--color-danger-fg)]">{error}</span>
@@ -1158,7 +1143,7 @@ function GenerateSeguimientoButton({
         onClick={generate}
         loading={working}
       >
-        <Download className="h-4 w-4" aria-hidden /> Reporte de Seguimiento (PDF)
+        <Icono nombre="download" size={15} /> Reporte de Seguimiento (PDF)
       </Button>
       {error ? (
         <span className="text-[11px] text-[var(--color-danger-fg)]">{error}</span>
@@ -1288,7 +1273,7 @@ function ReportEditor({
             onClick={onBack}
             className="inline-flex items-center gap-1 text-[11px] text-[var(--text-tertiary)] hover:underline"
           >
-            <ArrowLeft className="h-3 w-3" aria-hidden /> Volver al listado
+            <Icono nombre="arrow-left" size={13} /> Volver al listado
           </button>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <input
@@ -1309,13 +1294,13 @@ function ReportEditor({
           {!readOnly ? (
             <>
               <Button variant="ghost" onClick={() => setConfirmDelete(true)}>
-                <Trash2 className="h-4 w-4" aria-hidden /> Eliminar
+                <Icono nombre="bin" size={15} /> Eliminar
               </Button>
               <Button variant="secondary" loading={saving} onClick={save}>
                 Guardar
               </Button>
               <Button loading={sending} onClick={send}>
-                <Send className="h-4 w-4" aria-hidden /> Enviar
+                <Icono nombre="mail" size={15} /> Enviar
               </Button>
             </>
           ) : null}
@@ -1325,10 +1310,10 @@ function ReportEditor({
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {notice ? <Banner variant="success">{notice}</Banner> : null}
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+            <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
               Periodo
             </label>
             <Select
@@ -1348,7 +1333,7 @@ function ReportEditor({
             </Select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+            <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
               Destinatarios (emails separados por coma)
             </label>
             <Input
@@ -1366,7 +1351,7 @@ function ReportEditor({
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+            <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
               Asunto al enviar (opcional)
             </label>
             <Input
@@ -1383,9 +1368,9 @@ function ReportEditor({
         {sectionKeys.map((k) => (
           <div
             key={k}
-            className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]"
+            className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
           >
-            <h3 className="mb-2 text-sm font-semibold text-[var(--color-primary)]">
+            <h3 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">
               {SECTION_LABELS[k] ?? k}
             </h3>
             <Textarea
@@ -1409,7 +1394,7 @@ function ReportEditor({
         onClose={() => setConfirmDelete(false)}
         title="Eliminar reporte"
       >
-        <p className="text-sm text-[var(--color-secondary)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           ¿Seguro? El reporte y sus secciones se borrarán permanentemente.
         </p>
         <div className="mt-4 flex justify-end gap-2">
@@ -1586,24 +1571,24 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
         {CATALOG_TEMPLATES.map((t) => (
           <article
             key={t.id}
-            className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]"
+            className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]"
           >
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]">
-                <FileText className="h-5 w-5" aria-hidden />
+              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--text-tertiary)]">
+                <Icono nombre="file-text" size={18} />
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-[var(--color-primary)]">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                   {t.title}
                 </h3>
-                <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]">
                   {t.description}
                 </p>
               </div>
             </div>
-            <label className="flex items-center gap-2 pt-1 text-xs text-[var(--color-secondary)]">
+            <label className="flex items-center gap-2 pt-1 text-xs text-[var(--text-secondary)]">
               <span className="font-medium">Período</span>
-              <select
+              <Select
                 value={periodByTemplate[t.id] ?? 7}
                 onChange={(e) =>
                   setPeriodByTemplate((prev) => ({
@@ -1612,14 +1597,14 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
                   }))
                 }
                 disabled={busy !== null}
-                className="rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 py-1 text-xs"
+                className="w-32"
               >
                 {PERIOD_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <div className="flex flex-wrap gap-2 pt-1">
               <Button
@@ -1630,7 +1615,7 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
                 loading={busy === `${t.id}-preview`}
                 disabled={busy !== null && busy !== `${t.id}-preview`}
               >
-                <Eye className="h-4 w-4" aria-hidden /> Visualizar
+                <Icono nombre="eye" size={15} /> Visualizar
               </Button>
               <Button
                 type="button"
@@ -1639,7 +1624,7 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
                 loading={busy === `${t.id}-download`}
                 disabled={busy !== null && busy !== `${t.id}-download`}
               >
-                <Download className="h-4 w-4" aria-hidden /> Descargar
+                <Icono nombre="download" size={15} /> Descargar
               </Button>
             </div>
           </article>
@@ -1648,43 +1633,43 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
         {/* US-147: Look-ahead card. Ventana hacia adelante (num + unidad). */}
         <article
           key="look_ahead"
-          className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]"
+          className="flex flex-col gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]"
         >
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]">
-              <FileText className="h-5 w-5" aria-hidden />
+            <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--text-tertiary)]">
+              <Icono nombre="file-text" size={18} />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-[var(--color-primary)]">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                 Look-ahead
               </h3>
-              <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+              <p className="mt-1 text-xs text-[var(--text-tertiary)]">
                 Actividades que arrancan o terminan en la ventana definida desde
                 hoy. No incluye vencidas.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 pt-1 text-xs text-[var(--color-secondary)]">
+          <div className="flex items-center gap-2 pt-1 text-xs text-[var(--text-secondary)]">
             <span className="font-medium">Ventana</span>
-            <input
+            <Input
               type="number"
               min={1}
               max={52}
               value={lookAheadValue}
               onChange={(e) => setLookAheadValue(Math.max(1, Number(e.target.value) || 1))}
               disabled={busy !== null}
-              className="w-16 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 py-1 text-xs"
+              className="w-16"
             />
-            <select
+            <Select
               value={lookAheadUnit}
               onChange={(e) => setLookAheadUnit(e.target.value as LookAheadUnit)}
               disabled={busy !== null}
-              className="rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2 py-1 text-xs"
+              className="w-28"
             >
               <option value="days">días</option>
               <option value="weeks">semanas</option>
               <option value="months">meses</option>
-            </select>
+            </Select>
           </div>
           <div className="flex flex-wrap gap-2 pt-1">
             <Button
@@ -1694,14 +1679,14 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
               loading={busy === "look_ahead-download"}
               disabled={busy !== null && busy !== "look_ahead-download"}
             >
-              <Download className="h-4 w-4" aria-hidden /> Descargar
+              <Icono nombre="download" size={15} /> Descargar
             </Button>
           </div>
         </article>
       </div>
 
       {/* ENH-121: catálogo de plantillas builder guardadas para este proyecto */}
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
         <header className="mb-3 flex items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
@@ -1714,7 +1699,7 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
           </div>
           <Link href={`/pmo/projects/${projectId}/reports/builder`}>
             <Button size="sm" variant="secondary">
-              <LayoutGrid className="h-3.5 w-3.5" aria-hidden /> Abrir Builder
+              <Icono nombre="grid-2x2" size={14} /> Abrir Builder
             </Button>
           </Link>
         </header>
@@ -1750,7 +1735,7 @@ function ReportCatalogView({ projectId }: { projectId: string }) {
                     loading={busy === `builder-${tpl.id}`}
                     disabled={busy !== null && busy !== `builder-${tpl.id}`}
                   >
-                    <Download className="h-3.5 w-3.5" aria-hidden /> Generar
+                    <Icono nombre="download" size={14} /> Generar
                   </Button>
                   <Link href={`/pmo/projects/${projectId}/reports/builder?template_id=${tpl.id}`}>
                     <Button size="sm" variant="ghost">
@@ -1877,7 +1862,7 @@ function HistoryKPICard({
         ? "bg-[var(--color-success-bg)] text-[var(--color-success-fg)] border-[var(--color-success-border)]"
         : tone === "warning"
           ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)] border-[var(--color-warning-border)]"
-          : "bg-[var(--color-subtle)] text-[var(--color-secondary)] border-[var(--border-default)]";
+          : "bg-[var(--color-subtle)] text-[var(--text-secondary)] border-[var(--border-default)]";
   const ratio = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
   return (
     <button
@@ -1888,8 +1873,8 @@ function HistoryKPICard({
         "flex flex-col gap-2 rounded-[var(--radius-lg)] border p-3 text-left transition-shadow",
         toneClass,
         active
-          ? "shadow-[var(--shadow-sm)] ring-2 ring-[var(--color-primary)] ring-offset-1 ring-offset-[var(--color-app)]"
-          : "shadow-[var(--shadow-xs)] hover:shadow-[var(--shadow-sm)]",
+          ? "shadow-[var(--relieve-control)] ring-2 ring-[var(--color-primary)] ring-offset-1 ring-offset-[var(--color-app)]"
+          : "shadow-[var(--relieve-control)] hover:shadow-[var(--relieve-isla)]",
       )}
     >
       <span className="text-[11px] font-medium uppercase tracking-wide opacity-80">
@@ -2033,7 +2018,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
             <Skeleton key={i} className="h-24 w-full rounded-[var(--radius-lg)]" />
           ))}
         </div>
-        <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+        <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-12 w-full" />
           ))}
@@ -2048,17 +2033,17 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
 
   if (items.length === 0) {
     return (
-      <section className="rounded-[var(--radius-xl)] border border-[var(--color-info-border)] bg-[var(--color-info-bg)] p-10 text-center shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--color-info-border)] bg-[var(--color-info-bg)] p-10 text-center shadow-[var(--relieve-isla)]">
         <div
           aria-hidden
           className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-info-border)] bg-[var(--color-surface)]"
         >
-          <CalendarClock className="h-7 w-7 text-[var(--color-info-fg)]" />
+          <Icono nombre="calendar" size={22} className="text-[var(--color-info-fg)]" />
         </div>
         <p className="text-sm font-semibold text-[var(--color-info-fg)]">
           Sin historial todavía
         </p>
-        <p className="mt-1 text-xs text-[var(--color-secondary)]">
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">
           Genera tu primer reporte de Avance o Seguimiento desde la vista
           Catálogo. Cada generación queda registrada aquí.
         </p>
@@ -2119,7 +2104,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
         />
       </div>
 
-      <div className="flex flex-col gap-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-sm)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-3 shadow-[var(--relieve-isla)] sm:flex-row sm:items-center sm:justify-between">
         {/* ENH-073: segmented tabs con pill de conteo. */}
         <div
           role="radiogroup"
@@ -2139,7 +2124,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
                   "flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1 text-xs font-medium transition-colors",
                   active
                     ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
-                    : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                    : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
                 )}
               >
                 <span>{tab.label}</span>
@@ -2148,7 +2133,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
                     "rounded-full px-1.5 py-0.5 font-mono text-[10px] tabular-nums",
                     active
                       ? "bg-[var(--color-inverse)]/20 text-[var(--color-inverse)]"
-                      : "bg-[var(--color-subtle)] text-[var(--color-tertiary)]",
+                      : "bg-[var(--color-subtle)] text-[var(--text-tertiary)]",
                   )}
                 >
                   {tab.count}
@@ -2169,42 +2154,43 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
       </div>
 
       {sortedItems.length === 0 ? (
-        <section className="rounded-[var(--radius-xl)] border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] p-8 text-center shadow-[var(--shadow-sm)]">
+        <section className="rounded-[var(--radius-xl)] border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] p-8 text-center shadow-[var(--relieve-isla)]">
           <div
             aria-hidden
             className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-warning-border)] bg-[var(--color-surface)]"
           >
-            <Eye className="h-6 w-6 text-[var(--color-warning-fg)]" />
+            <Icono nombre="eye" size={20} className="text-[var(--color-warning-fg)]" />
           </div>
           <p className="text-sm font-semibold text-[var(--color-warning-fg)]">
             Sin coincidencias
           </p>
-          <p className="mt-1 text-xs text-[var(--color-secondary)]">
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
             Ajusta los filtros o la búsqueda para ver resultados.
           </p>
         </section>
       ) : (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-      <table className="w-full text-sm">
-        <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+    <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+      <div className="overflow-x-auto">
+      <table className="w-full table-fixed text-[13px]">
+        <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
           <tr>
             {(
               [
-                ["generated_at", "Fecha"],
-                ["report_type", "Tipo"],
-                ["generated_by", "Generado por"],
-                ["size", "Tamaño"],
+                ["generated_at", "Fecha", "w-40"],
+                ["report_type", "Tipo", "w-32"],
+                ["generated_by", "Generado por", ""],
+                ["size", "Tamaño", "w-24"],
               ] as const
-            ).map(([col, label]) => {
+            ).map(([col, label, w]) => {
               const active = sort.col === col;
               return (
-                <th key={col} className="px-3 py-2 font-medium">
+                <th key={col} className={cn("h-8.5 px-3", w)}>
                   <button
                     type="button"
                     onClick={() => onHeaderClick(col)}
-                    className={`flex items-center gap-1 hover:text-[var(--color-primary)] ${
+                    className={`flex items-center gap-1 hover:text-[var(--text-primary)] ${
                       active && sort.dir !== "none"
-                        ? "text-[var(--color-primary)]"
+                        ? "text-[var(--text-primary)]"
                         : ""
                     }`}
                     aria-sort={
@@ -2223,35 +2209,35 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
                 </th>
               );
             })}
-            <th className="w-32 px-3 py-2 font-medium" aria-label="Acciones" />
+            <th className="h-8.5 w-36 px-3" aria-label="Acciones" />
           </tr>
         </thead>
         <tbody>
           {sortedItems.map((h) => (
             <tr
               key={h.id}
-              className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+              className="h-11 border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
             >
-              <td className="px-3 py-2 text-xs tabular-nums text-[var(--color-secondary)]">
+              <td className="px-3 text-[12.5px] tabular-nums text-[var(--text-secondary)]">
                 {new Date(h.generated_at).toLocaleString("es-MX", {
                   dateStyle: "short",
                   timeStyle: "short",
                 })}
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3">
                 <Badge variant="neutral">
                   {reportTypeLabel(h.report_type)}
                 </Badge>
               </td>
-              <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+              <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--text-secondary)]">
                 {h.generated_by_name ?? "—"}
               </td>
-              <td className="px-3 py-2 text-xs tabular-nums text-[var(--color-tertiary)]">
+              <td className="px-3 text-[12.5px] tabular-nums text-[var(--text-tertiary)]">
                 {h.file_size_bytes != null
                   ? `${Math.max(1, Math.round(h.file_size_bytes / 1024))} KB`
                   : "—"}
               </td>
-              <td className="px-3 py-2 text-right">
+              <td className="px-3 text-right">
                 <Button
                   type="button"
                   variant="ghost"
@@ -2259,7 +2245,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
                   onClick={() => previewReportHistory(h.id).catch(() => {})}
                   title="Ver PDF"
                 >
-                  <Eye className="h-4 w-4" aria-hidden />
+                  <Icono nombre="eye" size={15} />
                 </Button>
                 {/* US-111 rework: ver el HTML interactivo (KPIs +
                     filtros vanilla JS embebidos) cuando el reporte
@@ -2274,7 +2260,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
                     }
                     title="Ver HTML interactivo"
                   >
-                    <FileText className="h-4 w-4" aria-hidden />
+                    <Icono nombre="file-text" size={15} />
                   </Button>
                 ) : null}
                 <Button
@@ -2284,7 +2270,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
                   onClick={() => downloadReportHistory(h.id).catch(() => {})}
                   title="Descargar"
                 >
-                  <Download className="h-4 w-4" aria-hidden />
+                  <Icono nombre="download" size={15} />
                 </Button>
                 <Button
                   type="button"
@@ -2294,13 +2280,14 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
                   title="Borrar"
                   aria-label="Borrar este reporte"
                 >
-                  <Trash2 className="h-4 w-4" aria-hidden />
+                  <Icono nombre="bin" size={15} />
                 </Button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
     </section>
       )}
       {/* ENH-081: Modal de confirmación para borrar reporte. */}
@@ -2310,7 +2297,7 @@ function ReportHistoryView({ projectId }: { projectId: string }) {
         title="Borrar reporte"
       >
         <div className="space-y-3">
-          <p className="text-sm text-[var(--color-secondary)]">
+          <p className="text-sm text-[var(--text-secondary)]">
             ¿Borrar este reporte del historial? Esta acción no se puede
             deshacer.
           </p>
@@ -2425,7 +2412,7 @@ function FilterChips<T extends string>({
 }) {
   return (
     <div>
-      <p className="mb-1 text-xs font-medium text-[var(--color-secondary)]">
+      <p className="mb-1 text-xs font-medium text-[var(--text-secondary)]">
         {label}
       </p>
       <div className="flex flex-wrap gap-1">
@@ -2439,7 +2426,7 @@ function FilterChips<T extends string>({
               className={`rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs transition ${
                 active
                   ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
-                  : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]"
+                  : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]"
               }`}
             >
               {labelMap?.[opt] ?? opt}
@@ -2635,13 +2622,13 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
           (nuevo desde data del proyecto / desde plantilla guardada) +
           tweaker IA HTML iterativo. El form clásico de abajo queda
           como atajo para reportes guiados. */}
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-subtle)]/40 p-4 shadow-[var(--shadow-sm)]">
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-subtle)]/40 p-4 shadow-[var(--relieve-isla)]">
         <div>
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
-            <Sparkles className="h-4 w-4" aria-hidden />
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+            <Icono nombre="info" size={15} />
             Crear reporte con tweaker IA HTML
           </h2>
-          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+          <p className="mt-1 text-xs text-[var(--text-tertiary)]">
             Elige punto de partida (data del proyecto o plantilla
             guardada) y modifícalo iterativamente con instrucciones IA.
           </p>
@@ -2654,19 +2641,19 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
       </section>
 
     <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
-      <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
-          <Sparkles className="h-4 w-4" aria-hidden />
+      <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+          <Icono nombre="info" size={15} />
           Creación con IA (clásico)
         </h2>
-        <p className="text-xs text-[var(--color-tertiary)]">
+        <p className="text-xs text-[var(--text-tertiary)]">
           La IA del tenant arma un reporte custom combinando datos del
           proyecto con tus instrucciones. Si tu tenant no tiene IA
           configurada, este panel se rechaza con error claro.
         </p>
         {error ? <Banner variant="danger">{error}</Banner> : null}
         <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
             Tipo base
           </label>
           <Select
@@ -2681,7 +2668,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
           </Select>
         </div>
         <fieldset className="space-y-1.5">
-          <legend className="mb-1 text-xs font-medium text-[var(--color-secondary)]">
+          <legend className="mb-1 text-xs font-medium text-[var(--text-secondary)]">
             Secciones a incluir
           </legend>
           {(
@@ -2704,7 +2691,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
         </fieldset>
         {/* ENH-071: filtros configurables sobre el listado del reporte. */}
         <fieldset className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-2">
-          <legend className="flex items-center gap-1.5 px-1 text-xs font-medium text-[var(--color-secondary)]">
+          <legend className="flex items-center gap-1.5 px-1 text-xs font-medium text-[var(--text-secondary)]">
             <span>Filtros</span>
             {filterCount > 0 ? (
               <span className="rounded-full bg-[var(--color-accent)] px-1.5 py-0.5 text-[10px] font-semibold text-white">
@@ -2715,7 +2702,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
               <button
                 type="button"
                 onClick={() => setFilters(EMPTY_FILTERS)}
-                className="ml-auto text-[10px] uppercase tracking-wide text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
+                className="ml-auto text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
               >
                 Limpiar
               </button>
@@ -2723,7 +2710,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
           </legend>
           <div className="grid grid-cols-2 gap-2">
             <label className="text-xs">
-              <span className="mb-1 block text-[var(--color-tertiary)]">
+              <span className="mb-1 block text-[var(--text-tertiary)]">
                 Desde
               </span>
               <Input
@@ -2735,7 +2722,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
               />
             </label>
             <label className="text-xs">
-              <span className="mb-1 block text-[var(--color-tertiary)]">
+              <span className="mb-1 block text-[var(--text-tertiary)]">
                 Hasta
               </span>
               <Input
@@ -2780,11 +2767,11 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
           />
         </fieldset>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--color-secondary)]">
+          <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
             Instrucciones adicionales
           </label>
           {/* ENH-085: aclarar la división filtros vs instrucciones. */}
-          <p className="mb-1.5 text-[11px] text-[var(--color-tertiary)]">
+          <p className="mb-1.5 text-[11px] text-[var(--text-tertiary)]">
             Para filtrar por dato (área, severidad, fechas) usa los filtros
             arriba — la IA los respeta automáticamente. Aquí escribe tono,
             segmentaciones específicas o exclusiones puntuales.
@@ -2798,7 +2785,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
         </div>
         {/* ENH-080: plantillas reusables — guardar config + cargar/borrar. */}
         <fieldset className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-2">
-          <legend className="px-1 text-xs font-medium text-[var(--color-secondary)]">
+          <legend className="px-1 text-xs font-medium text-[var(--text-secondary)]">
             Plantillas guardadas
           </legend>
           {templateError ? (
@@ -2833,28 +2820,28 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
                   <button
                     type="button"
                     onClick={() => applyTemplate(t)}
-                    className="flex-1 truncate text-left text-xs font-medium text-[var(--color-primary)] hover:underline"
+                    className="flex-1 truncate text-left text-xs font-medium text-[var(--text-primary)] hover:underline"
                     title="Cargar configuración de esta plantilla"
                   >
                     {t.name}
                   </button>
-                  <span className="rounded-full bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-tertiary)]">
+                  <span className="rounded-full bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">
                     {t.base}
                   </span>
                   <button
                     type="button"
                     onClick={() => removeTemplate(t.id)}
-                    className="text-[var(--color-tertiary)] hover:text-[var(--color-danger-fg)]"
+                    className="text-[var(--text-tertiary)] hover:text-[var(--color-danger-fg)]"
                     title="Borrar plantilla"
                     aria-label={`Borrar plantilla ${t.name}`}
                   >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    <Icono nombre="bin" size={14} />
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-[11px] text-[var(--color-tertiary)]">
+            <p className="text-[11px] text-[var(--text-tertiary)]">
               Aún no guardas ninguna plantilla para este proyecto.
             </p>
           )}
@@ -2866,7 +2853,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
             loading={generating}
             disabled={generating || savingHistory}
           >
-            <Sparkles className="h-4 w-4" aria-hidden />
+            <Icono nombre="info" size={15} />
             Generar con IA
           </Button>
           {previewHtml ? (
@@ -2877,7 +2864,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
                 onClick={downloadHtmlAsFile}
                 disabled={savingHistory}
               >
-                <Download className="h-4 w-4" aria-hidden />
+                <Icono nombre="download" size={15} />
                 Descargar HTML
               </Button>
               <Button
@@ -2896,7 +2883,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
         </div>
       </section>
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
         {previewHtml ? (
           <iframe
             title="Vista previa del reporte IA"
@@ -2904,8 +2891,8 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
             className="h-[640px] w-full rounded-[var(--radius-xl)]"
           />
         ) : (
-          <div className="flex h-[400px] flex-col items-center justify-center gap-2 p-10 text-center text-sm text-[var(--color-tertiary)]">
-            <Sparkles className="h-8 w-8" aria-hidden />
+          <div className="flex h-[400px] flex-col items-center justify-center gap-2 p-10 text-center text-sm text-[var(--text-tertiary)]">
+            <Icono nombre="info" size={22} />
             <p>Configura el reporte y pulsa "Generar con IA" para ver la preview.</p>
           </div>
         )}
@@ -2955,7 +2942,7 @@ function BuilderTemplatePicker({
     <div>
       <label
         htmlFor="sched-builder-tpl"
-        className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+        className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]"
       >
         Plantilla del Builder
       </label>
@@ -2979,7 +2966,7 @@ function BuilderTemplatePicker({
         ))}
       </Select>
       {!loading && tpls.length === 0 && (
-        <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+        <p className="mt-1 text-xs text-[var(--text-tertiary)]">
           Abre el Report Builder y guarda una plantilla antes de programar.
         </p>
       )}
@@ -3098,7 +3085,7 @@ function ReportBuilderView({ projectId }: { projectId: string }) {
                 loading={regeneratingId === r.id}
                 disabled={!!regeneratingId}
               >
-                <Download className="mr-1 h-3.5 w-3.5" /> Regenerar PDF
+                <Icono nombre="download" size={14} className="mr-1" /> Regenerar PDF
               </Button>
             </li>
           ))}

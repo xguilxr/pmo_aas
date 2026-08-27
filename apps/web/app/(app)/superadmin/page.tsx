@@ -2,31 +2,32 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  Activity,
-  Briefcase,
-  FolderKanban,
-  Server,
-  Sparkles,
-  Users as UsersIcon,
-} from "lucide-react";
 
 import { SuperadminHealthSection } from "@/components/superadmin-health-section";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
+import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Skeleton } from "@/components/ui/skeleton";
+import { KpiBand, KpiCard } from "@/components/kpi-card";
 import { ApiError } from "@/lib/api";
 import {
   getPlatformDashboard,
   type PlatformDashboard,
 } from "@/lib/api/superadmin-panel";
 import { getStoredUser } from "@/lib/auth-storage";
-import { cn } from "@/lib/cn";
+import { SIN_DATO } from "@/lib/sin-dato";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 
 function formatNumber(n: number): string {
   return new Intl.NumberFormat("es-MX").format(n);
 }
+
+/** Botón secundario del toolbar de cabecera — mismas clases que
+ *  `Button variant="secondary"` (components/ui/button.tsx) pero sobre un
+ *  `<Link>`, porque son rutas y no acciones. */
+const TOOLBAR_LINK =
+  "inline-flex h-8 items-center gap-1.75 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-[12.5px] font-medium text-[var(--text-secondary)] shadow-[var(--relieve-control)] hover:bg-[var(--color-subtle)]";
 
 export default function SuperadminHomePage() {
   const user = getStoredUser();
@@ -61,34 +62,25 @@ export default function SuperadminHomePage() {
   const kpis = data?.kpis;
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+    <div className="space-y-4">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
             Super Admin · Visión general
           </h1>
           {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
-          <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
+          <p className="text-[13px] text-[var(--text-tertiary)]">
             Estado de la plataforma completa. Auto-refresh cada 60 segundos.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-[12px]">
-          <Link
-            href="/superadmin/tenants"
-            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 font-medium text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
-          >
+        <div className="flex gap-2">
+          <Link href="/superadmin/tenants" className={TOOLBAR_LINK}>
             Tenants
           </Link>
-          <Link
-            href="/superadmin/logs"
-            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 font-medium text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
-          >
+          <Link href="/superadmin/logs" className={TOOLBAR_LINK}>
             Logs
           </Link>
-          <Link
-            href="/superadmin/me"
-            className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 font-medium text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
-          >
+          <Link href="/superadmin/me" className={TOOLBAR_LINK}>
             Mi cuenta
           </Link>
         </div>
@@ -98,53 +90,54 @@ export default function SuperadminHomePage() {
 
       <SuperadminHealthSection />
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi
+      <KpiBand className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <KpiCard
           label="Tenants"
-          value={kpis ? formatNumber(kpis.tenants_total) : "—"}
-          sub={kpis ? `${kpis.tenants_active} activos` : undefined}
-          icon={<FolderKanban className="h-4 w-4" aria-hidden />}
+          value={kpis?.tenants_total}
+          hint={kpis ? `${kpis.tenants_active} activos` : undefined}
+          icon={<Icono nombre="folder" size={13} />}
           loading={loading}
         />
-        <Kpi
+        <KpiCard
           label="Usuarios"
-          value={kpis ? formatNumber(kpis.users_total) : "—"}
-          icon={<UsersIcon className="h-4 w-4" aria-hidden />}
+          value={kpis?.users_total}
+          icon={<Icono nombre="users" size={13} />}
           loading={loading}
         />
-        <Kpi
+        <KpiCard
           label="Proyectos"
-          value={kpis ? formatNumber(kpis.projects_total) : "—"}
-          icon={<Briefcase className="h-4 w-4" aria-hidden />}
+          value={kpis?.projects_total}
+          icon={<Icono nombre="folder" size={13} />}
           loading={loading}
         />
-        <Kpi
+        <KpiCard
           label="Tokens IA (30d)"
-          value={
-            kpis
-              ? `${formatNumber(kpis.ai_tokens_30d.in + kpis.ai_tokens_30d.out)}`
-              : "—"
-          }
-          sub={
+          value={kpis ? kpis.ai_tokens_30d.in + kpis.ai_tokens_30d.out : undefined}
+          hint={
             kpis
               ? `${formatNumber(kpis.ai_tokens_30d.in)} in · ${formatNumber(kpis.ai_tokens_30d.out)} out`
               : undefined
           }
-          icon={<Sparkles className="h-4 w-4" aria-hidden />}
+          icon={<Icono nombre="info" size={13} />}
           loading={loading}
           tone="accent"
         />
-      </section>
+        {/* MRR y Uptime 30d: sin endpoint hoy (ver nota de la pantalla) — se
+            marcan con SIN_DATO y la leyenda «pendiente de backend», nunca con
+            una cifra inventada. */}
+        <PendingKpi label="MRR" icon="trending-up" />
+        <PendingKpi label="Uptime 30d" icon="circle-check" />
+      </KpiBand>
 
       <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <article className="rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
-          <header className="flex items-center justify-between border-b border-[var(--border-subtle)] p-4">
-            <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">
+        <article className="flex flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+          <header className="flex h-10 items-center justify-between border-b border-[var(--border-default)] px-4 shadow-[var(--linea-surco)]">
+            <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">
               Actividad reciente
             </h2>
-            <Activity className="h-4 w-4 text-[var(--text-tertiary)]" aria-hidden />
+            <Icono nombre="clock" size={15} className="text-[var(--text-faint)]" />
           </header>
-          <ul className="divide-y divide-[var(--border-subtle)] text-[13px]">
+          <ul className="flex flex-col divide-y divide-[var(--border-subtle)] text-[13px]">
             {loading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <li key={i} className="px-4 py-3">
@@ -152,12 +145,12 @@ export default function SuperadminHomePage() {
                   </li>
                 ))
               : data?.activity_recent.map((a) => (
-                  <li key={a.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <li key={a.id} className="flex h-10 items-center gap-2.5 px-4">
                     <Badge>{a.action}</Badge>
                     <span className="text-[12px] text-[var(--text-secondary)]">
                       {a.module ?? "—"}
                     </span>
-                    <span className="ml-auto font-mono text-[11px] text-[var(--text-tertiary)]">
+                    <span className="ml-auto text-[11px] text-[var(--text-faint)]">
                       {a.occurred_at
                         ? new Date(a.occurred_at).toLocaleString("es-MX")
                         : "—"}
@@ -172,14 +165,14 @@ export default function SuperadminHomePage() {
           </ul>
         </article>
 
-        <article className="rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
-          <header className="flex items-center justify-between border-b border-[var(--border-subtle)] p-4">
-            <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">
+        <article className="flex flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+          <header className="flex h-10 items-center justify-between border-b border-[var(--border-default)] px-4 shadow-[var(--linea-surco)]">
+            <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">
               Top tenants
             </h2>
-            <Server className="h-4 w-4 text-[var(--text-tertiary)]" aria-hidden />
+            <Icono nombre="server" size={15} className="text-[var(--text-faint)]" />
           </header>
-          <ul className="divide-y divide-[var(--border-subtle)]">
+          <ul className="flex flex-col divide-y divide-[var(--border-subtle)]">
             {loading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <li key={i} className="px-4 py-3">
@@ -187,19 +180,17 @@ export default function SuperadminHomePage() {
                   </li>
                 ))
               : data?.top_tenants.map((t) => (
-                  <li key={t.id} className="flex items-center justify-between gap-2 px-4 py-3">
+                  <li key={t.id} className="flex h-11 items-center justify-between gap-2 px-4">
                     <div className="min-w-0">
                       <Link
                         href={`/superadmin/tenants/${t.id}`}
-                        className="truncate font-medium text-[var(--text-primary)] hover:underline"
+                        className="block overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-medium text-[var(--text-primary)] hover:underline"
                       >
                         {t.name}
                       </Link>
-                      <p className="font-mono text-[11px] text-[var(--text-tertiary)]">
-                        {t.slug}
-                      </p>
+                      <p className="text-[11px] text-[var(--text-tertiary)]">{t.slug}</p>
                     </div>
-                    <span className="rounded-full bg-[var(--color-subtle)] px-2 py-0.5 text-[11px] tabular-nums text-[var(--text-secondary)]">
+                    <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-[var(--color-muted)] px-2 font-mono text-[11px] text-[var(--text-secondary)]">
                       {t.project_count} proy
                     </span>
                   </li>
@@ -212,48 +203,48 @@ export default function SuperadminHomePage() {
           </ul>
         </article>
       </section>
+
+      {/* US: historial de incidentes — sin tabla propia hoy, se documenta el
+          hueco en vez de inventar filas (ver nota de la pantalla). */}
+      <article className="flex flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+        <header className="flex h-10 items-center justify-between border-b border-[var(--border-default)] px-4 shadow-[var(--linea-surco)]">
+          <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">
+            Incidentes recientes
+          </h2>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled
+            title="Pendiente de backend: todavía no hay tabla de incidentes"
+          >
+            Declarar incidente
+          </Button>
+        </header>
+        <p className="px-4 py-3 text-[11px] italic text-[var(--text-faint)]">
+          Pendiente de backend — hoy se infiere de logs, no hay tabla de incidentes.
+        </p>
+      </article>
     </div>
   );
 }
 
-function Kpi({
-  label,
-  value,
-  sub,
-  icon,
-  loading,
-  tone,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  icon?: React.ReactNode;
-  loading?: boolean;
-  tone?: "accent";
-}) {
+/** KPI sin endpoint real: SIN_DATO + leyenda, nunca una cifra inventada. */
+function PendingKpi({ label, icon }: { label: string; icon: string }) {
   return (
-    <article className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
+    <div className="flex h-full flex-col gap-2 p-4">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
           {label}
         </span>
-        {icon ? <span className="text-[var(--text-tertiary)]">{icon}</span> : null}
+        <span className="text-[var(--text-tertiary)]">
+          <Icono nombre={icon} size={13} />
+        </span>
       </div>
-      {loading ? (
-        <Skeleton className="mt-2 h-7 w-24" />
-      ) : (
-        <p
-          className={cn(
-            "mt-1 text-[24px] font-semibold tabular-nums tracking-tight",
-            tone === "accent" ? "text-[var(--color-accent)]" : "text-[var(--text-primary)]",
-          )}
-        >
-          {value}
-        </p>
-      )}
-      {sub && !loading ? (
-        <p className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">{sub}</p>
-      ) : null}
-    </article>
+      <span className="font-mono text-[26px] font-medium tabular-nums text-[var(--text-faint)]">
+        {SIN_DATO}
+      </span>
+      <span className="text-[11.5px] italic text-[var(--text-faint)]">pendiente de backend</span>
+    </div>
   );
 }

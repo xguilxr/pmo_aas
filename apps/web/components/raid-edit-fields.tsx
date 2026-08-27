@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, X } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -256,8 +256,8 @@ export function RaidEditFields(props:
   if (!editing) {
     if (!canEdit) return null;
     return (
-      <div className="flex flex-col items-stretch gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] bg-[var(--color-subtle)] p-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-[var(--color-tertiary)]">
+      <div className="flex flex-col items-stretch gap-2 rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] bg-[var(--color-subtle)] p-3.5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[13px] text-[var(--color-tertiary)]">
           Todos los campos del ítem son editables — título, descripción, área,
           responsable, fechas, P×I/prioridad, mitigación/resolución y nota de
           cierre.
@@ -269,7 +269,7 @@ export function RaidEditFields(props:
             setEditing(true);
           }}
         >
-          <Pencil className="mr-1 h-4 w-4" aria-hidden />
+          <Icono nombre="pen" size={15} />
           Editar este ítem
         </Button>
       </div>
@@ -277,9 +277,9 @@ export function RaidEditFields(props:
   }
 
   return (
-    <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-subtle)] p-4">
+    <div className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-subtle)] p-4 shadow-[var(--relieve-isla)]">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
           Modo edición
         </p>
         <button
@@ -289,10 +289,10 @@ export function RaidEditFields(props:
             if (onClose) onClose();
             else setEditing(false);
           }}
-          className="text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-primary)]"
           aria-label="Cancelar edición"
         >
-          <X className="h-4 w-4" aria-hidden />
+          <Icono nombre="x" size={15} />
         </button>
       </div>
 
@@ -352,7 +352,7 @@ export function RaidEditFields(props:
 
       {status === "on_hold" ? (
         <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--color-warning-border)] bg-[var(--color-warning-bg)]/40 p-3">
-          <p className="text-xs font-medium text-[var(--color-warning-fg)]">
+          <p className="text-[13px] font-medium text-[var(--color-warning-fg)]">
             Detención — indica por qué está detenido y de quién depende.
           </p>
           <Field label="Razón de detención *">
@@ -384,7 +384,7 @@ export function RaidEditFields(props:
             </Field>
           </div>
           {item.on_hold_since ? (
-            <p className="text-xs text-[var(--color-tertiary)]">
+            <p className="text-[11px] text-[var(--color-tertiary)]">
               Detenido desde {item.on_hold_since}.
             </p>
           ) : null}
@@ -539,7 +539,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+      <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)]">
         {label}
       </label>
       {children}

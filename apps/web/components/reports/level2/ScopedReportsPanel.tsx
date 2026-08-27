@@ -9,10 +9,10 @@
  * y también como tab dentro del detalle (US-136 / US-137).
  */
 import { useEffect, useState } from "react";
-import { Download, FileText } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   exportBuilderPdf,
@@ -99,7 +99,7 @@ export function ScopedReportsPanel({ scope, emptyHint }: Props) {
           <Skeleton className="h-14" />
         </div>
       ) : templates.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-300 p-4 text-sm text-zinc-500">
+        <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--border-default)] p-4 text-[13px] text-[var(--text-tertiary)]">
           {emptyHint ??
             "Sin plantillas Nivel 2 configuradas. La plantilla seed L2-ORG debería estar instalada."}
         </div>
@@ -108,17 +108,17 @@ export function ScopedReportsPanel({ scope, emptyHint }: Props) {
           {templates.map((t) => (
             <li
               key={t.id}
-              className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-3 shadow-sm"
+              className="flex items-center justify-between rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-3.5 shadow-[var(--relieve-isla)]"
             >
-              <div>
-                <p className="text-sm font-medium text-zinc-900">
-                  <FileText className="mr-1 inline h-4 w-4 text-zinc-400" />
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-primary)]">
+                  <Icono nombre="file-text" size={15} className="text-[var(--text-faint)]" />
                   {t.name}
                 </p>
                 {t.description && (
-                  <p className="mt-0.5 text-xs text-zinc-500">{t.description}</p>
+                  <p className="mt-0.5 text-[11.5px] text-[var(--text-tertiary)]">{t.description}</p>
                 )}
-                <p className="mt-0.5 text-[10px] text-zinc-400">
+                <p className="mt-0.5 text-[10.5px] text-[var(--text-faint)]">
                   Código: {t.code} · {t.section_codes.length} secciones · Modo{" "}
                   {t.composition_mode}
                 </p>
@@ -130,7 +130,7 @@ export function ScopedReportsPanel({ scope, emptyHint }: Props) {
                 loading={exportingId === t.id}
                 disabled={!!exportingId}
               >
-                <Download className="mr-1 h-3.5 w-3.5" /> PDF
+                <Icono nombre="download" size={14} /> PDF
               </Button>
             </li>
           ))}

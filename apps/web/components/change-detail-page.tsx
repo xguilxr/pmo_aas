@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Ban, GitPullRequest, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +23,16 @@ import {
   type ChangeRequest,
   type ChangeStatus,
 } from "@/lib/api/modules";
+
+// ENH-186 (rediseño 7a): mismo mapeo de tono que la lista de Cambios —
+// in_review -> warning (no "info"), cancelled -> neutral (no "info").
+const CHANGE_STATUS_VARIANT: Record<ChangeStatus, "warning" | "success" | "danger" | "neutral"> = {
+  in_review: "warning",
+  approved: "success",
+  rejected: "danger",
+  implemented: "success",
+  cancelled: "neutral",
+};
 
 /**
  * ENH-087 — página dedicada de Cambios.
@@ -197,14 +207,7 @@ export function ChangeDetailPage({
     change.status !== "implemented" && change.status !== "cancelled";
 
   const statusLabel = CHANGE_STATUS_LABEL[change.status as ChangeStatus] ?? change.status;
-  const statusVariant: "info" | "success" | "danger" | "neutral" =
-    change.status === "approved"
-      ? "success"
-      : change.status === "rejected"
-        ? "danger"
-        : change.status === "implemented"
-          ? "success"
-          : "info";
+  const statusVariant = CHANGE_STATUS_VARIANT[change.status as ChangeStatus] ?? "neutral";
 
   const fmtDate = (iso: string | null | undefined) => {
     if (!iso) return null;
@@ -239,7 +242,7 @@ export function ChangeDetailPage({
               onClick={() => setConfirmCancel(true)}
               disabled={saving}
             >
-              <Ban className="h-3.5 w-3.5" aria-hidden /> Cancelar
+              <Icono nombre="circle-off" size={14} /> Cancelar
             </Button>
           ) : null}
           <Button
@@ -250,7 +253,7 @@ export function ChangeDetailPage({
             disabled={saving}
             aria-label="Borrar cambio"
           >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+            <Icono nombre="bin" size={14} /> Borrar
           </Button>
         </div>
       </div>
@@ -259,12 +262,12 @@ export function ChangeDetailPage({
         <header className="flex flex-col gap-2 px-4.5 py-3.5">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 flex-none items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)]">
-              <GitPullRequest className="h-5 w-5 text-[var(--color-tertiary)]" aria-hidden />
+              <Icono nombre="git-branch" size={20} className="text-[var(--color-tertiary)]" />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono text-[11px] text-[var(--color-tertiary)]">
+                  <span className="text-[12px] tracking-[0.01em] text-[var(--color-tertiary)]">
                     {change.folio}
                   </span>
                   <span className="text-[var(--color-tertiary)]">·</span>
@@ -425,7 +428,7 @@ export function ChangeDetailPage({
               Volver
             </Button>
             <Button variant="danger" onClick={handleCancel} loading={cancelling}>
-              <Ban className="h-3.5 w-3.5" aria-hidden /> Cancelar cambio
+              <Icono nombre="circle-off" size={14} /> Cancelar cambio
             </Button>
           </>
         }
@@ -447,7 +450,7 @@ export function ChangeDetailPage({
               Volver
             </Button>
             <Button variant="danger" onClick={handleDelete} loading={deleting}>
-              <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+              <Icono nombre="bin" size={14} /> Borrar
             </Button>
           </>
         }
@@ -510,7 +513,7 @@ export function ChangeBackLink({ href, label }: { href: string; label: string })
       href={href}
       className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
     >
-      <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+      <Icono nombre="arrow-left" size={14} />
       {label}
     </Link>
   );

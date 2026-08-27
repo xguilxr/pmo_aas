@@ -7,14 +7,17 @@
 // area_id (área funcional).
 
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api";
 import {
   createActor,
@@ -171,12 +174,19 @@ export function TenantActorsPanel() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          placeholder="Buscar persona, email, empresa…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
+        <div className="relative max-w-sm flex-1">
+          <Icono
+            nombre="search"
+            size={14}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)]"
+          />
+          <Input
+            placeholder="Buscar persona, email, empresa…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8"
+          />
+        </div>
         <Select
           value={areaFilter}
           onChange={(e) => setAreaFilter(e.target.value)}
@@ -217,30 +227,37 @@ export function TenantActorsPanel() {
         </Select>
         <div className="ml-auto">
           <Button size="sm" onClick={() => setCreating(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Nueva persona
+            <Icono nombre="plus" size={14} /> Nueva persona
           </Button>
         </div>
       </div>
 
-      {error ? (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left text-xs uppercase">
+      <div className="overflow-x-auto rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col />
+            <col style={{ width: 170 }} />
+            <col style={{ width: 150 }} />
+            <col style={{ width: 130 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 96 }} />
+            <col style={{ width: 44 }} />
+            <col style={{ width: 84 }} />
+          </colgroup>
+          <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
             <tr>
-              <SortableTh<Actor> sortKey="name" getter={(a) => a.name} ctrl={sortCtrl}>Nombre</SortableTh>
-              <SortableTh<Actor> sortKey="email" getter={(a) => a.email ?? ""} ctrl={sortCtrl}>Email</SortableTh>
-              <SortableTh<Actor> sortKey="company" getter={(a) => a.company ?? ""} ctrl={sortCtrl}>Empresa / Cargo</SortableTh>
-              <SortableTh<Actor> sortKey="area" getter={(a) => a.area_id ? areaById[a.area_id]?.name ?? "" : ""} ctrl={sortCtrl}>Área funcional</SortableTh>
-              <SortableTh<Actor> sortKey="resource_type" getter={(a) => resourceTypeLabel(a.resource_type)} ctrl={sortCtrl}>Tipo</SortableTh>
-              <SortableTh<Actor> sortKey="discipline" getter={(a) => disciplineLabel(a.discipline)} ctrl={sortCtrl}>Función</SortableTh>
-              <SortableTh<Actor> sortKey="project_capacity_pct" getter={(a) => a.project_capacity_pct ?? 100} ctrl={sortCtrl} align="right">Cap. proyectos %</SortableTh>
-              <SortableTh<Actor> sortKey="is_key_resource" getter={(a) => a.is_key_resource ?? false} ctrl={sortCtrl} align="center">🔑</SortableTh>
-              <th className="px-3 py-2"></th>
+              <SortableTh<Actor> sortKey="name" getter={(a) => a.name} ctrl={sortCtrl} className="h-8.5">Nombre</SortableTh>
+              <SortableTh<Actor> sortKey="email" getter={(a) => a.email ?? ""} ctrl={sortCtrl} className="h-8.5">Email</SortableTh>
+              <SortableTh<Actor> sortKey="company" getter={(a) => a.company ?? ""} ctrl={sortCtrl} className="h-8.5">Empresa / Cargo</SortableTh>
+              <SortableTh<Actor> sortKey="area" getter={(a) => a.area_id ? areaById[a.area_id]?.name ?? "" : ""} ctrl={sortCtrl} className="h-8.5">Área funcional</SortableTh>
+              <SortableTh<Actor> sortKey="resource_type" getter={(a) => resourceTypeLabel(a.resource_type)} ctrl={sortCtrl} className="h-8.5">Tipo</SortableTh>
+              <SortableTh<Actor> sortKey="discipline" getter={(a) => disciplineLabel(a.discipline)} ctrl={sortCtrl} className="h-8.5">Función</SortableTh>
+              <SortableTh<Actor> sortKey="project_capacity_pct" getter={(a) => a.project_capacity_pct ?? 100} ctrl={sortCtrl} align="right" className="h-8.5 pr-3.5">Cap. %</SortableTh>
+              <SortableTh<Actor> sortKey="is_key_resource" getter={(a) => a.is_key_resource ?? false} ctrl={sortCtrl} align="center" className="h-8.5">Clave</SortableTh>
+              <th className="h-8.5 px-3"></th>
             </tr>
           </thead>
           <tbody>
@@ -248,7 +265,7 @@ export function TenantActorsPanel() {
               <tr>
                 <td
                   colSpan={9}
-                  className="p-8 text-center text-xs text-[var(--color-tertiary)]"
+                  className="p-8 text-center text-[12.5px] text-[var(--text-tertiary)]"
                 >
                   {actors.length === 0
                     ? "Sin personas en el catálogo tenant."
@@ -257,9 +274,12 @@ export function TenantActorsPanel() {
               </tr>
             ) : (
               sortedRows.map((a) => (
-                <tr key={a.id} className="border-t hover:bg-muted/30">
-                  <td className="px-3 py-2">
-                    <span className="font-medium text-[var(--color-primary)]">
+                <tr
+                  key={a.id}
+                  className="h-10.5 border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] even:bg-[var(--color-subtle)] hover:bg-[var(--color-subtle)]"
+                >
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap">
+                    <span className="font-medium text-[var(--text-primary)]">
                       {a.name}
                     </span>
                     {!a.is_active ? (
@@ -268,40 +288,47 @@ export function TenantActorsPanel() {
                       </Badge>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--text-secondary)]">
                     {a.email ?? "—"}
                   </td>
-                  <td className="px-3 py-2 text-xs">
-                    <div>{a.company ?? "—"}</div>
-                    <div className="text-[var(--color-tertiary)]">
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12.5px]">
+                    <div className="text-[var(--text-secondary)]">{a.company ?? "—"}</div>
+                    <div className="text-[var(--text-tertiary)]">
                       {a.job_title ?? ""}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--text-secondary)]">
                     {a.area_id ? areaById[a.area_id]?.name ?? "—" : "—"}
                   </td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--text-secondary)]">
                     {resourceTypeLabel(a.resource_type)}
                   </td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="overflow-hidden px-3 text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--text-secondary)]">
                     {disciplineLabel(a.discipline)}
                   </td>
-                  <td className="px-3 py-2 text-right text-xs">
+                  <td className="pr-3.5 text-right font-mono text-[12.5px] text-[var(--text-secondary)]">
                     {a.project_capacity_pct ?? 100}%
                   </td>
-                  <td className="px-3 py-2 text-center">
+                  <td className="text-center">
                     {a.is_key_resource ? (
-                      <span title="Recurso clave">🔑</span>
+                      <span
+                        className="inline-flex justify-center"
+                        role="img"
+                        aria-label="Recurso clave"
+                        title="Recurso clave"
+                      >
+                        <Icono nombre="lock" size={13} className="text-[var(--color-warning-fg)]" />
+                      </span>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-3 text-right">
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => setEditing(a)}
                       title="Editar"
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      <Icono nombre="pen" size={14} />
                     </Button>
                     <Button
                       size="sm"
@@ -309,7 +336,7 @@ export function TenantActorsPanel() {
                       onClick={() => handleDelete(a)}
                       title="Eliminar"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Icono nombre="bin" size={14} />
                     </Button>
                   </td>
                 </tr>
@@ -502,18 +529,11 @@ function ActorModal({
             ))}
           </Select>
         </FieldLabel>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-          />
-          <span>Activa</span>
-        </label>
+        <Switch checked={isActive} onChange={setIsActive} label="Activa" />
 
         {/* US-182: pool de recursos con capacidad. */}
         <div className="space-y-3 border-t border-[var(--border-default)] pt-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
             Recurso y capacidad
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -662,17 +682,15 @@ function ActorModal({
             </FieldLabel>
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
+            <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+              <Checkbox
                 checked={isKeyResource}
                 onChange={(e) => setIsKeyResource(e.target.checked)}
               />
               <span>Recurso clave</span>
             </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
+            <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+              <Checkbox
                 checked={isSharedResource}
                 onChange={(e) => setIsSharedResource(e.target.checked)}
               />
@@ -681,7 +699,7 @@ function ActorModal({
           </div>
         </div>
 
-        {err ? <p className="text-sm text-red-600">{err}</p> : null}
+        {err ? <Banner variant="danger">{err}</Banner> : null}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={onClose} disabled={saving}>
             Cancelar

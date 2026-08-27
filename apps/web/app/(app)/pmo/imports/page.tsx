@@ -29,13 +29,15 @@
  */
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, FileDown, Info, Upload } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Select } from "@/components/ui/select";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import {
   CLASE_IMPORTACION_LABEL,
   ESTADO_FILA_LABEL,
@@ -49,14 +51,29 @@ import {
   type ResultadoDeImportacion,
 } from "@/lib/api/tasks";
 
-const CLASE_ESTADO: Record<EstadoDeFila, string> = {
-  valida: "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]",
-  invalida: "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]",
-  duplicada: "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
+const BADGE_ESTADO: Record<EstadoDeFila, "success" | "danger" | "warning"> = {
+  valida: "success",
+  invalida: "danger",
+  duplicada: "warning",
 };
 
 /** Primero lo que hay que arreglar. */
 const ORDEN: EstadoDeFila[] = ["invalida", "duplicada", "valida"];
+
+/** Pasos del flujo — puramente visual, derivado del estado ya existente. */
+type PasoImport = 1 | 2 | 3 | 4;
+const PASO_LABEL: Record<PasoImport, string> = {
+  1: "Elegir y subir",
+  2: "Validar",
+  3: "Revisar filas",
+  4: "Confirmar",
+};
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 export default function ImportsPage() {
   // US-205 — la organización se elige en el header y todo opera dentro de ella.
@@ -89,6 +106,9 @@ export default function ImportsPage() {
     () => columnas.filter((c) => c.required),
     [columnas],
   );
+
+  // Paso actual del flujo — solo presentación, no gobierna nada.
+  const paso: PasoImport = resultado ? 4 : preview ? 3 : archivo || subiendo ? 2 : 1;
 
   /**
    * La plantilla se genera en el navegador desde las columnas que el backend
@@ -178,19 +198,19 @@ export default function ImportsPage() {
   }
 
   return (
-    <div className="space-y-5 p-6">
-      <header>
-        <nav className="text-[11px] text-[var(--text-tertiary)]">
-          <Link href="/pmo/projects" className="hover:underline">
+    <div className="flex flex-col gap-4.5 p-6">
+      <header className="flex flex-col gap-1.25">
+        <nav className="flex items-center gap-1.75 text-[13px] text-[var(--text-tertiary)]">
+          <Link href="/pmo/projects" className="text-[var(--text-secondary)] hover:underline">
             Proyectos
           </Link>
-          <span className="mx-1">/</span>
-          <span>Importar</span>
+          <Icono nombre="chevron-right" size={14} className="text-[var(--border-strong)]" />
+          <span className="font-medium text-[var(--text-primary)]">Importar</span>
         </nav>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
           Onboarding masivo
         </h1>
-        <p className="mt-1 text-[13px] text-[var(--color-secondary)]">
+        <p className="text-[13px] text-[var(--text-tertiary)]">
           Carga una cartera completa desde Excel o CSV. El archivo se valida
           entero antes de crear nada.
         </p>
@@ -208,68 +228,110 @@ export default function ImportsPage() {
         </Banner>
       ) : (
         <>
-          <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs">
-                Qué se importa
-                <Select
-                  value={clase}
-                  onChange={(e) =>
-                    setClase(e.target.value as ClaseDeImportacion)
-                  }
+          {/* Pasos del proceso — círculo tinta (hecho), contorno (actual),
+              gris (falta), conector de 1px. Sin barra de progreso. */}
+          <div className="flex items-center gap-0 border-y border-[var(--border-default)] py-3 shadow-[var(--linea-surco),var(--linea-surco-arriba)]">
+            {([1, 2, 3, 4] as PasoImport[]).map((n, i) => (
+              <div key={n} className="flex items-center">
+                {i > 0 ? <span className="h-px w-11 flex-none bg-[var(--border-default)]" /> : null}
+                <span
+                  className={cn(
+                    "flex items-center gap-2.25",
+                    i === 0 ? "pr-4.5" : i === 3 ? "pl-4.5" : "px-4.5",
+                  )}
                 >
-                  {(
-                    Object.keys(CLASE_IMPORTACION_LABEL) as ClaseDeImportacion[]
-                  ).map((k) => (
-                    <option key={k} value={k}>
-                      {CLASE_IMPORTACION_LABEL[k]}
-                    </option>
-                  ))}
-                </Select>
-                <span className="mt-0.5 block text-[11px] text-[var(--color-tertiary)]">
-                  Los planes se importan desde el plan de cada proyecto: un
-                  código WBS es del proyecto, el «1.2» de uno no es el de otro.
-                </span>
-              </label>
-              <div className="text-xs">
-                Organización de destino
-                <p className="mt-1 font-medium text-[var(--text-primary)]">
-                  {activaObj?.name ?? "—"}
-                </p>
-                <span className="mt-0.5 block text-[11px] text-[var(--color-tertiary)]">
-                  Se cambia en el selector del header. Los duplicados se buscan
-                  dentro de ella
-                  {clase === "resources"
-                    ? "; las personas son del inquilino entero, porque su carga de"
-                      + " capacidad se calcula por persona"
-                    : ""}
-                  .
+                  <span
+                    className={cn(
+                      "flex h-5.5 w-5.5 flex-none items-center justify-center rounded-full font-mono text-[11px] font-medium",
+                      n < paso
+                        ? "bg-[var(--text-primary)] text-[var(--color-inverse)]"
+                        : n === paso
+                          ? "border border-[var(--text-primary)] text-[var(--text-primary)]"
+                          : "border border-[var(--border-strong)] text-[var(--text-faint)]",
+                    )}
+                  >
+                    {n}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[12.5px] font-semibold",
+                      n <= paso ? "text-[var(--text-primary)]" : "text-[var(--text-faint)]",
+                    )}
+                  >
+                    {PASO_LABEL[n]}
+                  </span>
                 </span>
               </div>
-            </div>
+            ))}
+            {archivo ? (
+              <span className="ml-auto text-[12px] text-[var(--text-tertiary)]">
+                {archivo.name} · {formatSize(archivo.size)}
+              </span>
+            ) : null}
+          </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => descargarPlantilla(false)}
-                disabled={!columnas.length}
+          <div className="grid gap-6 sm:grid-cols-2">
+            <label className="flex flex-col gap-2 text-[11px] text-[var(--text-tertiary)]">
+              Qué se importa
+              <Select
+                value={clase}
+                onChange={(e) =>
+                  setClase(e.target.value as ClaseDeImportacion)
+                }
               >
-                <FileDown className="mr-1 h-4 w-4" aria-hidden />
-                Plantilla completa
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => descargarPlantilla(true)}
-                disabled={!obligatorias.length}
-                title="Solo las columnas obligatorias — la misma plantilla sin lo opcional"
-              >
-                <FileDown className="mr-1 h-4 w-4" aria-hidden />
-                Plantilla mínima ({obligatorias.length} columnas)
-              </Button>
+                {(
+                  Object.keys(CLASE_IMPORTACION_LABEL) as ClaseDeImportacion[]
+                ).map((k) => (
+                  <option key={k} value={k}>
+                    {CLASE_IMPORTACION_LABEL[k]}
+                  </option>
+                ))}
+              </Select>
+              <span className="leading-[1.5] text-[var(--text-faint)]">
+                Los planes se importan desde el plan de cada proyecto: un
+                código WBS es del proyecto, el «1.2» de uno no es el de otro.
+              </span>
+            </label>
+            <div className="flex flex-col gap-2 text-[11px] text-[var(--text-tertiary)]">
+              Organización de destino
+              <p className="text-[13px] font-medium text-[var(--text-primary)]">
+                {activaObj?.name ?? "—"}
+              </p>
+              <span className="leading-[1.5] text-[var(--text-faint)]">
+                Se cambia en el selector del header. Los duplicados se buscan
+                dentro de ella
+                {clase === "resources"
+                  ? "; las personas son del inquilino entero, porque su carga de"
+                    + " capacidad se calcula por persona"
+                  : ""}
+                .
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => descargarPlantilla(false)}
+              disabled={!columnas.length}
+            >
+              <Icono nombre="download" size={15} />
+              Plantilla completa
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => descargarPlantilla(true)}
+              disabled={!obligatorias.length}
+              title="Solo las columnas obligatorias — la misma plantilla sin lo opcional"
+            >
+              <Icono nombre="download" size={15} />
+              Plantilla mínima ({obligatorias.length} columnas)
+            </Button>
+            <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--border-strong)] px-3 text-[12.5px] text-[var(--text-tertiary)] hover:border-[var(--color-accent)]">
+              <Icono nombre="upload" size={15} />
+              {archivo ? archivo.name : "Elegí el archivo a importar · .csv, .xlsx"}
               <input
                 type="file"
                 accept=".csv,.xlsx"
@@ -278,51 +340,53 @@ export default function ImportsPage() {
                   setPreview(null);
                   setResultado(null);
                 }}
-                className="text-xs"
+                className="sr-only"
                 aria-label="Archivo a importar"
               />
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => void subir()}
-                disabled={!archivo || !orgId || subiendo}
-                loading={subiendo}
-              >
-                <Upload className="mr-1 h-4 w-4" aria-hidden />
-                Validar
-              </Button>
-            </div>
+            </label>
+            <Button
+              type="button"
+              onClick={() => void subir()}
+              disabled={!archivo || !orgId || subiendo}
+              loading={subiendo}
+            >
+              <Icono nombre="upload" size={15} />
+              Validar
+            </Button>
+            <span className="ml-auto inline-flex items-center gap-1.75 text-[12.5px] text-[var(--text-tertiary)]">
+              <Icono nombre="info" size={14} />
+              Espera {columnas.length} columnas, {obligatorias.length} obligatorias
+            </span>
+          </div>
 
-            <details className="text-xs">
-              <summary className="cursor-pointer text-[var(--color-tertiary)]">
-                Qué columnas espera ({columnas.length}, {obligatorias.length}{" "}
-                obligatorias)
-              </summary>
-              <ul className="mt-2 space-y-1">
-                {columnas.map((c) => (
-                  <li key={c.key}>
-                    <span className="font-medium">{c.label}</span>
-                    {c.required ? (
-                      <span className="ml-1 text-[var(--color-danger-fg)]">
-                        obligatoria
-                      </span>
-                    ) : null}
-                    <span className="block text-[11px] text-[var(--color-tertiary)]">
-                      {c.help}
-                      {c.values.length
-                        ? ` Valores: ${c.values.join(", ")}.`
-                        : ""}
+          <details className="text-xs">
+            <summary className="cursor-pointer text-[var(--text-faint)]">
+              Qué columnas espera ({columnas.length}, {obligatorias.length}{" "}
+              obligatorias)
+            </summary>
+            <ul className="mt-2 space-y-1">
+              {columnas.map((c) => (
+                <li key={c.key}>
+                  <span className="font-medium">{c.label}</span>
+                  {c.required ? (
+                    <span className="ml-1 text-[var(--color-danger-fg)]">
+                      obligatoria
                     </span>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          </section>
+                  ) : null}
+                  <span className="block text-[11px] text-[var(--text-faint)]">
+                    {c.help}
+                    {c.values.length
+                      ? ` Valores: ${c.values.join(", ")}.`
+                      : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
 
           {resultado ? (
             <Banner variant="success">
               <span className="flex flex-wrap items-center gap-x-3">
-                <CheckCircle2 className="h-4 w-4" aria-hidden />
                 <strong>{resultado.created_count} creados.</strong>
                 {/* Los tres números van juntos: «18 creados» sin decir que 5
                     quedaron fuera es mentir por omisión. */}
@@ -344,29 +408,40 @@ export default function ImportsPage() {
           ) : null}
 
           {preview ? (
-            <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs">
-                  <span>
-                    <strong>{preview.summary.total}</strong> filas leídas
+            <div className="flex min-h-0 flex-col gap-3 border-t border-[var(--border-default)] pt-4 shadow-[var(--linea-surco-arriba)]">
+              <div className="flex flex-wrap items-center gap-5">
+                <span className="flex items-baseline gap-1.75 text-[13px] text-[var(--text-secondary)]">
+                  <span className="font-mono text-[19px] font-medium text-[var(--text-primary)]">
+                    {preview.summary.total}
                   </span>
-                  <span className="text-[var(--color-success-fg)]">
-                    {preview.summary.valid} se van a crear
+                  filas leídas
+                </span>
+                <span className="flex items-baseline gap-1.75 text-[13px] text-[var(--text-secondary)]">
+                  <span className="font-mono text-[19px] font-medium text-[var(--color-success-fg)]">
+                    {preview.summary.valid}
                   </span>
-                  <span className="text-[var(--color-danger-fg)]">
-                    {preview.summary.invalid} con errores
+                  se van a crear
+                </span>
+                <span className="flex items-baseline gap-1.75 text-[13px] text-[var(--text-secondary)]">
+                  <span className="font-mono text-[19px] font-medium text-[var(--color-danger-fg)]">
+                    {preview.summary.invalid}
                   </span>
-                  <span className="text-[var(--color-warning-fg)]">
-                    {preview.summary.duplicate} ya existen
+                  con errores
+                </span>
+                <span className="flex items-baseline gap-1.75 text-[13px] text-[var(--text-secondary)]">
+                  <span className="font-mono text-[19px] font-medium text-[var(--color-warning-fg)]">
+                    {preview.summary.duplicate}
                   </span>
-                </div>
+                  ya existen
+                </span>
                 <Button
                   type="button"
-                  size="sm"
+                  className="ml-auto"
                   onClick={() => void confirmar()}
                   disabled={preview.summary.valid === 0 || confirmando}
                   loading={confirmando}
                 >
+                  <Icono nombre="check" size={15} />
                   Crear {preview.summary.valid}
                 </Button>
               </div>
@@ -384,11 +459,17 @@ export default function ImportsPage() {
               ) : null}
 
               {preview.unmapped_headers.length ? (
-                <p className="flex items-start gap-1.5 text-[11px] text-[var(--color-tertiary)]">
-                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                  Columnas del archivo que no se reconocieron y se van a
-                  ignorar: {preview.unmapped_headers.join(", ")}.
-                </p>
+                <div className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] px-3 py-2.25 text-xs text-[var(--text-tertiary)] shadow-[var(--linea-surco-arriba)]">
+                  <Icono nombre="info" size={14} className="mt-0.25 flex-none" />
+                  <span>
+                    Columnas del archivo que no se reconocieron y se van a
+                    ignorar:{" "}
+                    <span className="text-[var(--text-secondary)]">
+                      {preview.unmapped_headers.join(", ")}
+                    </span>
+                    .
+                  </span>
+                </div>
               ) : null}
 
               {preview.truncated ? (
@@ -398,34 +479,34 @@ export default function ImportsPage() {
                 </Banner>
               ) : null}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
-                  <thead className="bg-[var(--color-muted)] text-left text-[11px] uppercase tracking-wide text-[var(--color-tertiary)]">
+              <div className="overflow-x-auto rounded-[var(--radius-xl)] border border-[var(--border-default)] shadow-[var(--relieve-isla)]">
+                <table className="w-full text-[12.5px]">
+                  <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
                     <tr>
-                      <th className="px-2 py-1.5">Fila</th>
-                      <th className="px-2 py-1.5">Nombre</th>
-                      <th className="px-2 py-1.5">Estado</th>
-                      <th className="px-2 py-1.5">Detalle</th>
+                      <th className="h-8.5 w-16 px-3.5">Fila</th>
+                      <th className="h-8.5 px-3.5">Nombre</th>
+                      <th className="h-8.5 w-42 px-3.5">Estado</th>
+                      <th className="h-8.5 px-3.5">Detalle</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filas.map((f) => (
                       <tr
                         key={f.row}
-                        className="border-t border-[var(--border-subtle)]"
+                        className="h-10 border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] even:bg-[var(--color-subtle)]/40"
                       >
-                        <td className="px-2 py-1.5 text-[11px] text-[var(--color-tertiary)]">
+                        <td className="px-3.5 font-mono text-[12px] text-[var(--text-tertiary)]">
                           {f.row}
                         </td>
-                        <td className="px-2 py-1.5">{f.name ?? "—"}</td>
-                        <td className="px-2 py-1.5">
-                          <span
-                            className={`inline-block rounded px-1.5 py-0.5 text-[11px] ${CLASE_ESTADO[f.state]}`}
-                          >
-                            {ESTADO_FILA_LABEL[f.state]}
-                          </span>
+                        <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap text-[var(--text-primary)]">
+                          {f.name ?? "—"}
                         </td>
-                        <td className="px-2 py-1.5 text-[11px] text-[var(--color-secondary)]">
+                        <td className="px-3.5">
+                          <Badge variant={BADGE_ESTADO[f.state]}>
+                            {ESTADO_FILA_LABEL[f.state]}
+                          </Badge>
+                        </td>
+                        <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap text-[12px] text-[var(--text-secondary)]">
                           {f.conflicts_with
                             ? `Choca con ${f.conflicts_with}`
                             : null}
@@ -441,12 +522,12 @@ export default function ImportsPage() {
                 </table>
               </div>
 
-              <p className="text-[11px] text-[var(--color-tertiary)]">
+              <p className="text-[11px] text-[var(--text-faint)]">
                 Las filas que ya existen <strong>no se actualizan</strong>. Si
                 alguien corrigió un dato en la aplicación después de la primera
                 carga, resubir el archivo original no lo pisa.
               </p>
-            </section>
+            </div>
           ) : null}
         </>
       )}

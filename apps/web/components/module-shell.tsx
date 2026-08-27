@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { Plus } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/cn";
 
 type Props<T extends { id: string; folio: string }> = {
   projectId: string;
@@ -17,7 +18,7 @@ type Props<T extends { id: string; folio: string }> = {
   records: T[];
   loading: boolean;
   error?: string | null;
-  columns: { key: string; label: string; render: (r: T) => ReactNode }[];
+  columns: { key: string; label: string; render: (r: T) => ReactNode; width?: number; align?: "left" | "right" }[];
   filters?: ReactNode;
   onRowClick?: (r: T) => void;
   newButtonLabel?: string;
@@ -102,7 +103,7 @@ export function ModuleShell<T extends { id: string; folio: string }>({
             {headerExtras}
             {newModalForm ? (
               <Button onClick={() => setOpen(true)} variant={newButtonVariant}>
-                <Plus className="h-4 w-4" aria-hidden /> {newButtonLabel}
+                <Icono nombre="plus" size={15} /> {newButtonLabel}
               </Button>
             ) : null}
           </div>
@@ -111,19 +112,25 @@ export function ModuleShell<T extends { id: string; folio: string }>({
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <section className="rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
+      <section className="border-t border-[var(--border-default)]">
         {filters ? (
-          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] p-4">
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] py-3 shadow-[var(--linea-surco)]">
             {filters}
           </div>
         ) : null}
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
-            <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
+            <thead
+              className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]"
+            >
               <tr>
-                <th className="h-10 w-24 px-4 font-medium">Folio</th>
+                <th className="h-8.5 w-24 px-4 font-semibold">Folio</th>
                 {columns.map((c) => (
-                  <th key={c.key} className="h-10 px-4 font-medium">
+                  <th
+                    key={c.key}
+                    className={cn("h-8.5 px-4 font-semibold", c.align === "right" && "pr-3.5 text-right")}
+                    style={c.width ? { width: c.width } : undefined}
+                  >
                     {c.label}
                   </th>
                 ))}
@@ -132,12 +139,12 @@ export function ModuleShell<T extends { id: string; folio: string }>({
             <tbody>
               {loading
                 ? Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i} className="border-b border-[var(--border-subtle)]">
-                      <td className="h-14 px-4">
+                    <tr key={i} className="border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)]">
+                      <td className="h-11 px-4">
                         <Skeleton className="h-4 w-16" />
                       </td>
                       {columns.map((c) => (
-                        <td key={c.key} className="h-14 px-4">
+                        <td key={c.key} className="h-11 px-4">
                           <Skeleton className="h-4 w-24" />
                         </td>
                       ))}
@@ -147,14 +154,21 @@ export function ModuleShell<T extends { id: string; folio: string }>({
                     <tr
                       key={r.id}
                       onClick={() => onRowClick?.(r)}
-                      className="h-14 border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--color-subtle)]/60"
+                      className="h-11 border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] transition-colors hover:bg-[var(--color-subtle)]"
                       style={{ cursor: onRowClick ? "pointer" : undefined }}
                     >
-                      <td className="px-4 font-mono text-[11px] text-[var(--text-secondary)]">
+                      <td className="overflow-hidden px-4 text-ellipsis whitespace-nowrap text-[12px] tracking-[0.01em] text-[var(--text-secondary)]">
                         {r.folio}
                       </td>
                       {columns.map((c) => (
-                        <td key={c.key} className="px-4 text-[var(--text-primary)]">
+                        <td
+                          key={c.key}
+                          className={cn(
+                            "overflow-hidden px-4 text-ellipsis whitespace-nowrap text-[var(--text-primary)]",
+                            c.align === "right" && "pr-3.5 text-right",
+                          )}
+                          style={c.width ? { width: c.width, maxWidth: c.width } : undefined}
+                        >
                           {c.render(r)}
                         </td>
                       ))}

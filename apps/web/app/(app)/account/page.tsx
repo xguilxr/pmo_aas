@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Check, KeyRound, UserCircle, X } from "lucide-react";
 
 import { MisDatosSection } from "@/components/mis-datos-section";
 import { NotificationPreferencesSection } from "@/components/notification-preferences-section";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -71,25 +71,25 @@ function ProfileSection() {
   }
 
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
       <div className="mb-4 flex items-center gap-2">
-        <UserCircle className="h-5 w-5 text-[var(--color-tertiary)]" aria-hidden />
-        <h2 className="text-lg font-semibold text-[var(--color-primary)]">
+        <Icono nombre="user" size={15} className="text-[var(--text-tertiary)]" />
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">
           Detalles personales
         </h2>
       </div>
 
       {loading ? (
         <div className="space-y-3">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
         </div>
       ) : (
         <form onSubmit={handleSave} className="space-y-4">
           <div>
             <label
               htmlFor="full_name"
-              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
             >
               Nombre completo
             </label>
@@ -107,7 +107,7 @@ function ProfileSection() {
           <div>
             <label
               htmlFor="email"
-              className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+              className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
             >
               Email
             </label>
@@ -118,7 +118,7 @@ function ProfileSection() {
               readOnly
               disabled
             />
-            <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+            <p className="mt-1 text-[12px] text-[var(--text-tertiary)]">
               El cambio de email requiere verificación (post-MVP).
             </p>
           </div>
@@ -181,10 +181,10 @@ function PasswordSection() {
   }
 
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
       <div className="mb-4 flex items-center gap-2">
-        <KeyRound className="h-5 w-5 text-[var(--color-tertiary)]" aria-hidden />
-        <h2 className="text-lg font-semibold text-[var(--color-primary)]">
+        <Icono nombre="lock" size={15} className="text-[var(--text-tertiary)]" />
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">
           Cambiar contraseña
         </h2>
       </div>
@@ -193,7 +193,7 @@ function PasswordSection() {
         <div>
           <label
             htmlFor="current"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
           >
             Contraseña actual
           </label>
@@ -210,7 +210,7 @@ function PasswordSection() {
         <div>
           <label
             htmlFor="new"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
           >
             Nueva contraseña
           </label>
@@ -229,14 +229,10 @@ function PasswordSection() {
                 className={
                   c.ok
                     ? "flex items-center gap-1.5 text-[var(--color-success-fg)]"
-                    : "flex items-center gap-1.5 text-[var(--color-tertiary)]"
+                    : "flex items-center gap-1.5 text-[var(--text-tertiary)]"
                 }
               >
-                {c.ok ? (
-                  <Check className="h-3.5 w-3.5" aria-hidden />
-                ) : (
-                  <X className="h-3.5 w-3.5" aria-hidden />
-                )}
+                <Icono nombre={c.ok ? "check" : "x"} size={13} />
                 {c.label}
               </li>
             ))}
@@ -246,7 +242,7 @@ function PasswordSection() {
         <div>
           <label
             htmlFor="confirm"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
           >
             Confirmar nueva contraseña
           </label>
@@ -283,10 +279,10 @@ export default function AccountPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
           Administrar cuenta
         </h1>
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+        <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
           Actualiza tus datos personales y la contraseña de tu cuenta.
         </p>
       </header>

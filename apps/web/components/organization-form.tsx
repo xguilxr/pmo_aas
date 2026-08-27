@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { Building2 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -76,15 +76,15 @@ function LogoField({
     <div>
       <label
         htmlFor={id}
-        className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+        className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
       >
         {label}
       </label>
       <div className="flex items-start gap-3">
         <div
           className={cn(
-            "flex h-12 w-12 flex-none items-center justify-center overflow-hidden border border-[var(--border-default)] bg-[var(--color-subtle)] text-[10px] text-[var(--color-tertiary)]",
-            shape === "circle" ? "rounded-full" : "rounded",
+            "flex h-12 w-12 flex-none items-center justify-center overflow-hidden border border-[var(--border-default)] bg-[var(--color-subtle)] text-[10px] text-[var(--text-tertiary)]",
+            shape === "circle" ? "rounded-full" : "rounded-[var(--radius-md)]",
           )}
         >
           {value ? (
@@ -101,14 +101,14 @@ function LogoField({
               }}
             />
           ) : shape === "circle" ? (
-            <Building2 className="h-5 w-5" aria-hidden />
+            <Icono nombre="building" size={20} />
           ) : (
             "logo"
           )}
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           {isData ? (
-            <div className="flex items-center gap-2 text-xs text-[var(--color-secondary)]">
+            <div className="flex items-center gap-2 text-[12px] text-[var(--text-secondary)]">
               <span className="truncate rounded-[var(--radius-sm)] bg-[var(--color-subtle)] px-2 py-1">
                 Imagen subida
               </span>
@@ -138,14 +138,14 @@ function LogoField({
             disabled={disabled}
             onChange={(e) => onFile(e.target.files?.[0])}
             aria-label={`Subir ${label}`}
-            className="block w-full text-xs text-[var(--color-tertiary)] file:mr-3 file:rounded-[var(--radius-sm)] file:border file:border-[var(--border-default)] file:bg-[var(--color-surface)] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-[var(--color-secondary)] hover:file:bg-[var(--color-subtle)]"
+            className="block w-full text-[12px] text-[var(--text-tertiary)] file:mr-3 file:rounded-[var(--radius-sm)] file:border file:border-[var(--border-default)] file:bg-[var(--color-surface)] file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-[var(--text-secondary)] hover:file:bg-[var(--color-subtle)]"
           />
           {err ? (
-            <p className="text-xs text-[var(--color-danger-fg)]">{err}</p>
+            <p className="text-[12px] text-[var(--color-danger-fg)]">{err}</p>
           ) : null}
         </div>
       </div>
-      <p className="mt-1 text-xs text-[var(--color-tertiary)]">{helper}</p>
+      <p className="mt-1 text-[12px] text-[var(--text-tertiary)]">{helper}</p>
     </div>
   );
 }
@@ -256,13 +256,13 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="space-y-5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]"
+      className="space-y-5 rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-8"
     >
       {notice ? <Banner variant={notice.kind}>{notice.message}</Banner> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+          <label htmlFor="name" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
             Nombre
           </label>
           <Input
@@ -277,7 +277,7 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
         <div className="sm:col-span-2">
           <label
             htmlFor="reason_social"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
           >
             Razón social
           </label>
@@ -292,7 +292,7 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
         <div>
           <label
             htmlFor="industry"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
           >
             Industria
           </label>
@@ -313,7 +313,7 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
         <div>
           <label
             htmlFor="country"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
           >
             País
           </label>
@@ -327,7 +327,7 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
         <div className="sm:col-span-2">
           <label
             htmlFor="contact_email"
-            className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+            className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
           >
             Email de contacto
           </label>
@@ -359,10 +359,10 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
         />
       </div>
 
-      <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-default)] px-4 py-3">
+      <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-default)] px-4 py-3 shadow-[var(--relieve-control)]">
         <div>
-          <p className="text-sm font-medium text-[var(--color-primary)]">Organización activa</p>
-          <p className="text-xs text-[var(--color-tertiary)]">
+          <p className="text-[13px] font-medium text-[var(--text-primary)]">Organización activa</p>
+          <p className="text-[12px] text-[var(--text-tertiary)]">
             Al desactivarla, dejará de listarse en los filtros por defecto.
           </p>
         </div>
@@ -373,7 +373,7 @@ export function OrganizationForm({ mode, initial, onSaved }: Props) {
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border-default)] pt-4">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border-default)] pt-4 shadow-[var(--linea-surco-arriba)]">
         <Button
           type="button"
           variant="secondary"

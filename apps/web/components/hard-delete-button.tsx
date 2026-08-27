@@ -12,10 +12,10 @@
  *   3. Confirm → DELETE /<entity>/{id}/permanent?confirm=<slug>.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { ApiError } from "@/lib/api";
@@ -133,7 +133,7 @@ export function HardDeleteButton({
         onClick={handleClick}
         aria-label={triggerLabel}
       >
-        <Trash2 className="h-4 w-4" aria-hidden />
+        <Icono nombre="bin" size={15} />
         {triggerLabel}
       </Button>
 

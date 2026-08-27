@@ -2,25 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Activity,
-  BarChart3,
-  Columns3,
-  FileText,
-  GitBranch,
-  Lightbulb,
-  ListTree,
-  MessageSquareText,
-  ShieldAlert,
-  Users,
-} from "lucide-react";
 
+import { Icono } from "@/components/ui/icono";
 import { cn } from "@/lib/cn";
 
 type ProjectTab = {
   id: string;
   label: string;
-  icon: React.ReactNode;
+  icono: string;
   href: (projectId: string) => string;
   match: (pathname: string, projectId: string) => boolean;
 };
@@ -29,7 +18,7 @@ const TABS: ProjectTab[] = [
   {
     id: "overview",
     label: "Resumen",
-    icon: <Activity className="h-4 w-4" aria-hidden />,
+    icono: "circle-check",
     href: (id) => `/pmo/projects/${id}`,
     match: (p, id) =>
       p === `/pmo/projects/${id}` ||
@@ -38,7 +27,7 @@ const TABS: ProjectTab[] = [
   {
     id: "plan",
     label: "Plan",
-    icon: <ListTree className="h-4 w-4" aria-hidden />,
+    icono: "list-check",
     href: (id) => `/pmo/projects/${id}/plan`,
     match: (p) =>
       /^\/admin\/projects\/[^/]+\/(plan|tasks|gantt)/.test(p),
@@ -50,14 +39,14 @@ const TABS: ProjectTab[] = [
     // diferencia del Portfolio Board, cuyo estatus es derivado.
     id: "board",
     label: "Board",
-    icon: <Columns3 className="h-4 w-4" aria-hidden />,
+    icono: "grid-2x2",
     href: (id) => `/pmo/projects/${id}/board`,
     match: (p) => /^\/pmo\/projects\/[^/]+\/board/.test(p),
   },
   {
     id: "raid",
     label: "RAID",
-    icon: <ShieldAlert className="h-4 w-4" aria-hidden />,
+    icono: "triangle-alert",
     href: (id) => `/pmo/projects/${id}/raid`,
     match: (p) => /^\/admin\/projects\/[^/]+\/(raid|risks|issues)/.test(p),
   },
@@ -69,7 +58,7 @@ const TABS: ProjectTab[] = [
     // sigue siendo `/areas`: renombrar una URL rompe los enlaces guardados y no
     // aporta nada al lector.
     label: "Recursos",
-    icon: <Users className="h-4 w-4" aria-hidden />,
+    icono: "users",
     href: (id) => `/pmo/projects/${id}/areas`,
     match: (p) => /^\/admin\/projects\/[^/]+\/areas/.test(p),
   },
@@ -80,14 +69,14 @@ const TABS: ProjectTab[] = [
     // archivos sueltos. La ruta se queda en `/documents` por lo mismo que
     // arriba.
     label: "Artefactos",
-    icon: <FileText className="h-4 w-4" aria-hidden />,
+    icono: "file-text",
     href: (id) => `/pmo/projects/${id}/documents`,
     match: (p) => /^\/admin\/projects\/[^/]+\/documents/.test(p),
   },
   {
     id: "minutes",
     label: "Minutas",
-    icon: <MessageSquareText className="h-4 w-4" aria-hidden />,
+    icono: "file-spreadsheet",
     href: (id) => `/pmo/projects/${id}/minutes`,
     match: (p) =>
       /^\/admin\/projects\/[^/]+\/(minutes|ai-minutes)/.test(p),
@@ -95,21 +84,23 @@ const TABS: ProjectTab[] = [
   {
     id: "reports",
     label: "Reportes",
-    icon: <BarChart3 className="h-4 w-4" aria-hidden />,
+    icono: "trending-up",
     href: (id) => `/pmo/projects/${id}/reports`,
     match: (p) => /^\/admin\/projects\/[^/]+\/reports/.test(p),
   },
   {
     id: "changes",
     label: "Cambios",
-    icon: <GitBranch className="h-4 w-4" aria-hidden />,
+    icono: "git-branch",
     href: (id) => `/pmo/projects/${id}/changes`,
     match: (p) => /^\/admin\/projects\/[^/]+\/changes/.test(p),
   },
   {
     id: "lessons",
     label: "Lecciones",
-    icon: <Lightbulb className="h-4 w-4" aria-hidden />,
+    // Sin equivalente de Lightbulb en el set Keyline; `info` es el
+    // provisional de la especificación de revamp (§2).
+    icono: "info",
     href: (id) => `/pmo/projects/${id}/lessons`,
     match: (p) => /^\/admin\/projects\/[^/]+\/lessons/.test(p),
   },
@@ -129,31 +120,28 @@ export function ProjectTabsBar({ projectId }: { projectId: string }) {
   return (
     <nav
       aria-label="Módulos del proyecto"
-      className="sticky top-0 z-20 -mx-4 mb-6 border-b border-[var(--border-default)] bg-[var(--color-app)] px-4 pt-6 lg:-mx-8 lg:px-8"
+      className="sticky top-0 z-20 -mx-4 mb-6 flex h-11.5 items-center gap-0.5 overflow-x-auto border-b border-[var(--border-default)] bg-[var(--color-app)] px-4 shadow-[var(--linea-surco)] lg:-mx-8 lg:px-8"
     >
-      <ul className="flex flex-wrap justify-center gap-1 overflow-x-auto py-3">
-        {TABS.map((tab) => {
-          const active = tab.match(pathname, projectId);
-          return (
-            <li key={tab.id} className="flex-none">
-              <Link
-                href={tab.href(projectId)}
-                prefetch={false}
-                className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-md)] px-3 text-sm transition-colors",
-                  active
-                    ? "bg-[var(--color-surface)] font-semibold text-[var(--color-primary)] shadow-[var(--shadow-sm)]"
-                    : "text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)]",
-                )}
-                aria-current={active ? "page" : undefined}
-              >
-                {tab.icon}
-                {tab.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {TABS.map((tab) => {
+        const active = tab.match(pathname, projectId);
+        return (
+          <Link
+            key={tab.id}
+            href={tab.href(projectId)}
+            prefetch={false}
+            className={cn(
+              "inline-flex h-7.5 flex-none items-center gap-1.75 rounded-[var(--radius-md)] px-2.5 text-[12.5px] transition-colors",
+              active
+                ? "bg-[var(--color-primary)] font-medium text-[var(--color-inverse)]"
+                : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",
+            )}
+            aria-current={active ? "page" : undefined}
+          >
+            <Icono nombre={tab.icono} size={15} />
+            {tab.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
