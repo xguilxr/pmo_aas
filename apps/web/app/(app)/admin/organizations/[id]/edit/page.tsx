@@ -2,7 +2,6 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { Building2, PowerOff } from "lucide-react";
 
 import { OrganizationForm } from "@/components/organization-form";
 import { OrgHierarchySection } from "@/components/org-hierarchy-section";
@@ -11,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
@@ -103,17 +103,19 @@ function OrganizationDetailInner() {
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 flex-none items-center justify-center overflow-hidden rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]">
+          <div className="flex h-12 w-12 flex-none items-center justify-center overflow-hidden rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--text-tertiary)]">
             {org.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={org.logo_url} alt="" className="h-full w-full object-cover" />
             ) : (
-              <Building2 className="h-6 w-6" aria-hidden />
+              <Icono nombre="building" size={22} />
             )}
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-[var(--color-primary)]">{org.name}</h1>
-            <div className="mt-1 flex items-center gap-2 text-xs text-[var(--color-tertiary)]">
+            <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
+              {org.name}
+            </h1>
+            <div className="mt-1 flex items-center gap-2 text-[12px] text-[var(--text-tertiary)]">
               {[org.industry, org.country].filter(Boolean).join(" · ") || "Sin datos"}
               {!org.is_active ? <Badge variant="danger">Inactiva</Badge> : null}
             </div>
@@ -121,7 +123,7 @@ function OrganizationDetailInner() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="danger" onClick={() => setConfirmDelete(true)}>
-            <PowerOff className="h-4 w-4" aria-hidden />
+            <Icono nombre="circle-alert" size={15} />
             Desactivar
           </Button>
           {!org.is_active ? (
@@ -167,7 +169,7 @@ function OrganizationDetailInner() {
           </>
         }
       >
-        <p className="text-sm text-[var(--color-secondary)]">
+        <p className="text-[13px] text-[var(--text-secondary)]">
           ¿Confirmas desactivar <strong>{org.name}</strong>?
         </p>
       </Modal>
