@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
@@ -101,21 +101,29 @@ export default function RequestsListPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">Solicitudes</h1>
-          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+            Solicitudes
+          </h1>
+          <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
             Bandeja de solicitudes de nuevos proyectos. Revisa, aprueba y convierte en proyecto.
           </p>
         </div>
         <Link href="/pmo/requests/new">
           <Button>
-            <Plus className="h-4 w-4" aria-hidden />
+            <Icono nombre="plus" size={15} />
             Nueva solicitud
           </Button>
         </Link>
       </header>
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-        <div role="tablist" aria-label="Estado" className="flex flex-wrap gap-1 border-b border-[var(--border-default)] p-2">
+      <section className="rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
+        {/* Bandeja con pestañas de estado — filete inferior 2px en la activa,
+            conteo en pastilla --color-muted, nunca botón con fondo. */}
+        <div
+          role="tablist"
+          aria-label="Estado"
+          className="flex items-center gap-1 border-b border-[var(--border-default)] px-4 shadow-[var(--linea-surco)]"
+        >
           {TABS.map((t) => {
             const active = t.key === tab;
             return (
@@ -126,23 +134,29 @@ export default function RequestsListPage() {
                 type="button"
                 onClick={() => setTab(t.key)}
                 className={cn(
-                  "rounded-[var(--radius-md)] px-3 py-1.5 text-sm transition-colors",
+                  "flex h-9 items-center gap-1.75 border-b-2 px-2.5 text-[13px] transition-colors",
                   active
-                    ? "bg-[var(--color-subtle)] font-medium text-[var(--color-primary)]"
-                    : "text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]",
+                    ? "border-[var(--text-primary)] font-semibold text-[var(--text-primary)]"
+                    : "border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-primary)]",
                 )}
               >
                 {t.label}
+                {active && !loading ? (
+                  <span className="inline-flex h-4.5 items-center rounded-[5px] bg-[var(--color-muted)] px-1.5 font-mono text-[11px] text-[var(--text-secondary)]">
+                    {rows.length}
+                  </span>
+                ) : null}
               </button>
             );
           })}
         </div>
 
-        <div className="border-b border-[var(--border-default)] p-4">
+        <div className="border-b border-[var(--border-subtle)] p-4">
           <div className="relative max-w-md">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-tertiary)]"
-              aria-hidden
+            <Icono
+              nombre="search"
+              size={15}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
             />
             <Input
               type="search"
@@ -162,51 +176,54 @@ export default function RequestsListPage() {
         ) : null}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+          <table className="w-full table-fixed text-[13px]">
+            <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
               <tr>
-                <SortableTh<ProjectRequest> sortKey="folio" getter={(r) => r.folio} ctrl={reqCtrl} className="px-4 py-3">Folio</SortableTh>
-                <SortableTh<ProjectRequest> sortKey="title" getter={(r) => r.title} ctrl={reqCtrl} className="px-4 py-3">Título</SortableTh>
-                <SortableTh<ProjectRequest> sortKey="date" getter={(r) => r.requested_at ?? (r as any).created_at ?? ""} ctrl={reqCtrl} className="px-4 py-3">Fecha</SortableTh>
-                <SortableTh<ProjectRequest> sortKey="budget" getter={(r) => (r as any).budget ?? 0} ctrl={reqCtrl} className="px-4 py-3">Presupuesto</SortableTh>
-                <SortableTh<ProjectRequest> sortKey="status" getter={(r) => r.status} ctrl={reqCtrl} className="px-4 py-3">Estado</SortableTh>
+                <SortableTh<ProjectRequest> sortKey="folio" getter={(r) => r.folio} ctrl={reqCtrl} className="h-8.5 px-4 w-33">Folio</SortableTh>
+                <SortableTh<ProjectRequest> sortKey="title" getter={(r) => r.title} ctrl={reqCtrl} className="h-8.5 px-4">Título</SortableTh>
+                <SortableTh<ProjectRequest> sortKey="date" getter={(r) => r.requested_at ?? (r as any).created_at ?? ""} ctrl={reqCtrl} className="h-8.5 px-4 w-44">Fecha</SortableTh>
+                <SortableTh<ProjectRequest> sortKey="budget" getter={(r) => (r as any).budget ?? 0} ctrl={reqCtrl} className="h-8.5 pl-4 pr-3.5 w-38" align="right">Presupuesto</SortableTh>
+                <SortableTh<ProjectRequest> sortKey="status" getter={(r) => r.status} ctrl={reqCtrl} className="h-8.5 px-4 w-33">Estado</SortableTh>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-[var(--border-subtle)]">
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-56" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+                  <tr key={i} className="h-11 border-b border-[var(--border-subtle)]">
+                    <td className="px-4"><Skeleton className="h-4 w-24" /></td>
+                    <td className="px-4"><Skeleton className="h-4 w-56" /></td>
+                    <td className="px-4"><Skeleton className="h-4 w-32" /></td>
+                    <td className="px-4"><Skeleton className="h-4 w-24" /></td>
+                    <td className="px-4"><Skeleton className="h-4 w-20" /></td>
                   </tr>
                 ))
               ) : sortedReqRows.length > 0 ? (
                 sortedReqRows.map((r) => (
                   <tr
                     key={r.id}
-                    className="cursor-pointer border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+                    className="h-11 cursor-pointer border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--color-subtle)]"
                     onClick={() => { window.location.href = `/pmo/requests/${r.id}`; }}
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-[var(--color-secondary)]">
+                    <td className="overflow-hidden px-4 text-ellipsis whitespace-nowrap text-[12px] tracking-[0.01em] text-[var(--text-secondary)]">
                       <Link href={`/pmo/requests/${r.id}`} className="hover:underline">
                         {r.folio}
                       </Link>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-[var(--color-primary)]">{r.title}</div>
-                      <div className="truncate text-xs text-[var(--color-tertiary)]">{r.sponsor}</div>
+                    <td className="min-w-0 px-4">
+                      <div className="overflow-hidden text-ellipsis whitespace-nowrap font-medium text-[var(--text-primary)]">
+                        {r.title}
+                      </div>
+                      <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] text-[var(--text-tertiary)]">
+                        {r.sponsor}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-[var(--color-secondary)]">
+                    <td className="overflow-hidden px-4 text-ellipsis whitespace-nowrap text-[12.5px] text-[var(--text-secondary)]">
                       {formatDate(r.requested_at)}
                     </td>
-                    <td className="px-4 py-3 text-[var(--color-secondary)]">
+                    <td className="pl-4 pr-3.5 text-right font-mono text-[12.5px] text-[var(--text-primary)]">
                       {formatImporte(r.budget, r.currency)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4">
                       <StatusBadge status={r.status} />
                     </td>
                   </tr>
@@ -214,7 +231,7 @@ export default function RequestsListPage() {
               ) : null}
               {empty ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--color-tertiary)]">
+                  <td colSpan={5} className="px-4 py-16 text-center text-[13px] text-[var(--text-tertiary)]">
                     No hay solicitudes en este estado.
                   </td>
                 </tr>
