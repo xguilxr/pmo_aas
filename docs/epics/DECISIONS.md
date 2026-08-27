@@ -677,3 +677,11 @@ legacy en Sprint 7 (US-081).
 **Por qué «personalidad» sí y «permiso» no:** lo que distingue a un rol de agente en el artboard (un revisor de riesgos, un redactor de minutas) es qué mira y cómo escribe, no a qué tiene derecho. Esa parte es configuración de producto y es barata. La otra era un subsistema de seguridad escondido en una frase de cinco palabras.
 **Reversible:** sí. Añadir permisos propios más adelante es trabajo nuevo, y arranca por `docs/architecture/modelo-amenazas.md` y no por el esquema (CLAUDE.md §0.3).
 **Implementación:** US-225 (pendiente). Contexto y alternativas en `docs/epics/EP021-catalogo-de-ia.md` §pregunta 4.
+
+## DEC-034 — Facturación manual primero; Stripe después, escribiendo sobre el mismo modelo (bloque R2)
+**Fecha:** 2026-08-27
+**Decisión:** El plan y estado de facturación por tenant se registran **a mano** por el superadmin (tabla `subscriptions`: plan, estado de pago, renovación, método, notas — US-235). No se integra ningún proveedor de billing en esta fase. Cuando llegue Stripe (u otro), se integra como **escritor** sobre ese mismo modelo: los webhooks actualizan `subscriptions`, no crean un modelo paralelo.
+**Rationale:** hoy los tenants se cuentan con una mano y el dato que el superadmin necesita (quién está en qué plan, quién debe) cabe en una tabla que se edita en un panel. Una integración de billing es la pieza más cara del bloque —OAuth, webhooks, reconciliación, sandbox— y no desbloquea ninguna pantalla que la manual no desbloquee ya (6a MRR, 6b/6d facturación). Diseñar la tabla para que Stripe solo escriba en ella hace que la migración futura sea un adaptador, no un rediseño.
+**Consecuencia aceptada:** MRR (US-236) sale de tarifas declaradas en código (`PLAN_PRICING`) y de lo que el superadmin capture — es tan bueno como la disciplina de captura. La UI no lo esconde: la cifra es real respecto del registro, no de un cobro bancario.
+**Reversible:** sí — la integración es aditiva sobre el mismo esquema.
+**Implementación:** US-235/236 (`plan-post-revamp-especificaciones.md` §R2). Origen: owner por chat, 2026-08-27 («Dec de billing si primero manual»).

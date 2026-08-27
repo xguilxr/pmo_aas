@@ -186,12 +186,11 @@ revisar_cada: 30d
 - **AC**: TC-1 10 muestras ok + 2 fail → 83.3%; TC-2 sin muestras → null;
   TC-3 la retención no borra dentro de la ventana.
 
-## R2 — Monetización (gate: DEC del owner)
+## R2 — Monetización (desbloqueado — **DEC-034**, owner 2026-08-27)
 
-**DEC-billing (bloqueante, propuesta)**: registro manual del plan por
-tenant ahora; integración Stripe después escribiendo sobre el mismo modelo.
-Si el owner aprueba por chat, la ronda lo registra como `DEC-###` en
-`DECISIONS.md` y arranca.
+Registro manual del plan por tenant ahora; Stripe después como escritor
+sobre el mismo modelo. Detalle y rationale en `DECISIONS.md` §DEC-034.
+R2 puede arrancar sin más preguntas.
 
 ### US-235 · Suscripción por tenant — M·**migración 0118**
 
@@ -243,7 +242,7 @@ Si el owner aprueba por chat, la ronda lo registra como `DEC-###` en
   endpoint devuelve el error de deshabilitado ya existente de AI_DISABLED);
   TC-2 PUT de flag inexistente → 422; TC-3 sin override rige el default.
 
-## R3 — Dark theme (una US — M/L)
+## R3 — Dark theme (US-238 — M/L)
 
 - **Alcance**: reescribir el bloque `.dark, [data-theme="dark"]` de
   `apps/web/app/globals.css` con los pasos del mockup 1a §02b: canvas
@@ -277,7 +276,69 @@ Si el owner aprueba por chat, la ronda lo registra como `DEC-###` en
 
 ---
 
-## Guía de la ronda de desarrollo (para la sesión que implemente)
+## Adiciones 2026-08-27 — feedback del owner (iPad, slug de proyecto)
+
+### US-239 · Clave de proyecto estilo Jira en la URL — M·**migración 0120** · EP005
+
+Pedido del owner: «que los proyectos tengan un código de algún slug del
+proyecto estilo Jira para que las URLs lo porten también».
+
+- **Modelo**: `projects.clave` VARCHAR(10) NULL, patrón `^[A-Z][A-Z0-9]{1,9}$`,
+  **única por tenant** (índice único parcial `(tenant_id, clave) WHERE clave
+  IS NOT NULL`). No sustituye al folio (`PRJ-2026-004` sigue siendo el
+  identificador documental); la clave es el identificador **memorable y de
+  URL** (`HLD`, `EAMBNF`). Migración 0120: columna + índice + **backfill**:
+  iniciales del nombre (mayúsculas, sin stopwords, máx 6) con sufijo
+  numérico ante colisión; el registro de la migración lista las claves
+  generadas para revisión del owner (mismo patrón que 0110/0111).
+- **Resolución dual** (API): helper `resolver_proyecto(db, tenant_id,
+  id_o_clave)` — si casa el regex UUID → por id; si no → `upper()` y por
+  clave. Aplicarlo en `endpoints/projects.py` (GET detalle) y en los
+  endpoints anidados que reciben `project_id` de path vía la dependencia
+  común de `api/deps.py` si existe, o en cada router que hoy haga
+  `get(Project, id)` — la implementación localiza los puntos con grep de
+  `project_id` en path params; el criterio: **toda URL que hoy acepta UUID
+  acepta clave**, con el mismo scoping por tenant.
+- **Front**: las rutas Next siguen siendo `[id]` (aceptan ambos valores —
+  cero renombres de carpetas). Helper `hrefProyecto(p)` en
+  `lib/api/projects.ts` que prefiere `clave` y cae a `id`; sustituir los
+  literales `` `/pmo/projects/${id}` `` por el helper (grep;
+  ~15 sitios: tablas, tops, board, breadcrumbs, tabs). `project-form.tsx`:
+  campo «Clave» con sugerencia automática desde el nombre, validación del
+  patrón y error claro en colisión; editable después con aviso («las URLs
+  viejas con la clave anterior dejan de resolver») — v1 no guarda
+  histórico de claves.
+- **AC**: TC-1 `/pmo/projects/HLD` y `/pmo/projects/<uuid>` cargan el
+  mismo proyecto; TC-2 clave de otro tenant → 404 (scoping); TC-3
+  colisión al crear → 422 con sugerencia; TC-4 backfill genera claves
+  únicas y las registra; TC-5 minúsculas en URL resuelven
+  (case-insensitive); TC-6 proyecto sin clave (pre-backfill fallido o
+  borrada) sigue accesible por UUID.
+- **Nota CLI/G**: `pmo proyecto <folio>` (bloque O) acepta también la
+  clave — mismo resolver expuesto; actualizar el contrato en
+  `-operacion.md` al implementar.
+
+### QA-iPad · Bugs visuales del revamp en tablet — BUG-093+ (reservados) · gate: lista del owner
+
+El owner detectó bugs visuales en iPad (2026-08-27); la lista llega al
+terminar su revisión (iPad + PC). Al llegar: un BUG por hallazgo vía
+`triage`, bloque propio «QA revamp». Sospechosos probables para acelerar
+la revisión (el revamp se implementó contra artboards de 1440px):
+
+1. Tablas `table-fixed` con anchos fijos que suman >768px sin
+   `overflow-x-auto` en el contenedor (proyectos, usuarios, plan).
+2. `KpiBand` en cortes intermedios (`sm:grid-cols-3` deja la banda de 6 en
+   3×2 con filetes verticales que no cierran la retícula).
+3. Topbar: buscador de 260px + switchers de inquilino/organización
+   compitiendo por ancho en 768–1024px.
+4. Sidebar táctil: el colapso a 68px depende de hover/click fino; en
+   touch el breakpoint `lg` deja el sidebar off-canvas y el botón de menú
+   es de 36px (objetivo táctil justo).
+5. Vistas anchas sin `max-w` (vista maestra, gantt, heatmap): scroll
+   horizontal correcto pero sticky de primera columna + `-webkit-overflow-
+   scrolling` en Safari iPad es el clásico que se rompe.
+6. Modales `max-h-[calc(100dvh-2rem)]`: `dvh` + teclado en pantalla en
+   Safari.
 
 1. **Arranque**: leer `HANDOFF.md`, `CLAUDE.md`, `SPRINT.md`, este doc y
    los dos hermanos (`-operacion`, `-generacion`). El OK del owner por chat
@@ -286,11 +347,13 @@ Si el owner aprueba por chat, la ronda lo registra como `DEC-###` en
    especificaciones como cuerpo, o se omiten si el owner prefiere
    solo commits.
 2. **Lanes** (sesiones secuenciales si comparten migraciones):
-   - Lane 1 (con migraciones, secuencial): US-233 → US-234 → [DEC billing]
-     US-235 → US-236 → US-237. Migraciones 0116–0119 en ese orden.
+   - Lane 1 (con migraciones, secuencial): US-233 → US-234 → US-235 →
+     US-236 → US-237 → US-239. Migraciones 0116–0120 en ese orden
+     (R2 desbloqueado por DEC-034).
    - Lane 2 (sin migraciones, paralelizable con 1): US-227 → US-230 →
      US-231 → US-232 → US-229 → US-228.
-   - Lane 3 (solo web): R3 dark theme; después R4.
+   - Lane 3 (solo web): R3 dark theme (US-238); después R4; el bloque
+     «QA revamp» (BUG-093+) entra aquí cuando el owner entregue la lista.
    - Lane 4 (independiente): bloque O; después bloque G (usa O).
 3. **Por US**: branch de trabajo único de la ronda; commit
    `feat(scope): US-XXX — …`; actualizar epic (EP010 para R1/R2) +

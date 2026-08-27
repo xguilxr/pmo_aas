@@ -39,6 +39,10 @@ contador de compat lo confirme.
 
 ### Producto — abierto
 
+- [ ] **QA revamp (iPad/PC)** — el owner está levantando bugs visuales;
+  al llegar la lista: BUG-093+ vía triage. Sospechosos y US-239 (clave de
+  proyecto en URL): `plan-post-revamp-especificaciones.md`.
+
 - [ ] **Desplegar `0105`–`0115`** (#584/#585, #594 y Fase 2). `0105`–`0107`
   cierran **todas las sesiones vivas** (ADR-033) y el panel pasa a dos pasos
   (ADR-035): ten acceso a tu correo. Mirar el registro: `0110` lista los
