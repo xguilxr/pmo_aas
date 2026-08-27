@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -185,11 +187,33 @@ export function ProjectForm({ mode, initial }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-5 rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-6"
+      className="space-y-5 rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-8"
     >
+      {mode === "create" ? (
+        <div className="flex flex-col gap-1">
+          <nav className="text-[12px]">
+            <Link
+              href="/pmo/projects"
+              className="text-[var(--text-secondary)] hover:underline"
+            >
+              Proyectos
+            </Link>
+            <span className="mx-1.5 text-[var(--text-faint)]">/</span>
+            <span className="font-medium text-[var(--text-primary)]">Nuevo</span>
+          </nav>
+          <h2 className="text-[22px] font-semibold tracking-tight text-[var(--text-primary)]">
+            Nuevo proyecto
+          </h2>
+          <p className="text-[13px] text-[var(--text-tertiary)]">
+            Completa los datos principales. Podrás ajustar fase, presupuesto real y salud más
+            tarde.
+          </p>
+        </div>
+      ) : null}
+
       {notice ? <Banner variant={notice.kind}>{notice.message}</Banner> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
         <Field label="Nombre" full>
           <Input value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />
         </Field>
@@ -199,6 +223,7 @@ export function ProjectForm({ mode, initial }: Props) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
+            className="min-h-16 border-[var(--border-strong)] text-[13px] shadow-[var(--hundido)]"
           />
         </Field>
         <Field label="Tipo">
@@ -210,8 +235,12 @@ export function ProjectForm({ mode, initial }: Props) {
             ))}
           </Select>
         </Field>
-        <Field label="Prioridad (1-5)">
-          <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
+        <Field label="Prioridad (1–5)">
+          <Select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            className="font-mono"
+          >
             {[1, 2, 3, 4, 5].map((n) => (
               <option key={n} value={n}>
                 {n}
@@ -236,6 +265,19 @@ export function ProjectForm({ mode, initial }: Props) {
             {orgs.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Fase">
+          <Select
+            value={phase}
+            onChange={(e) => setPhase(e.target.value as ProjectPhase)}
+            disabled={mode === "edit"}
+          >
+            {(Object.keys(PHASE_LABEL) as ProjectPhase[]).map((k) => (
+              <option key={k} value={k}>
+                {PHASE_LABEL[k]}
               </option>
             ))}
           </Select>
@@ -272,6 +314,7 @@ export function ProjectForm({ mode, initial }: Props) {
               if (prog) setPortfolioId(prog.portfolio_id);
             }}
             disabled={!organizationId}
+            style={programId ? undefined : { color: "var(--text-faint)" }}
           >
             <option value="">Sin programa</option>
             {programs
@@ -281,19 +324,6 @@ export function ProjectForm({ mode, initial }: Props) {
                   {pr.name}
                 </option>
               ))}
-          </Select>
-        </Field>
-        <Field label="Fase">
-          <Select
-            value={phase}
-            onChange={(e) => setPhase(e.target.value as ProjectPhase)}
-            disabled={mode === "edit"}
-          >
-            {(Object.keys(PHASE_LABEL) as ProjectPhase[]).map((k) => (
-              <option key={k} value={k}>
-                {PHASE_LABEL[k]}
-              </option>
-            ))}
           </Select>
         </Field>
         <Field label="Project Manager">
@@ -316,16 +346,17 @@ export function ProjectForm({ mode, initial }: Props) {
             step="0.01"
             value={budget}
             onChange={(e) => setBudget(e.target.value)}
+            className="font-mono"
           />
         </Field>
         {/* BUG-092 — la moneda la elige el proyecto. Vacío hereda la del
             inquilino, así que cambiar la preferida arrastra a los que no
             eligieron, que es lo que espera quien la cambia. */}
         <Field label="Moneda">
-          <select
-            className="w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+          <Select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
+            style={currency ? undefined : { color: "var(--text-faint)" }}
           >
             <option value="">Usar la del inquilino ({monedaPreferida})</option>
             {MONEDAS.map((m) => (
@@ -333,7 +364,7 @@ export function ProjectForm({ mode, initial }: Props) {
                 {m}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         {mode === "edit" ? (
           <>
@@ -344,19 +375,44 @@ export function ProjectForm({ mode, initial }: Props) {
                 step="0.01"
                 value={actualBudget}
                 onChange={(e) => setActualBudget(e.target.value)}
+                className="font-mono"
               />
             </Field>
           </>
         ) : null}
         <Field label="Inicio planeado">
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <div className="relative">
+            <Icono
+              nombre="calendar"
+              size={14}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)]"
+            />
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="pl-8 font-mono"
+            />
+          </div>
         </Field>
         <Field label="Fin planeado">
-          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <div className="relative">
+            <Icono
+              nombre="calendar"
+              size={14}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)]"
+            />
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="pl-8 font-mono"
+            />
+          </div>
         </Field>
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border-subtle)] pt-4">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border-default)] pt-4 shadow-[var(--linea-surco-arriba)]">
         <Button
           type="button"
           variant="secondary"
@@ -390,7 +446,7 @@ function Field({
 }) {
   return (
     <label className={full ? "sm:col-span-2" : undefined}>
-      <span className="mb-1.5 block text-[12px] font-medium text-[var(--text-secondary)]">
+      <span className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
         {label}
       </span>
       {children}
