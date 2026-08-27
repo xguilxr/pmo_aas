@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Radio, ScrollText } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import {
@@ -16,6 +17,8 @@ import {
 
 export default function PlatformLogsPage() {
   const [rows, setRows] = useState<PlatformLogRow[]>([]);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(rows);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,21 +71,24 @@ export default function PlatformLogsPage() {
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)] text-[var(--text-secondary)]">
-            <ScrollText className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+        <div className="flex items-center gap-2.25">
+          <Icono nombre="file-text" size={20} className="text-[var(--text-primary)]" />
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
               Logs platform-wide
             </h1>
-            <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
+            {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
+            <p className="text-[13px] text-[var(--text-tertiary)]">
               Eventos de todos los tenants + plataforma. Con tenant_id vacío ves todos los tenants.
             </p>
           </div>
         </div>
-        <label className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-[12px] text-[var(--text-secondary)]">
-          <Radio className={streaming ? "h-4 w-4 text-[var(--color-accent)]" : "h-4 w-4"} aria-hidden />
+        <label className="inline-flex h-8 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-[12.5px] text-[var(--text-secondary)] shadow-[var(--relieve-control)]">
+          <Icono
+            nombre="circle-activity"
+            size={14}
+            className={streaming ? "text-[var(--color-accent)]" : "text-[var(--text-tertiary)]"}
+          />
           <input
             type="checkbox"
             checked={streaming}
@@ -129,38 +135,43 @@ export default function PlatformLogsPage() {
           <table className="w-full text-[13px]">
             <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
               <tr>
-                <th className="h-10 px-4 font-medium">Cuándo</th>
-                <th className="h-10 px-4 font-medium">Acción</th>
-                <th className="h-10 px-4 font-medium">Módulo</th>
-                <th className="h-10 px-4 font-medium">Tenant</th>
-                <th className="h-10 px-4 font-medium">Entidad</th>
-                <th className="h-10 px-4 font-medium">Detalles</th>
+                <th className="h-8.5 px-4 font-medium">Cuándo</th>
+                <th className="h-8.5 px-4 font-medium">Acción</th>
+                <th className="h-8.5 px-4 font-medium">Módulo</th>
+                <th className="h-8.5 px-4 font-medium">Tenant</th>
+                <th className="h-8.5 px-4 font-medium">Entidad</th>
+                <th className="h-8.5 px-4 font-medium">Detalles</th>
               </tr>
             </thead>
             <tbody>
               {loading
                 ? Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i} className="border-b border-[var(--border-subtle)]">
+                    <tr key={i} className="h-11 border-b border-[var(--border-subtle)]">
                       {Array.from({ length: 6 }).map((_, j) => (
-                        <td key={j} className="h-10 px-4">
+                        <td key={j} className="px-4">
                           <Skeleton className="h-3 w-16" />
                         </td>
                       ))}
                     </tr>
                   ))
                 : rows.map((r) => (
-                    <tr key={r.id} className="border-b border-[var(--border-subtle)]">
-                      <td className="px-4 py-2 font-mono text-[11px] text-[var(--text-secondary)]">
+                    <tr
+                      key={r.id}
+                      className="h-11 border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--color-subtle)]/60"
+                    >
+                      <td className="px-4 font-mono text-[11px] text-[var(--text-secondary)]">
                         {r.occurred_at ? new Date(r.occurred_at).toLocaleString("es-MX") : "—"}
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-4">
                         <Badge>{r.action}</Badge>
                       </td>
-                      <td className="px-4 py-2 text-[var(--text-secondary)]">{r.module ?? "—"}</td>
-                      <td className="px-4 py-2 font-mono text-[11px] text-[var(--text-tertiary)]">
+                      <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 text-[var(--text-secondary)]">
+                        {r.module ?? "—"}
+                      </td>
+                      <td className="px-4 font-mono text-[11px] text-[var(--text-tertiary)]">
                         {r.tenant_id ? r.tenant_id.slice(0, 8) : "—"}
                       </td>
-                      <td className="px-4 py-2 text-[var(--text-secondary)]">
+                      <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 text-[var(--text-secondary)]">
                         {r.entity_type ?? "—"}
                         {r.entity_id ? (
                           <span className="ml-1 font-mono text-[11px] text-[var(--text-tertiary)]">
@@ -168,9 +179,9 @@ export default function PlatformLogsPage() {
                           </span>
                         ) : null}
                       </td>
-                      <td className="px-4 py-2 text-[var(--text-tertiary)]">
+                      <td className="px-4 text-[var(--text-tertiary)]">
                         {r.details ? (
-                          <span className="line-clamp-1 max-w-xs font-mono text-[11px]">
+                          <span className="block overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[11px]">
                             {JSON.stringify(r.details)}
                           </span>
                         ) : (

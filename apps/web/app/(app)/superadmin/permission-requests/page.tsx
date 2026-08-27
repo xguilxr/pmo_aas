@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, RefreshCw, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,6 +32,8 @@ import {
 export default function SuperadminPermissionRequestsPage() {
   const me = getStoredUser();
   const [rows, setRows] = useState<PermissionRequest[]>([]);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(rows);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<PermissionRequestStatus | "">(
@@ -67,7 +69,7 @@ export default function SuperadminPermissionRequestsPage() {
 
   if (me && !me.is_superadmin) {
     return (
-      <div className="p-6">
+      <div>
         <Banner variant="danger">Solo superadmin puede ver esta página.</Banner>
       </div>
     );
@@ -116,24 +118,18 @@ export default function SuperadminPermissionRequestsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <Breadcrumb
-        items={[
-          { label: "Superadmin", href: "/superadmin" },
-          { label: "Tickets de permiso" },
-        ]}
-      />
-
+    <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
             Tickets de cambio de permisos
           </h1>
-          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+          {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
+          <p className="max-w-[620px] text-[13px] text-[var(--text-tertiary)]">
             Solicitudes de los administradores de tenants para cambios
             puntuales en permisos por usuario. Al aprobar, se crea/actualiza
             el override correspondiente en{" "}
-            <code>tenant_role_permission_overrides</code> (DEC-021).
+            <code className="font-mono">tenant_role_permission_overrides</code> (DEC-021).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -142,6 +138,7 @@ export default function SuperadminPermissionRequestsPage() {
             onChange={(e) =>
               setFilterStatus(e.target.value as PermissionRequestStatus | "")
             }
+            className="w-40"
           >
             <option value="">Todos</option>
             <option value="pending">Pendientes</option>
@@ -154,8 +151,9 @@ export default function SuperadminPermissionRequestsPage() {
             variant="ghost"
             size="sm"
             onClick={() => void refresh()}
+            aria-label="Refrescar"
           >
-            <RefreshCw className="h-4 w-4" aria-hidden />
+            <Icono nombre="refresh-cw" size={15} />
           </Button>
         </div>
       </header>
@@ -169,7 +167,7 @@ export default function SuperadminPermissionRequestsPage() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <p className="rounded-md border border-[var(--border-default)] bg-[var(--color-surface)] p-8 text-center text-sm text-[var(--color-tertiary)]">
+        <p className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-8 text-center text-[13px] text-[var(--text-tertiary)] shadow-[var(--relieve-isla)]">
           Sin tickets para los filtros aplicados.
         </p>
       ) : (
@@ -177,43 +175,44 @@ export default function SuperadminPermissionRequestsPage() {
           {rows.map((r) => (
             <li
               key={r.id}
-              className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]"
+              className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <div className="flex flex-wrap items-center gap-2 text-[13px]">
                     <Badge variant={statusVariant(r.status)}>
                       {STATUS_LABEL[r.status]}
                     </Badge>
-                    <span className="font-medium text-[var(--color-primary)]">
+                    <span className="font-medium text-[var(--text-primary)]">
                       {r.requested_grant ? "Otorgar" : "Revocar"}{" "}
-                      <code className="font-mono">
+                      <code className="font-mono text-[12px] tracking-[0.01em]">
                         {r.module}.{r.action}
                       </code>
                     </span>
-                    <span className="text-xs text-[var(--color-tertiary)]">
+                    <span className="text-[11.5px] text-[var(--text-tertiary)]">
                       a{" "}
-                      <strong>
+                      <strong className="text-[var(--text-secondary)]">
                         {r.target_user?.full_name || r.target_user?.email}
                       </strong>
                     </span>
                   </div>
-                  <div className="mt-1 text-xs text-[var(--color-tertiary)]">
+                  <div className="mt-1 text-[11.5px] text-[var(--text-tertiary)]">
                     Solicitado por{" "}
-                    <strong>
+                    <strong className="text-[var(--text-secondary)]">
                       {r.requested_by?.full_name || r.requested_by?.email}
                     </strong>{" "}
-                    · tenant <code className="font-mono">{r.tenant_id}</code>
+                    · tenant{" "}
+                    <span className="font-mono text-[11px] tracking-[0.01em]">{r.tenant_id}</span>
                   </div>
-                  <div className="mt-2 rounded border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-2 text-sm text-[var(--color-secondary)]">
-                    <span className="text-[10px] uppercase text-[var(--color-tertiary)]">
+                  <div className="mt-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-2 text-[12.5px] text-[var(--text-secondary)]">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
                       Motivo:
                     </span>{" "}
                     {r.reason}
                   </div>
                   {r.decision_note ? (
-                    <div className="mt-2 rounded border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-2 text-sm text-[var(--color-secondary)]">
-                      <span className="text-[10px] uppercase text-[var(--color-tertiary)]">
+                    <div className="mt-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-2 text-[12.5px] text-[var(--text-secondary)]">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
                         Decisión ({r.decided_by?.email}):
                       </span>{" "}
                       {r.decision_note}
@@ -230,7 +229,7 @@ export default function SuperadminPermissionRequestsPage() {
                       disabled={busyId === r.id}
                       loading={busyId === r.id}
                     >
-                      <Check className="mr-1 h-3.5 w-3.5" aria-hidden />
+                      <Icono nombre="check" size={14} />
                       Aprobar
                     </Button>
                     <Button
@@ -243,7 +242,7 @@ export default function SuperadminPermissionRequestsPage() {
                       }}
                       disabled={busyId === r.id}
                     >
-                      <X className="mr-1 h-3.5 w-3.5" aria-hidden />
+                      <Icono nombre="x" size={14} />
                       Rechazar
                     </Button>
                   </div>
@@ -264,7 +263,7 @@ export default function SuperadminPermissionRequestsPage() {
             <p className="text-sm text-[var(--color-secondary)]">
               Vas a rechazar la solicitud de{" "}
               <strong>{rejectingFor.requested_by?.email}</strong> para{" "}
-              <code>
+              <code className="font-mono text-[12px] tracking-[0.01em]">
                 {rejectingFor.module}.{rejectingFor.action}
               </code>
               . Escribe un motivo claro — el solicitante recibirá la nota por

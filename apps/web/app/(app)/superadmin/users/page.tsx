@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { CheckCircle2, Pencil, PowerOff, Search, Shield, User } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import {
@@ -34,6 +36,8 @@ function fmtDate(iso: string | null | undefined): string {
 
 export default function SuperadminUsersPage() {
   const [rows, setRows] = useState<SuperadminUserRow[]>([]);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(rows);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -67,12 +71,14 @@ export default function SuperadminUsersPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+      <header className="flex flex-col gap-1">
+        <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
           Usuarios
         </h1>
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-          Lista global de usuarios de todos los tenants. Acciones auditadas con <code>scope=platform</code>.
+        {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
+        <p className="text-[13px] text-[var(--text-tertiary)]">
+          Lista global de usuarios de todos los tenants. Acciones auditadas con{" "}
+          <code className="font-mono">scope=platform</code>.
         </p>
       </header>
 
@@ -80,8 +86,12 @@ export default function SuperadminUsersPage() {
       {notice ? <Banner variant="success">{notice}</Banner> : null}
 
       <section className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+        <div className="relative min-w-[240px] flex-1">
+          <Icono
+            nombre="search"
+            size={14}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+          />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -104,7 +114,7 @@ export default function SuperadminUsersPage() {
         </div>
       </section>
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
+      <section className="overflow-x-auto rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
         {loading ? (
           <div className="space-y-2 p-4">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -112,49 +122,49 @@ export default function SuperadminUsersPage() {
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <div className="p-10 text-center text-sm text-[var(--color-tertiary)]">
+          <div className="p-10 text-center text-[13px] text-[var(--text-tertiary)]">
             Sin usuarios que coincidan con los filtros.
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border-subtle)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-                <th className="px-4 py-2">Usuario</th>
-                <th className="px-4 py-2">Tenant</th>
-                <th className="px-4 py-2">Roles</th>
-                <th className="px-4 py-2">Estado</th>
-                <th className="px-4 py-2">Creado</th>
-                <th className="px-4 py-2 text-right">Acciones</th>
+          <table className="w-full text-[13px]">
+            <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)] shadow-[var(--linea-surco)]">
+              <tr>
+                <th className="h-8.5 px-4 font-medium">Usuario</th>
+                <th className="h-8.5 px-4 font-medium">Tenant</th>
+                <th className="h-8.5 px-4 font-medium">Roles</th>
+                <th className="h-8.5 px-4 font-medium">Estado</th>
+                <th className="h-8.5 px-4 font-medium">Creado</th>
+                <th className="h-8.5 px-4 font-medium text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((u) => (
-                <tr key={u.id} className="border-b border-[var(--border-subtle)] last:border-0">
-                  <td className="px-4 py-3">
+                <tr
+                  key={u.id}
+                  className="border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] last:border-0"
+                >
+                  <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
-                      <div>
-                        <div className="font-medium text-[var(--color-primary)]">
+                      <Icono nombre="user" size={15} className="text-[var(--text-tertiary)]" />
+                      <div className="min-w-0">
+                        <div className="overflow-hidden text-ellipsis whitespace-nowrap font-medium text-[var(--text-primary)]">
                           {u.full_name || u.username}
                         </div>
-                        <div className="text-xs text-[var(--color-tertiary)]">
+                        <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-[var(--text-tertiary)]">
                           @{u.username} · {u.email}
                         </div>
                       </div>
                       {u.is_superadmin ? (
-                        <Badge variant="warning">
-                          <Shield className="mr-1 h-3 w-3" aria-hidden />
-                          Super
-                        </Badge>
+                        <Badge variant="warning">Super</Badge>
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-[var(--color-secondary)]">
+                  <td className="px-4 py-2.5 text-[12px] text-[var(--text-secondary)]">
                     {u.tenant_slug ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-xs">
+                  <td className="px-4 py-2.5">
                     {u.roles.length === 0 ? (
-                      <span className="text-[var(--color-tertiary)]">—</span>
+                      <span className="text-[var(--text-faint)]">—</span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {u.roles.map((r) => (
@@ -163,21 +173,18 @@ export default function SuperadminUsersPage() {
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2.5">
                     {u.is_active ? (
-                      <Badge variant="success">
-                        <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden />
-                        Activo
-                      </Badge>
+                      <Badge variant="success">Activo</Badge>
                     ) : (
                       <Badge variant="danger">Inactivo</Badge>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-[var(--color-tertiary)]">
+                  <td className="px-4 py-2.5 text-[12px] text-[var(--text-tertiary)]">
                     {fmtDate(u.created_at)}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1">
+                  <td className="px-4 py-2.5">
+                    <div className="flex justify-end gap-1.5">
                       <Button
                         type="button"
                         variant="secondary"
@@ -185,7 +192,7 @@ export default function SuperadminUsersPage() {
                         onClick={() => setEditing(u)}
                         disabled={u.is_superadmin}
                       >
-                        <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
+                        <Icono nombre="pen" size={14} /> Editar
                       </Button>
                       <Button
                         type="button"
@@ -194,7 +201,7 @@ export default function SuperadminUsersPage() {
                         onClick={() => setToggling(u)}
                         disabled={u.is_superadmin}
                       >
-                        <PowerOff className="h-3.5 w-3.5" aria-hidden />
+                        <Icono nombre={u.is_active ? "circle-alert" : "circle-check"} size={14} />
                         {u.is_active ? "Desactivar" : "Activar"}
                       </Button>
                     </div>
@@ -314,16 +321,15 @@ function EditUserModal({
         </Field>
         {user.is_superadmin ? null : (
           <Field label="Rol">
-            <select
+            <Select
               value={roleType}
               onChange={(e) => setRoleType(e.target.value as SuperadminRoleType | "")}
-              className="block w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-primary)]"
             >
               <option value="">— sin asignar —</option>
               <option value="admin">admin</option>
               <option value="user">user</option>
               <option value="viewer">viewer</option>
-            </select>
+            </Select>
           </Field>
         )}
       </form>

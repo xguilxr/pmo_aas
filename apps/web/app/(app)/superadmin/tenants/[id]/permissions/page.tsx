@@ -2,13 +2,14 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +34,8 @@ export default function SuperadminTenantPermissionsPage() {
 
   const [tenant, setTenant] = useState<TenantDetail["tenant"] | null>(null);
   const [overrides, setOverrides] = useState<PermissionOverride[]>([]);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(tenant);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -127,7 +130,7 @@ export default function SuperadminTenantPermissionsPage() {
 
   if (me && !me.is_superadmin) {
     return (
-      <div className="p-6">
+      <div>
         <Banner variant="danger">
           Solo los super administradores pueden ver esta página.
         </Banner>
@@ -136,7 +139,7 @@ export default function SuperadminTenantPermissionsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <Breadcrumb
         items={[
           { label: "Superadmin", href: "/superadmin" },
@@ -149,11 +152,12 @@ export default function SuperadminTenantPermissionsPage() {
         ]}
       />
 
-      <header>
-        <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+      <header className="flex flex-col gap-1">
+        <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
           Overrides de permisos {tenant?.name ? `— ${tenant.name}` : ""}
         </h1>
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+        {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
+        <p className="text-[13px] text-[var(--text-tertiary)]">
           DEC-021 · capa opcional sobre el mapping estático de DEC-020.
           Cada override exige una razón para auditoría.
         </p>
@@ -161,7 +165,6 @@ export default function SuperadminTenantPermissionsPage() {
 
       {overrides.length > 0 ? (
         <Banner variant="warning">
-          <AlertTriangle className="mr-2 inline h-4 w-4" aria-hidden />
           Este tenant tiene <strong>{overrides.length}</strong> override(s)
           activo(s). Cada uno modifica el comportamiento default de
           permisos para el rol indicado.
@@ -170,13 +173,13 @@ export default function SuperadminTenantPermissionsPage() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {notice ? <Banner variant="success">{notice}</Banner> : null}
 
-      <section className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6">
-        <h2 className="mb-3 text-base font-semibold text-[var(--color-primary)]">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
+        <h2 className="mb-3 text-[13px] font-semibold text-[var(--text-primary)]">
           Agregar override
         </h2>
         <form onSubmit={handleAdd} className="grid gap-3 sm:grid-cols-5">
           <div>
-            <label className="block text-xs font-semibold uppercase text-[var(--color-tertiary)]">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               Rol
             </label>
             <Select
@@ -190,7 +193,7 @@ export default function SuperadminTenantPermissionsPage() {
             </Select>
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase text-[var(--color-tertiary)]">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               Módulo
             </label>
             <Input
@@ -202,7 +205,7 @@ export default function SuperadminTenantPermissionsPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase text-[var(--color-tertiary)]">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               Acción
             </label>
             <Select
@@ -219,7 +222,7 @@ export default function SuperadminTenantPermissionsPage() {
             </Select>
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase text-[var(--color-tertiary)]">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               Granted
             </label>
             <Select
@@ -237,7 +240,7 @@ export default function SuperadminTenantPermissionsPage() {
             </Button>
           </div>
           <div className="sm:col-span-5">
-            <label className="block text-xs font-semibold uppercase text-[var(--color-tertiary)]">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               Razón (obligatoria — queda en audit log)
             </label>
             <Textarea
@@ -252,8 +255,8 @@ export default function SuperadminTenantPermissionsPage() {
         </form>
       </section>
 
-      <section>
-        <h2 className="mb-3 text-base font-semibold text-[var(--color-primary)]">
+      <section className="flex flex-col gap-2.5">
+        <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">
           Overrides activos
         </h2>
         {loading ? (
@@ -262,55 +265,64 @@ export default function SuperadminTenantPermissionsPage() {
             <Skeleton className="h-12 w-full" />
           </div>
         ) : overrides.length === 0 ? (
-          <p className="rounded-md border border-[var(--border-default)] bg-[var(--color-surface)] p-6 text-center text-sm text-[var(--color-tertiary)]">
+          <p className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 text-center text-[13px] text-[var(--text-tertiary)] shadow-[var(--relieve-isla)]">
             Sin overrides — el tenant usa los permisos default del mapping
             estático.
           </p>
         ) : (
-          <table className="w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] text-sm">
-            <thead className="bg-[var(--color-subtle)] text-left text-xs uppercase text-[var(--color-tertiary)]">
-              <tr>
-                <th className="px-3 py-2">Rol</th>
-                <th className="px-3 py-2">Módulo</th>
-                <th className="px-3 py-2">Acción</th>
-                <th className="px-3 py-2">Granted</th>
-                <th className="px-3 py-2">Razón</th>
-                <th className="px-3 py-2 text-right">Acción</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border-default)]">
-              {overrides.map((o) => (
-                <tr key={o.id} className="align-top">
-                  <td className="px-3 py-2">
-                    <Badge>{o.role_type}</Badge>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-xs">{o.module}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{o.action}</td>
-                  <td className="px-3 py-2">
-                    {o.granted ? (
-                      <Badge variant="success">otorga</Badge>
-                    ) : (
-                      <Badge variant="danger">deniega</Badge>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-[var(--color-secondary)]">
-                    {o.reason}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="danger"
-                      onClick={() => handleDelete(o)}
-                      aria-label="Eliminar override"
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </Button>
-                  </td>
+          <div className="overflow-x-auto rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+            <table className="w-full text-[13px]">
+              <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)] shadow-[var(--linea-surco)]">
+                <tr>
+                  <th className="h-8.5 px-3 font-medium">Rol</th>
+                  <th className="h-8.5 px-3 font-medium">Módulo</th>
+                  <th className="h-8.5 px-3 font-medium">Acción</th>
+                  <th className="h-8.5 px-3 font-medium">Granted</th>
+                  <th className="h-8.5 px-3 font-medium">Razón</th>
+                  <th className="h-8.5 px-3 pr-3.5 text-right font-medium">Acción</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {overrides.map((o) => (
+                  <tr
+                    key={o.id}
+                    className="border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] last:border-0"
+                  >
+                    <td className="px-3 py-2 align-top">
+                      <Badge>{o.role_type}</Badge>
+                    </td>
+                    <td className="px-3 py-2 align-top text-[12px] tracking-[0.01em] text-[var(--text-secondary)]">
+                      {o.module}
+                    </td>
+                    <td className="px-3 py-2 align-top text-[12px] tracking-[0.01em] text-[var(--text-secondary)]">
+                      {o.action}
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      {o.granted ? (
+                        <Badge variant="success">otorga</Badge>
+                      ) : (
+                        <Badge variant="danger">deniega</Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 align-top text-[12.5px] text-[var(--text-secondary)]">
+                      {o.reason}
+                    </td>
+                    <td className="px-3 py-2 pr-3.5 text-right align-top">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleDelete(o)}
+                        aria-label="Eliminar override"
+                      >
+                        <Icono nombre="bin" size={14} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { AlertTriangle, CheckCircle2, Sparkles, XCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
@@ -35,6 +36,8 @@ import { getStoredUser } from "@/lib/auth-storage";
 export default function SuperadminAIPage() {
   const user = getStoredUser();
   const [data, setData] = useState<PlatformAIDefaultsRead | null>(null);
+  // DAT-11: cuándo cambió lo que se está mostrando.
+  const leido = useLectura(data);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +106,7 @@ export default function SuperadminAIPage() {
 
   if (user && !user.is_superadmin) {
     return (
-      <div className="mx-auto max-w-3xl p-6">
+      <div>
         <Banner variant="danger">Solo Super Admin puede acceder a este panel.</Banner>
       </div>
     );
@@ -132,18 +135,17 @@ export default function SuperadminAIPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 p-1">
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-            <Sparkles className="h-5 w-5 text-[var(--color-accent)]" aria-hidden />
-            IA · Defaults de plataforma
-          </h1>
-          <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
-            Se aplican a todos los tenants que no tengan override propio.
-            Cambian sin redeploy; entran en vigor en el próximo task del worker.
-          </p>
-        </div>
+    <div className="space-y-5">
+      <header className="flex flex-col gap-1">
+        <h1 className="flex items-center gap-2 text-[24px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
+          <Icono nombre="info" size={20} className="text-[var(--color-accent)]" />
+          IA · Defaults de plataforma
+        </h1>
+        {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
+        <p className="text-[13px] text-[var(--text-tertiary)]">
+          Se aplican a todos los tenants que no tengan override propio.
+          Cambian sin redeploy; entran en vigor en el próximo task del worker.
+        </p>
       </header>
 
       {loading || !data ? (
@@ -155,9 +157,9 @@ export default function SuperadminAIPage() {
 
           <form
             onSubmit={save}
-            className="space-y-4 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]"
+            className="space-y-4 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]"
           >
-            <h2 className="text-sm font-semibold text-[var(--color-primary)]">
+            <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">
               IA base de la plataforma (Groq)
             </h2>
             <p className="text-[12px] text-[var(--text-tertiary)]">
@@ -165,9 +167,9 @@ export default function SuperadminAIPage() {
             </p>
 
             {/* US-057: Groq como IA base de la plataforma */}
-            <div className="mt-2 space-y-3 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-4">
+            <div className="mt-2 space-y-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-4">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold text-[var(--color-primary)]">
+                <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
                   IA base (Groq) — modo "platform" de los tenants
                 </h3>
                 {data.groq_configured ? (
@@ -218,12 +220,13 @@ export default function SuperadminAIPage() {
                   Probar conexión
                 </Button>
                 {groqPingResult ? (
-                  <span className="inline-flex items-center gap-1 text-[13px]">
+                  <span className="inline-flex items-center gap-1.5 text-[13px]">
                     {groqPingResult.ok ? (
                       <>
-                        <CheckCircle2
-                          className="h-4 w-4 text-[var(--color-success-fg)]"
-                          aria-hidden
+                        <Icono
+                          nombre="circle-check"
+                          size={15}
+                          className="text-[var(--color-success-fg)]"
                         />
                         <span className="text-[var(--color-success-fg)]">
                           OK
@@ -234,9 +237,10 @@ export default function SuperadminAIPage() {
                       </>
                     ) : (
                       <>
-                        <XCircle
-                          className="h-4 w-4 text-[var(--color-danger-fg)]"
-                          aria-hidden
+                        <Icono
+                          nombre="circle-x"
+                          size={15}
+                          className="text-[var(--color-danger-fg)]"
                         />
                         <span className="text-[var(--color-danger-fg)]">
                           {groqPingResult.error ?? "Falló"}
@@ -256,40 +260,43 @@ export default function SuperadminAIPage() {
           </form>
 
           {/* US-057: panel de status por tenant */}
-          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-            <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">
+          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
+            <h2 className="mb-3 text-[13px] font-semibold text-[var(--text-primary)]">
               Tenants · Estado de IA
             </h2>
             {tenants.length === 0 ? (
-              <p className="text-[13px] text-[var(--color-tertiary)]">
+              <p className="text-[13px] text-[var(--text-tertiary)]">
                 No hay tenants registrados.
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-[13px]">
-                  <thead className="text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+                  <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)] shadow-[var(--linea-surco)]">
                     <tr>
-                      <th className="px-2 py-1.5 font-medium">Tenant</th>
-                      <th className="px-2 py-1.5 font-medium">Modo</th>
-                      <th className="px-2 py-1.5 font-medium">Proveedor</th>
-                      <th className="px-2 py-1.5 font-medium">Modelo</th>
-                      <th className="px-2 py-1.5 font-medium">API key</th>
-                      <th className="px-2 py-1.5 font-medium">Último test</th>
-                      <th className="px-2 py-1.5 font-medium">Status</th>
+                      <th className="h-8.5 px-3 font-medium">Tenant</th>
+                      <th className="h-8.5 px-3 font-medium">Modo</th>
+                      <th className="h-8.5 px-3 font-medium">Proveedor</th>
+                      <th className="h-8.5 px-3 font-medium">Modelo</th>
+                      <th className="h-8.5 px-3 font-medium">API key</th>
+                      <th className="h-8.5 px-3 font-medium">Último test</th>
+                      <th className="h-8.5 px-3 font-medium">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--border-subtle)]">
+                  <tbody>
                     {tenants.map((t) => (
-                      <tr key={t.tenant_id}>
-                        <td className="px-2 py-1.5">
-                          <div className="font-medium text-[var(--color-primary)]">
+                      <tr
+                        key={t.tenant_id}
+                        className="border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)]"
+                      >
+                        <td className="px-3 py-2">
+                          <div className="overflow-hidden text-ellipsis whitespace-nowrap font-medium text-[var(--text-primary)]">
                             {t.tenant_name}
                           </div>
-                          <div className="font-mono text-[11px] text-[var(--color-tertiary)]">
+                          <div className="text-[11px] tracking-[0.01em] text-[var(--text-tertiary)]">
                             {t.tenant_slug}
                           </div>
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-3 py-2">
                           {t.mode === "disabled" ? (
                             <Badge variant="neutral">Sin IA</Badge>
                           ) : t.mode === "platform" ? (
@@ -298,36 +305,33 @@ export default function SuperadminAIPage() {
                             <Badge variant="success">BYO</Badge>
                           )}
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-3 py-2 text-[var(--text-secondary)]">
                           {t.byo_provider ?? (t.mode === "platform" ? "groq" : "—")}
                         </td>
-                        <td className="px-2 py-1.5 font-mono text-[11px]">
+                        <td className="px-3 py-2 text-[12px] tracking-[0.01em] text-[var(--text-secondary)]">
                           {t.byo_model ?? (t.mode === "platform" ? data.groq_model ?? "—" : "—")}
                         </td>
-                        <td className="px-2 py-1.5 font-mono text-[11px]">
+                        <td className="px-3 py-2 text-[12px] tracking-[0.01em] text-[var(--text-secondary)]">
                           {t.byo_api_key_mask ?? "—"}
                         </td>
-                        <td className="px-2 py-1.5 text-[12px] text-[var(--color-tertiary)]">
+                        <td className="px-3 py-2 font-mono text-[11px] text-[var(--text-tertiary)]">
                           {t.last_test_at
-                            ? new Date(t.last_test_at).toLocaleString()
+                            ? new Date(t.last_test_at).toLocaleString("es-MX")
                             : "—"}
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-3 py-2">
                           {t.last_test_status === "ok" ? (
-                            <span className="inline-flex items-center gap-1 text-[var(--color-success-fg)]">
-                              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                            <Badge variant="success">
+                              <Icono nombre="circle-check" size={12} />
                               OK
-                            </span>
+                            </Badge>
                           ) : t.last_test_status === "fail" ? (
-                            <span
-                              className="inline-flex items-center gap-1 text-[var(--color-danger-fg)]"
-                              title={t.last_test_error ?? undefined}
-                            >
-                              <XCircle className="h-3.5 w-3.5" aria-hidden />
+                            <Badge variant="danger" title={t.last_test_error ?? undefined}>
+                              <Icono nombre="circle-x" size={12} />
                               FAIL
-                            </span>
+                            </Badge>
                           ) : (
-                            <span className="text-[var(--color-tertiary)]">—</span>
+                            <span className="text-[var(--text-faint)]">—</span>
                           )}
                         </td>
                       </tr>
@@ -340,8 +344,8 @@ export default function SuperadminAIPage() {
 
           {/* US-057: dashboard de uso Groq */}
           {usage ? (
-            <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-              <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">
+            <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
+              <h2 className="mb-3 text-[13px] font-semibold text-[var(--text-primary)]">
                 Uso de Groq (últimos {usage.days} días)
               </h2>
               <div className="grid gap-3 sm:grid-cols-4">
@@ -366,8 +370,8 @@ export default function SuperadminAIPage() {
               </div>
 
               {usage.total_failed > 0 ? (
-                <div className="mt-3 inline-flex items-center gap-1 text-[12px] text-[var(--color-warning-fg)]">
-                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                <div className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-[var(--color-warning-fg)]">
+                  <Icono nombre="triangle-alert" size={14} />
                   {usage.total_failed} jobs fallidos en la ventana (revisa
                   rate limits y status de Groq).
                 </div>
@@ -375,7 +379,7 @@ export default function SuperadminAIPage() {
 
               {usage.by_day.length > 0 ? (
                 <div className="mt-4">
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+                  <h3 className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
                     Requests por día
                   </h3>
                   <MiniBarChart
@@ -388,26 +392,37 @@ export default function SuperadminAIPage() {
               ) : null}
 
               {usage.top_tenants.length > 0 ? (
-                <div className="mt-4">
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+                <div className="mt-4 overflow-x-auto">
+                  <h3 className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
                     Top tenants
                   </h3>
                   <table className="w-full text-[13px]">
-                    <thead className="text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
+                    <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)] shadow-[var(--linea-surco)]">
                       <tr>
-                        <th className="px-2 py-1 font-medium">Tenant</th>
-                        <th className="px-2 py-1 font-medium">Requests</th>
-                        <th className="px-2 py-1 font-medium">Tokens in</th>
-                        <th className="px-2 py-1 font-medium">Tokens out</th>
+                        <th className="h-8.5 px-3 font-medium">Tenant</th>
+                        <th className="h-8.5 px-3 pr-3.5 text-right font-medium">Requests</th>
+                        <th className="h-8.5 px-3 pr-3.5 text-right font-medium">Tokens in</th>
+                        <th className="h-8.5 px-3 pr-3.5 text-right font-medium">Tokens out</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[var(--border-subtle)]">
+                    <tbody>
                       {usage.top_tenants.map((r) => (
-                        <tr key={r.tenant_id}>
-                          <td className="px-2 py-1">{r.tenant_name}</td>
-                          <td className="px-2 py-1">{r.requests}</td>
-                          <td className="px-2 py-1">{r.tokens_in}</td>
-                          <td className="px-2 py-1">{r.tokens_out}</td>
+                        <tr
+                          key={r.tenant_id}
+                          className="border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)]"
+                        >
+                          <td className="overflow-hidden text-ellipsis whitespace-nowrap px-3 py-2 text-[var(--text-secondary)]">
+                            {r.tenant_name}
+                          </td>
+                          <td className="px-3 py-2 pr-3.5 text-right font-mono tabular-nums text-[var(--text-secondary)]">
+                            {r.requests}
+                          </td>
+                          <td className="px-3 py-2 pr-3.5 text-right font-mono tabular-nums text-[var(--text-secondary)]">
+                            {r.tokens_in}
+                          </td>
+                          <td className="px-3 py-2 pr-3.5 text-right font-mono tabular-nums text-[var(--text-secondary)]">
+                            {r.tokens_out}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -417,8 +432,8 @@ export default function SuperadminAIPage() {
             </section>
           ) : null}
 
-          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 text-[13px] text-[var(--text-secondary)]">
-            <h2 className="mb-2 text-sm font-semibold text-[var(--color-primary)]">
+          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)] text-[13px] text-[var(--text-secondary)]">
+            <h2 className="mb-2 text-[13px] font-semibold text-[var(--text-primary)]">
               Estado de secrets (env)
             </h2>
             <p className="mb-3 text-[12px] text-[var(--text-tertiary)]">
@@ -478,18 +493,18 @@ function UsageStat({
   const warn = limit && pct >= 70 && !danger;
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-3">
-      <div className="text-[11px] uppercase tracking-wide text-[var(--color-tertiary)]">
+      <div className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
         {label}
       </div>
-      <div className="mt-1 text-lg font-semibold text-[var(--color-primary)]">
+      <div className="mt-1 font-mono text-lg font-semibold tabular-nums text-[var(--text-primary)]">
         {value.toLocaleString()}
       </div>
       {limit ? (
         <>
-          <div className="mt-0.5 text-[11px] text-[var(--color-tertiary)]">
+          <div className="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
             {Math.round(pct)}% de {limit.toLocaleString()}
           </div>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-subtle)]">
+          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-subtle)] shadow-[var(--hundido)]">
             <div
               className={
                 danger
