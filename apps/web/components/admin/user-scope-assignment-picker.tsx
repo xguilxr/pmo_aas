@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useReducer, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Folder, FolderOpen, Globe } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Icono } from "@/components/ui/icono";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import {
@@ -189,10 +189,10 @@ export function UserScopeAssignmentPicker({
   // Non-PM users: show unrestricted badge
   if (!isPM) {
     return (
-      <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
-        <h2 className="mb-1 text-base font-semibold text-[var(--color-primary)]">Visibilidad PM</h2>
-        <div className="flex items-center gap-2 text-sm text-[var(--color-secondary)]">
-          <Globe className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+      <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--relieve-isla)]">
+        <h2 className="mb-1 text-base font-semibold text-[var(--text-primary)]">Visibilidad PM</h2>
+        <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+          <Icono nombre="globe" size={15} className="text-[var(--text-tertiary)]" />
           <span>Acceso total (sin restricciones) — {roleType === "pm_sr" ? "PM Sr" : "Admin"}</span>
         </div>
       </div>
@@ -201,7 +201,7 @@ export function UserScopeAssignmentPicker({
 
   if (loading) {
     return (
-      <div className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
+      <div className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--relieve-isla)]">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-40 w-full" />
       </div>
@@ -211,10 +211,10 @@ export function UserScopeAssignmentPicker({
   const orgs = tree.orgs.status === "done" ? tree.orgs.data : [];
 
   return (
-    <section className="space-y-4 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
+    <section className="space-y-4 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--relieve-isla)]">
       <header>
-        <h2 className="text-base font-semibold text-[var(--color-primary)]">Visibilidad PM</h2>
-        <p className="text-xs text-[var(--color-tertiary)]">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">Visibilidad PM</h2>
+        <p className="text-xs text-[var(--text-tertiary)]">
           Selecciona las organizaciones, programas o proyectos que este PM puede ver.
           Una org seleccionada da visibilidad a todos sus programas y proyectos.
           Sin asignaciones → no ve nada.
@@ -227,7 +227,7 @@ export function UserScopeAssignmentPicker({
 
       <div className="max-h-96 overflow-y-auto rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-subtle)]">
         {orgs.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-[var(--color-tertiary)]">
+          <p className="px-4 py-3 text-sm text-[var(--text-tertiary)]">
             Sin organizaciones activas en el tenant.
           </p>
         ) : (
@@ -246,11 +246,9 @@ export function UserScopeAssignmentPicker({
                       type="button"
                       aria-label={expanded ? "Colapsar" : "Expandir"}
                       onClick={() => handleToggle(orgKey, () => { if (!expanded) void ensurePrograms(org.id); })}
-                      className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[var(--color-tertiary)]"
+                      className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[var(--text-tertiary)]"
                     >
-                      {expanded
-                        ? <ChevronDown className="h-3.5 w-3.5" />
-                        : <ChevronRight className="h-3.5 w-3.5" />}
+                      <Icono nombre={expanded ? "chevron-down" : "chevron-right"} size={14} />
                     </button>
                     <Checkbox
                       checked={orgChecked}
@@ -258,10 +256,12 @@ export function UserScopeAssignmentPicker({
                         setAssignments((prev) => toggleAssignment(prev, "organization", org.id, e.target.checked))
                       }
                     />
-                    {expanded
-                      ? <FolderOpen className="h-4 w-4 flex-shrink-0 text-[var(--color-tertiary)]" aria-hidden />
-                      : <Folder className="h-4 w-4 flex-shrink-0 text-[var(--color-tertiary)]" aria-hidden />}
-                    <span className="text-sm font-medium text-[var(--color-primary)]">{org.name}</span>
+                    <Icono
+                      nombre={expanded ? "folder-open" : "folder"}
+                      size={15}
+                      className="shrink-0 text-[var(--text-tertiary)]"
+                    />
+                    <span className="text-sm font-medium text-[var(--text-primary)]">{org.name}</span>
                   </div>
 
                   {expanded && (
@@ -284,11 +284,9 @@ export function UserScopeAssignmentPicker({
                                     type="button"
                                     aria-label={progExpanded ? "Colapsar" : "Expandir"}
                                     onClick={() => handleToggle(progKey, () => { if (!progExpanded) void ensureProjects(prog.id); })}
-                                    className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[var(--color-tertiary)]"
+                                    className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[var(--text-tertiary)]"
                                   >
-                                    {progExpanded
-                                      ? <ChevronDown className="h-3.5 w-3.5" />
-                                      : <ChevronRight className="h-3.5 w-3.5" />}
+                                    <Icono nombre={progExpanded ? "chevron-down" : "chevron-right"} size={14} />
                                   </button>
                                   <Checkbox
                                     checked={progChecked}
@@ -296,7 +294,7 @@ export function UserScopeAssignmentPicker({
                                       setAssignments((prev) => toggleAssignment(prev, "program", prog.id, e.target.checked))
                                     }
                                   />
-                                  <span className="text-sm text-[var(--color-primary)]">{prog.name}</span>
+                                  <span className="text-sm text-[var(--text-primary)]">{prog.name}</span>
                                 </div>
 
                                 {progExpanded && (
@@ -305,7 +303,7 @@ export function UserScopeAssignmentPicker({
                                       <div className="px-3 py-1.5"><Skeleton className="h-3 w-28" /></div>
                                     ) : projs.status === "done" ? (
                                       projs.data.length === 0 ? (
-                                        <p className="px-3 py-1.5 text-xs text-[var(--color-tertiary)]">Sin proyectos</p>
+                                        <p className="px-3 py-1.5 text-xs text-[var(--text-tertiary)]">Sin proyectos</p>
                                       ) : (
                                         projs.data.map((proj) => (
                                           <ProjectRow
@@ -328,7 +326,7 @@ export function UserScopeAssignmentPicker({
                           {/* No-program projects */}
                           {noProgs?.status === "done" && noProgs.data.length > 0 && (
                             <div>
-                              <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[var(--color-tertiary)]">
+                              <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[var(--text-tertiary)]">
                                 <span className="ml-6">Sin programa</span>
                               </div>
                               <div className="ml-8 border-l border-[var(--border-default)]">
@@ -347,7 +345,7 @@ export function UserScopeAssignmentPicker({
                           )}
 
                           {progs.data.length === 0 && (noProgs?.status !== "done" || noProgs.data.length === 0) && (
-                            <p className="px-3 py-1.5 text-xs text-[var(--color-tertiary)]">Sin programas ni proyectos</p>
+                            <p className="px-3 py-1.5 text-xs text-[var(--text-tertiary)]">Sin programas ni proyectos</p>
                           )}
                         </>
                       ) : null}
@@ -360,8 +358,8 @@ export function UserScopeAssignmentPicker({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-[var(--border-default)] pt-4">
-        <p className="text-xs text-[var(--color-tertiary)]">
+      <div className="flex items-center justify-between gap-2 border-t border-[var(--border-default)] pt-4 shadow-[var(--linea-surco-arriba)]">
+        <p className="text-xs text-[var(--text-tertiary)]">
           {assignments.length === 0
             ? "Sin asignaciones — el PM no ve nada."
             : `${assignments.length} asignación${assignments.length !== 1 ? "es" : ""}`}
@@ -401,8 +399,8 @@ function ProjectRow({
   return (
     <label className="flex cursor-pointer items-center gap-2 px-3 py-1.5 hover:bg-[var(--color-muted)]">
       <Checkbox checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span className="text-sm text-[var(--color-primary)]">
-        {proj.folio ? <span className="text-[var(--color-tertiary)]">{proj.folio} — </span> : null}
+      <span className="text-sm text-[var(--text-primary)]">
+        {proj.folio ? <span className="text-[var(--text-tertiary)]">{proj.folio} — </span> : null}
         {proj.name}
       </span>
     </label>
