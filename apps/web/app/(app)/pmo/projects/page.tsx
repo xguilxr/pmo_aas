@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LayoutGrid, List as ListIcon, Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -217,7 +217,7 @@ export default function ProjectsListPage() {
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
               )}
             >
-              <ListIcon className="h-3.5 w-3.5" aria-hidden /> Lista
+              <Icono nombre="list-check" size={14} /> Lista
             </button>
             <button
               type="button"
@@ -230,13 +230,13 @@ export default function ProjectsListPage() {
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
               )}
             >
-              <LayoutGrid className="h-3.5 w-3.5" aria-hidden /> Tablero
+              <Icono nombre="grid-2x2" size={14} /> Tablero
             </button>
           </div>
           {permsCanCreate ? (
             <Link href="/pmo/projects/new">
               <Button>
-                <Plus className="h-4 w-4" aria-hidden /> Nuevo proyecto
+                <Icono nombre="plus" size={15} /> Nuevo proyecto
               </Button>
             </Link>
           ) : null}
@@ -246,9 +246,10 @@ export default function ProjectsListPage() {
       <section className="rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
         <div className="grid gap-3 border-b border-[var(--border-subtle)] p-4 sm:grid-cols-[1fr_200px_200px_160px]">
           <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-tertiary)]"
-              aria-hidden
+            <Icono
+              nombre="search"
+              size={15}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
             />
             <Input
               type="search"
@@ -433,23 +434,23 @@ function ListView({
   >({});
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-[13px]">
+      <table className="w-full table-fixed text-[13px]">
         <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
           <tr>
-            <SortableTh<Project> sortKey="name" getter={(p) => p.name} ctrl={sortCtrl} className="h-10 px-4">Proyecto</SortableTh>
-            <SortableTh<Project> sortKey="phase" getter={(p) => p.phase ?? ""} ctrl={sortCtrl} className="h-10 px-4">Fase</SortableTh>
-            <SortableTh<Project> sortKey="priority" getter={(p) => (p as any).priority ?? ""} ctrl={sortCtrl} className="h-10 px-4">Prioridad</SortableTh>
-            <SortableTh<Project> sortKey="progress" getter={(p) => (p as any).progress_pct ?? 0} ctrl={sortCtrl} className="h-10 px-4">Avance</SortableTh>
-            <SortableTh<Project> sortKey="budget" getter={(p) => (p as any).budget ?? 0} ctrl={sortCtrl} className="h-10 px-4">Presupuesto</SortableTh>
-            <SortableTh<Project> sortKey="health" getter={(p) => (p as any).health ?? ""} ctrl={sortCtrl} className="h-10 px-4">Salud</SortableTh>
+            <SortableTh<Project> sortKey="name" getter={(p) => p.name} ctrl={sortCtrl} className="h-8.5 px-4">Proyecto</SortableTh>
+            <SortableTh<Project> sortKey="phase" getter={(p) => p.phase ?? ""} ctrl={sortCtrl} className="h-8.5 px-4 w-33">Fase</SortableTh>
+            <SortableTh<Project> sortKey="priority" getter={(p) => (p as any).priority ?? ""} ctrl={sortCtrl} className="h-8.5 pl-4 pr-3.5 w-23" align="right">Prioridad</SortableTh>
+            <SortableTh<Project> sortKey="progress" getter={(p) => (p as any).progress_pct ?? 0} ctrl={sortCtrl} className="h-8.5 px-4 w-44">Avance</SortableTh>
+            <SortableTh<Project> sortKey="budget" getter={(p) => (p as any).budget ?? 0} ctrl={sortCtrl} className="h-8.5 pl-4 pr-3.5 w-37" align="right">Presupuesto</SortableTh>
+            <SortableTh<Project> sortKey="health" getter={(p) => (p as any).health ?? ""} ctrl={sortCtrl} className="h-8.5 px-4 w-19" align="center">Salud</SortableTh>
           </tr>
         </thead>
         <tbody>
           {loading ? (
             Array.from({ length: 6 }).map((_, i) => (
-              <tr key={i} className="border-b border-[var(--border-subtle)]">
-                {Array.from({ length: 7 }).map((_, j) => (
-                  <td key={j} className="h-14 px-4">
+              <tr key={i} className="h-11 border-b border-[var(--border-subtle)]">
+                {Array.from({ length: 6 }).map((_, j) => (
+                  <td key={j} className="px-4">
                     <Skeleton className="h-4 w-24" />
                   </td>
                 ))}
@@ -459,43 +460,49 @@ function ListView({
             sortedRows.map((p) => (
               <tr
                 key={p.id}
-                className="h-14 border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--color-subtle)]/60"
+                className="h-11 border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--color-subtle)]/60"
               >
-                <td className="px-4">
-                  <Link
-                    href={`/pmo/projects/${p.id}`}
-                    className="font-medium text-[var(--text-primary)] hover:underline"
-                  >
-                    {p.name}
-                  </Link>
-                  <div className="font-mono text-[11px] text-[var(--text-tertiary)]">{p.folio}</div>
+                <td className="min-w-0 px-4">
+                  <div className="flex min-w-0 flex-col">
+                    <Link
+                      href={`/pmo/projects/${p.id}`}
+                      className="block overflow-hidden text-ellipsis whitespace-nowrap font-medium text-[var(--text-primary)] hover:underline"
+                    >
+                      {p.name}
+                    </Link>
+                    <span className="text-[12px] tracking-[0.01em] text-[var(--text-tertiary)]">
+                      {p.folio}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-4">
                   <PhasePill phase={p.phase} />
                 </td>
-                <td className="px-4 text-[var(--text-secondary)] tabular-nums">
+                <td className="pl-4 pr-3.5 text-right font-mono text-[12.5px] text-[var(--text-secondary)]">
                   {p.priority ?? "—"}
                 </td>
-                <td className="px-4 w-40">
+                <td className="px-4">
                   <ProgressBar value={p.progress} />
                 </td>
-                <td className="px-4 tabular-nums text-[var(--text-secondary)]">
+                <td className="pl-4 pr-3.5 text-right font-mono text-[12.5px] text-[var(--text-secondary)]">
                   {formatImporte(p.budget, p.currency)}
                 </td>
                 <td className="px-4">
                   {/* US-192: click = evaluar salud 5+1 sin abrir el proyecto. */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEvalTarget({ id: p.id, name: p.name });
-                    }}
-                    title="Evaluar salud (5 dimensiones + global)"
-                    aria-label={`Evaluar salud de ${p.name}`}
-                    className="rounded-full p-1 hover:bg-[var(--color-subtle)]"
-                  >
-                    <HealthDot health={healthOverride[p.id] ?? p.health_status} />
-                  </button>
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEvalTarget({ id: p.id, name: p.name });
+                      }}
+                      title="Evaluar salud (5 dimensiones + global)"
+                      aria-label={`Evaluar salud de ${p.name}`}
+                      className="rounded-full p-1 hover:bg-[var(--color-subtle)]"
+                    >
+                      <HealthDot health={healthOverride[p.id] ?? p.health_status} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))
@@ -578,7 +585,7 @@ function BoardView({ rows, loading }: { rows: Project[]; loading: boolean }) {
                   </span>
                   <HealthDot health={p.health_status} compact />
                 </div>
-                <div className="mt-1 font-mono text-[11px] text-[var(--text-tertiary)]">
+                <div className="mt-1 text-[12px] tracking-[0.01em] text-[var(--text-tertiary)]">
                   {p.folio}
                 </div>
                 <div className="mt-3">
@@ -610,7 +617,7 @@ function ProgressBar({ value }: { value: number }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="w-9 text-right text-[11px] tabular-nums text-[var(--text-secondary)]">
+      <span className="w-9 text-right font-mono text-[11px] text-[var(--text-secondary)]">
         {pct}%
       </span>
     </div>
