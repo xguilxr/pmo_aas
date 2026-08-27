@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Download, ScrollText } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -85,27 +85,25 @@ export default function AuditLogsPage() {
         ]}
       />
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)] text-[var(--text-secondary)]">
-            <ScrollText className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2.25">
+            <Icono nombre="file-text" size={20} className="text-[var(--text-primary)]" />
+            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
               Auditoría
             </h1>
-            <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
-              Eventos registrados por el sistema, aislados por tenant. Útil para forensía y
-              compliance.
-            </p>
           </div>
+          <p className="max-w-[620px] text-[13.5px] leading-[1.6] text-[var(--text-secondary)]">
+            Eventos registrados por el sistema, aislados por tenant. Útil para forensía y
+            compliance.
+          </p>
         </div>
         <a
           href={csvHref}
           target="_blank"
           rel="noreferrer noopener"
-          className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-[13px] font-medium text-[var(--text-primary)] hover:bg-[var(--color-subtle)]"
+          className="inline-flex h-8 items-center gap-1.75 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-[13px] font-medium text-[var(--text-primary)] shadow-[var(--relieve-control)] hover:bg-[var(--color-subtle)]"
         >
-          <Download className="h-4 w-4" aria-hidden /> Exportar CSV
+          <Icono nombre="download" size={15} /> Exportar CSV
         </a>
       </header>
 
@@ -146,24 +144,24 @@ export default function AuditLogsPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full table-fixed text-[13px]">
             <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
               <tr>
-                <SortableTh<AuditLogEntry> sortKey="when" getter={(r) => (r as any).created_at ?? ""} ctrl={auditCtrl} className="h-10 px-4">Cuándo</SortableTh>
-                <SortableTh<AuditLogEntry> sortKey="action" getter={(r) => (r as any).action ?? ""} ctrl={auditCtrl} className="h-10 px-4">Acción</SortableTh>
-                <SortableTh<AuditLogEntry> sortKey="module" getter={(r) => (r as any).module ?? ""} ctrl={auditCtrl} className="h-10 px-4">Módulo</SortableTh>
-                <SortableTh<AuditLogEntry> sortKey="entity" getter={(r) => (r as any).entity_type ?? ""} ctrl={auditCtrl} className="h-10 px-4">Entidad</SortableTh>
-                <SortableTh<AuditLogEntry> sortKey="user" getter={(r) => (r as any).user_email ?? ""} ctrl={auditCtrl} className="h-10 px-4">Usuario</SortableTh>
-                <SortableTh<AuditLogEntry> sortKey="ip" getter={(r) => (r as any).ip ?? ""} ctrl={auditCtrl} className="h-10 px-4">IP</SortableTh>
-                <th className="h-10 px-4 font-medium">Detalles</th>
+                <SortableTh<AuditLogEntry> sortKey="when" getter={(r) => (r as any).created_at ?? ""} ctrl={auditCtrl} className="h-8.5 w-40 px-4">Cuándo</SortableTh>
+                <SortableTh<AuditLogEntry> sortKey="action" getter={(r) => (r as any).action ?? ""} ctrl={auditCtrl} className="h-8.5 w-36 px-4">Acción</SortableTh>
+                <SortableTh<AuditLogEntry> sortKey="module" getter={(r) => (r as any).module ?? ""} ctrl={auditCtrl} className="h-8.5 w-28 px-4">Módulo</SortableTh>
+                <SortableTh<AuditLogEntry> sortKey="entity" getter={(r) => (r as any).entity_type ?? ""} ctrl={auditCtrl} className="h-8.5 w-36 px-4">Entidad</SortableTh>
+                <SortableTh<AuditLogEntry> sortKey="user" getter={(r) => (r as any).user_email ?? ""} ctrl={auditCtrl} className="h-8.5 w-24 px-4">Usuario</SortableTh>
+                <SortableTh<AuditLogEntry> sortKey="ip" getter={(r) => (r as any).ip ?? ""} ctrl={auditCtrl} className="h-8.5 w-28 px-4">IP</SortableTh>
+                <th className="h-8.5 px-4 font-medium">Detalles</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i} className="border-b border-[var(--border-subtle)]">
+                  <tr key={i} className="h-11 border-b border-[var(--border-subtle)]">
                     {Array.from({ length: 7 }).map((_, j) => (
-                      <td key={j} className="h-12 px-4">
+                      <td key={j} className="px-4">
                         <Skeleton className="h-4 w-20" />
                       </td>
                     ))}
@@ -171,15 +169,17 @@ export default function AuditLogsPage() {
                 ))
               ) : rows.length ? (
                 sortedRows.map((r) => (
-                  <tr key={r.id} className="border-b border-[var(--border-subtle)]">
-                    <td className="px-4 py-2 font-mono text-[11px] text-[var(--text-secondary)]">
+                  <tr key={r.id} className="h-11 border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--color-subtle)]/60">
+                    <td className="px-4 font-mono text-[11px] text-[var(--text-secondary)]">
                       {r.occurred_at ? new Date(r.occurred_at).toLocaleString("es-MX") : "—"}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-4">
                       <Badge>{r.action}</Badge>
                     </td>
-                    <td className="px-4 py-2 text-[var(--text-secondary)]">{r.module ?? "—"}</td>
-                    <td className="px-4 py-2 text-[var(--text-secondary)]">
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 text-[var(--text-secondary)]">
+                      {r.module ?? "—"}
+                    </td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 text-[var(--text-secondary)]">
                       {r.entity_type ? (
                         <span>
                           {r.entity_type}
@@ -193,15 +193,15 @@ export default function AuditLogsPage() {
                         "—"
                       )}
                     </td>
-                    <td className="px-4 py-2 font-mono text-[11px] text-[var(--text-tertiary)]">
+                    <td className="px-4 font-mono text-[11px] text-[var(--text-tertiary)]">
                       {r.user_id ? r.user_id.slice(0, 8) : "—"}
                     </td>
-                    <td className="px-4 py-2 text-[var(--text-tertiary)]">
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 text-[var(--text-tertiary)]">
                       {r.ip_address ?? "—"}
                     </td>
-                    <td className="px-4 py-2 text-[var(--text-tertiary)]">
+                    <td className="px-4 text-[var(--text-tertiary)]">
                       {r.details ? (
-                        <span className="line-clamp-1 max-w-xs font-mono text-[11px]">
+                        <span className="block overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[11px]">
                           {JSON.stringify(r.details)}
                         </span>
                       ) : (
