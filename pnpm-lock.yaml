@@ -32,9 +32,6 @@ importers:
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
-      lucide-react:
-        specifier: 0.453.0
-        version: 0.453.0(react@19.0.0)
       next:
         specifier: 15.5.22
         version: 15.5.22(@types/node@22.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -697,11 +694,6 @@ packages:
 
   lodash.uniq@4.5.0:
     resolution: {integrity: sha512-xfBaXQd9ryd9dlSDvnvI0lvxfLJlYAZzXomUYzLKtUeOQvOP5piqAWuGtrhWeqaXK9hhoM/iyJc5AV+XfsX3HQ==}
-
-  lucide-react@0.453.0:
-    resolution: {integrity: sha512-kL+RGZCcJi9BvJtzg2kshO192Ddy9hv3ij+cPrVPWSRzgCWCVazoQJxOjAwgK53NomL07HB7GPHW120FimjNhQ==}
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -1475,10 +1467,6 @@ snapshots:
   lodash.union@4.6.0: {}
 
   lodash.uniq@4.5.0: {}
-
-  lucide-react@0.453.0(react@19.0.0):
-    dependencies:
-      react: 19.0.0
 
   magic-string@0.30.21:
     dependencies:
