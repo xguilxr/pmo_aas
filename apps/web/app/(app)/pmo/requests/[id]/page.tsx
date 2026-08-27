@@ -3,20 +3,12 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import {
-  ArrowRight,
-  CheckCircle2,
-  ExternalLink,
-  FileText,
-  Info,
-  RotateCcw,
-  XCircle,
-} from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -275,7 +267,7 @@ export default function RequestDetailPage() {
       <header className="space-y-2">
         <div className="flex items-center gap-2">
           <BackLink fallbackHref="/pmo/requests" />
-          <nav className="text-xs text-[var(--color-tertiary)]">
+          <nav className="text-[11px] text-[var(--text-tertiary)]">
             <Link href="/pmo/requests" className="hover:underline">
               Solicitudes
             </Link>
@@ -286,18 +278,18 @@ export default function RequestDetailPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+              <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
                 {request.title}
               </h1>
               <StatusBadge status={request.status} />
             </div>
-            <p className="mt-1 font-mono text-xs text-[var(--color-tertiary)]">{request.folio}</p>
+            <p className="mt-1 text-[12px] tracking-[0.01em] text-[var(--text-tertiary)]">{request.folio}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {canReview ? (
               <>
                 <Button onClick={() => setReviewModal("approve")} disabled={submitting}>
-                  <CheckCircle2 className="h-4 w-4" aria-hidden />
+                  <Icono nombre="circle-check" size={15} />
                   Aprobar
                 </Button>
                 <Button
@@ -305,7 +297,7 @@ export default function RequestDetailPage() {
                   onClick={() => setReviewModal("needs_info")}
                   disabled={submitting}
                 >
-                  <Info className="h-4 w-4" aria-hidden />
+                  <Icono nombre="info" size={15} />
                   Pedir info
                 </Button>
                 <Button
@@ -313,7 +305,7 @@ export default function RequestDetailPage() {
                   onClick={() => setReviewModal("reject")}
                   disabled={submitting}
                 >
-                  <XCircle className="h-4 w-4" aria-hidden />
+                  <Icono nombre="circle-x" size={15} />
                   Rechazar
                 </Button>
               </>
@@ -325,7 +317,7 @@ export default function RequestDetailPage() {
             ) : null}
             {canCreateProject ? (
               <Button onClick={openCreateProject}>
-                <ArrowRight className="h-4 w-4" aria-hidden />
+                <Icono nombre="arrow-right" size={15} />
                 Crear proyecto
               </Button>
             ) : null}
@@ -336,7 +328,7 @@ export default function RequestDetailPage() {
                 loading={submitting}
                 title="Regresa la solicitud a 'En revisión' (sólo si aún no hay proyecto creado)"
               >
-                <RotateCcw className="h-4 w-4" aria-hidden />
+                <Icono nombre="rotate-ccw" size={15} />
                 Reabrir
               </Button>
             ) : null}
@@ -347,14 +339,14 @@ export default function RequestDetailPage() {
                   className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-accent)] hover:underline"
                 >
                   Editar charter
-                  <FileText className="h-4 w-4" aria-hidden />
+                  <Icono nombre="file-text" size={15} />
                 </Link>
                 <Link
                   href={`/pmo/projects/${request.project_id}`}
                   className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-accent)] hover:underline"
                 >
                   Ver proyecto
-                  <ExternalLink className="h-4 w-4" aria-hidden />
+                  <Icono nombre="arrow-up-right" size={15} />
                 </Link>
               </>
             ) : null}
@@ -393,20 +385,20 @@ export default function RequestDetailPage() {
           {request.project_id ? <Row k="Proyecto" v={request.project_id} /> : null}
         </Card>
         <Card title="Descripción" full>
-          <p className="whitespace-pre-wrap text-sm text-[var(--color-primary)]">
+          <p className="whitespace-pre-wrap text-sm text-[var(--text-primary)]">
             {request.description}
           </p>
         </Card>
         <Card title="Objetivo" full>
-          <p className="whitespace-pre-wrap text-sm text-[var(--color-primary)]">
+          <p className="whitespace-pre-wrap text-sm text-[var(--text-primary)]">
             {request.objective}
           </p>
         </Card>
         <Card title="Alcance" full>
-          <p className="whitespace-pre-wrap text-sm text-[var(--color-primary)]">{request.scope}</p>
+          <p className="whitespace-pre-wrap text-sm text-[var(--text-primary)]">{request.scope}</p>
         </Card>
         <Card title="Beneficios" full>
-          <p className="whitespace-pre-wrap text-sm text-[var(--color-primary)]">
+          <p className="whitespace-pre-wrap text-sm text-[var(--text-primary)]">
             {request.benefits}
           </p>
         </Card>
@@ -415,7 +407,7 @@ export default function RequestDetailPage() {
             <ul className="divide-y divide-[var(--border-subtle)] rounded-[var(--radius-md)] border border-[var(--border-default)]">
               {request.attachments.map((a, i) => (
                 <li key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                  <span className="truncate font-medium text-[var(--color-primary)]">
+                  <span className="truncate font-medium text-[var(--text-primary)]">
                     {a.filename}
                   </span>
                   <a
@@ -425,13 +417,13 @@ export default function RequestDetailPage() {
                     className="inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:underline"
                   >
                     Abrir
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                    <Icono nombre="arrow-up-right" size={14} />
                   </a>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-[var(--color-tertiary)]">Sin adjuntos.</p>
+            <p className="text-sm text-[var(--text-tertiary)]">Sin adjuntos.</p>
           )}
         </Card>
       </section>
@@ -464,12 +456,12 @@ export default function RequestDetailPage() {
           </>
         }
       >
-        <label htmlFor="review-comment" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+        <label htmlFor="review-comment" className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
           Comentario{" "}
           {reviewModal && reviewModal !== "approve" ? (
             <span className="text-[var(--color-danger-fg)]">*</span>
           ) : (
-            <span className="text-[var(--color-tertiary)]">(opcional)</span>
+            <span className="text-[var(--text-tertiary)]">(opcional)</span>
           )}
         </label>
         <Textarea
@@ -499,7 +491,7 @@ export default function RequestDetailPage() {
           </>
         }
       >
-        <label htmlFor="pm" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+        <label htmlFor="pm" className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
           Project Manager
         </label>
         <Select id="pm" value={pmId} onChange={(e) => setPmId(e.target.value)}>
@@ -538,11 +530,11 @@ function Card({
 }) {
   return (
     <article
-      className={`rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)] ${
+      className={`rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)] ${
         full ? "sm:col-span-2" : ""
       }`}
     >
-      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
         {title}
       </h2>
       <div className="space-y-2">{children}</div>
@@ -553,8 +545,8 @@ function Card({
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <div className="grid gap-0.5 sm:grid-cols-[160px_1fr]">
-      <span className="text-xs uppercase tracking-wide text-[var(--color-tertiary)]">{k}</span>
-      <span className="text-sm text-[var(--color-primary)]">{v || "—"}</span>
+      <span className="text-xs uppercase tracking-wide text-[var(--text-tertiary)]">{k}</span>
+      <span className="text-sm text-[var(--text-primary)]">{v || "—"}</span>
     </div>
   );
 }

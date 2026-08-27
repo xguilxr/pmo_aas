@@ -14,11 +14,11 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download, FileText, RefreshCcw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiBase } from "@/lib/api";
 import { getReport, type Report } from "@/lib/api/reports";
@@ -74,7 +74,7 @@ export default function ReportDetailPage() {
           href={`/pmo/projects/${id}/reports`}
           className="mt-2 inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
         >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          <Icono nombre="arrow-left" size={14} />
           Volver a Reportes
         </Link>
         {loading ? (
@@ -82,7 +82,7 @@ export default function ReportDetailPage() {
         ) : (
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
             <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-              <FileText className="h-6 w-6 text-[var(--color-tertiary)]" aria-hidden />
+              <Icono nombre="file-text" size={20} className="text-[var(--text-tertiary)]" />
               {report?.title ?? "Reporte"}
             </h1>
             <div className="flex flex-wrap items-center gap-2">
@@ -101,14 +101,14 @@ export default function ReportDetailPage() {
                 variant="secondary"
                 onClick={() => setRefreshKey((k) => k + 1)}
               >
-                <RefreshCcw className="h-3.5 w-3.5" aria-hidden /> Regenerar
+                <Icono nombre="refresh-ccw" size={14} /> Regenerar
               </Button>
               {report?.generator === "builder" ? (
                 <a
                   href={`${apiBase()}/api/v1/reports/${reportId}/regenerate-pdf`}
-                  className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium text-[var(--color-secondary)] hover:bg-[var(--color-subtle)]"
+                  className="inline-flex h-7 items-center gap-1.75 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2.5 text-[13px] font-medium text-[var(--text-primary)] shadow-[var(--relieve-control)] hover:bg-[var(--color-subtle)]"
                 >
-                  <Download className="h-3.5 w-3.5" aria-hidden /> PDF
+                  <Icono nombre="download" size={14} /> PDF
                 </a>
               ) : null}
             </div>
