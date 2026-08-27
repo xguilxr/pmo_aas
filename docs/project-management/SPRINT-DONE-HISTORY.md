@@ -12,6 +12,34 @@ revisar_cada: 30d
 
 ---
 
+## Ronda 2026-08-27 — Revamp de diseño v2 (batch del owner, sin US)
+
+- Branch `claude/platform-design-revamp-y8rpqw`, **48 commits, 683 archivos**.
+  Ejecutado como batch directo del owner (especificación + mockup
+  `Refresh UI v1.dc.html` de 30 pantallas); sin US individuales a propósito —
+  un commit por pantalla/grupo hace de unidad de revisión.
+- **Qué cambió**: `globals.css` pasa del sistema «big canvas» (lienzo
+  gris-azul + islas + sidebar navy) a superficie blanca única con filetes con
+  profundidad (`--linea-surco`, `--relieve-*`, `--hundido`); iconos
+  lucide-react → set Keyline completo (`public/icons/stroke/`, MIT) vía
+  `<Icono>` por mask-image, y la dependencia se retiró del `package.json`;
+  primitivas `ui/*`, las 30 pantallas del mockup y una barrida final sobre
+  las ~69 restantes sin mockup propio. Dos pantallas nuevas de superadmin
+  (Seguridad `/superadmin/security` y Sistema en `/superadmin/health`, que
+  deja de ser redirect); nav de superadmin en 4 grupos rotulados.
+- **Desviaciones deliberadas**: `--text-tertiary` se oscureció de `#82878F`
+  (el literal de la especificación) a `#666B73` porque el literal falla WCAG
+  AA (gate `check_contraste.py`); toda métrica sin endpoint quedó en
+  `SIN_DATO` + «pendiente de backend», nunca cifras inventadas.
+- **Verificación**: `check_tokens.py`, `check_contraste.py` (36/36 AA),
+  `tsc --noEmit` y `next build` en verde. Docs `mapa-frontend.md` y
+  `navigation.md` actualizados en la misma ronda.
+- **Lo que quedó pendiente** salió como plan, no como deuda suelta:
+  `docs/epics/drafts/plan-post-revamp.md` (backend R1/R2, dark theme R3,
+  deuda visual R4, operación eficiente O, reportes/minutas G).
+
+---
+
 ## Ronda 2026-08-06 — Ola 2, `SEG-04` y verificación local
 
 - **2026-08-06 (Ola 2 + SEG-04):** quince commits. `SEG-04` era la única

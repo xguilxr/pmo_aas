@@ -15,16 +15,13 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Sin US activa.** **Fase 2 completa** en `claude/merge-deuda-tecnica-yamaca`:
-US-203 a US-222, el mockup aprobado el 2026-08-19. Migraciones `0112`–`0115`.
+**Sin US activa.** **Revamp v2 terminado** (2026-08-27, batch del owner;
+detalle en `SPRINT-DONE-HISTORY.md`). Lo pendiente:
+`docs/epics/drafts/plan-post-revamp.md` (US desde 227).
 
-**Las cuatro preguntas de EP021 están contestadas** (2026-08-20), las cuatro
-acotadas — detalle en la epic y en DEC-033. Desbloquea **US-223 a US-226**.
-
-Próximo paso tuyo: **mergear el PR** —Fase 2 nunca tuvo uno abierto: no esperaba
-revisión, esperaba que alguien lo abriera— y **desplegar `0105`–`0115`** leyendo
-el registro (abajo). Los ~23 commits sin merge y las US de más de 10 archivos son
-deuda de proceso contra §8 y §3: se pidió no detenerse.
+**Fase 2 mergeada** (PR #595, US-203–US-222, mig. `0112`–`0115`). Falta
+**desplegar `0105`–`0115`** leyendo el registro (abajo). EP021: las cuatro
+preguntas contestadas (DEC-033) — desbloquea **US-223 a US-226**.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).
