@@ -17,8 +17,8 @@ export default function NewOrganizationPage() {
         ]}
       />
       <div>
-        <h1 className="text-2xl font-semibold text-[var(--color-primary)]">{newLabel}</h1>
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">{newLabel}</h1>
+        <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
           Crea un nuevo cliente dentro de tu tenant.
         </p>
       </div>

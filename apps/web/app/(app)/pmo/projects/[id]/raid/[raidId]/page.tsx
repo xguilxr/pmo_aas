@@ -44,7 +44,7 @@ function Inner() {
           {/* BUG-052: breadcrumb canónico RAID / [Tipo] / [ID] */}
           <nav
             aria-label="Breadcrumb"
-            className="text-[11px] text-[var(--color-tertiary)]"
+            className="text-[11px] text-[var(--text-tertiary)]"
           >
             <Link
               href={`/pmo/projects/${id}/raid`}
@@ -57,7 +57,7 @@ function Inner() {
               {meta.label}
             </Link>
             <span className="mx-1">/</span>
-            <span className="font-mono text-[var(--color-secondary)]">
+            <span className="text-[12px] tracking-[0.01em] text-[var(--text-secondary)]">
               {raidId.slice(0, 8)}
             </span>
           </nav>
@@ -72,7 +72,7 @@ export default function ProjectRaidItemPage() {
   return (
     <Suspense
       fallback={
-        <div className="p-6 text-sm text-[var(--color-tertiary)]">Cargando…</div>
+        <div className="p-6 text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
       }
     >
       <Inner />

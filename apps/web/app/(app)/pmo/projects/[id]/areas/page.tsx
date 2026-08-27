@@ -19,21 +19,21 @@ export default function ProjectAreasPage() {
   return (
     <div className="space-y-4 p-4">
       <header>
-        <h1 className="text-xl font-semibold text-[var(--color-primary)]">
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
           Áreas/Recursos
         </h1>
-        <p className="text-sm text-[var(--color-tertiary)]">
+        <p className="text-[13px] text-[var(--text-tertiary)]">
           Recursos del proyecto + catálogos tenant (áreas, equipos
           operativos, roles).
         </p>
       </header>
 
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-        <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border-default)] p-4">
+      <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+        <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border-default)] p-4 shadow-[var(--linea-surco)]">
           <div
             role="radiogroup"
             aria-label="Vista"
-            className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-0.5"
+            className="inline-flex rounded-[var(--radius-md)] bg-[var(--color-muted)] p-0.5 shadow-[var(--hundido)]"
           >
             {(
               [
@@ -50,7 +50,7 @@ export default function ProjectAreasPage() {
                   aria-checked={active}
                   onClick={() => setView(opt.v)}
                   className={cn(
-                    "rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors",
+                    "rounded-[var(--radius-sm)] px-3 py-1.5 text-[12.5px] font-medium transition-colors",
                     active
                       ? "bg-[var(--color-primary)] text-[var(--color-inverse)]"
                       : "text-[var(--text-secondary)] hover:bg-[var(--color-subtle)]",

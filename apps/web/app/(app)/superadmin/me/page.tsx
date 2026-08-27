@@ -184,10 +184,10 @@ export default function SuperadminMePage() {
       />
 
       <header>
-        <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
           Mi cuenta — Superadmin
         </h1>
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+        <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
           Actualiza el email y la contraseña de la cuenta superadmin.
           Cambios sensibles requieren confirmar la contraseña actual.
         </p>
@@ -205,17 +205,17 @@ export default function SuperadminMePage() {
       ) : (
         <form
           onSubmit={handleSave}
-          className="space-y-4 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6"
+          className="space-y-4 rounded-[var(--radius-window)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--relieve-isla)]"
         >
           <div>
-            <label className="block text-xs font-semibold uppercase text-[var(--color-tertiary)]">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               Username (no editable)
             </label>
             <Input value={profile.username} disabled className="mt-1" />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase text-[var(--color-tertiary)]">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               Email
             </label>
             <Input
@@ -228,7 +228,7 @@ export default function SuperadminMePage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase text-[var(--color-tertiary)]">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               Nombre completo
             </label>
             <Input
@@ -239,7 +239,7 @@ export default function SuperadminMePage() {
           </div>
 
           <fieldset className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-subtle)] p-4">
-            <legend className="px-1 text-xs font-semibold uppercase text-[var(--color-tertiary)]">
+            <legend className="px-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               Cambiar contraseña (opcional)
             </legend>
             <PasswordInput
@@ -258,7 +258,7 @@ export default function SuperadminMePage() {
           </fieldset>
 
           <div>
-            <label className="block text-xs font-semibold uppercase text-[var(--color-tertiary)]">
+            <label className="block text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
               Contraseña actual (obligatoria para guardar)
             </label>
             <PasswordInput
@@ -279,7 +279,7 @@ export default function SuperadminMePage() {
               <p className="text-sm font-medium text-[var(--color-warning-fg)]">
                 Conflicto de email detectado
               </p>
-              <p className="mt-1 text-xs text-[var(--color-secondary)]">
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">
                 El email <code>{email}</code> ya está en uso por el usuario{" "}
                 <strong>{emailClash.username}</strong> (
                 <code>{emailClash.email}</code>
@@ -293,7 +293,7 @@ export default function SuperadminMePage() {
                 )}
                 ).
               </p>
-              <p className="mt-2 text-xs text-[var(--color-secondary)]">
+              <p className="mt-2 text-xs text-[var(--text-secondary)]">
                 Si reconoces el conflicto y quieres tomar el email, podemos
                 renombrar al user en conflicto a{" "}
                 <code>released.{"<timestamp>"}.{emailClash.email}</code> para
