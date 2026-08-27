@@ -39,7 +39,7 @@ export function TarjetaDeSalud({
   const total = SALUDES.reduce((suma, s) => suma + (conteos[s] ?? 0), 0);
   const cuerpo = (
     <>
-      <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+      <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
         Salud
       </span>
       {cargando ? (
@@ -47,67 +47,51 @@ export function TarjetaDeSalud({
           aria-hidden
           className="block h-8 w-24 animate-pulse rounded bg-[var(--color-muted)]"
         />
-      ) : (
+      ) : total > 0 ? (
         <>
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-2 font-mono text-[26px] font-medium tabular-nums">
             {SALUDES.map((s) => (
-              <span
-                key={s}
-                className="text-2xl font-semibold tabular-nums"
-                style={{ color: colorSalud(s) }}
-                title={etiquetaSalud(s)}
-              >
+              <span key={s} style={{ color: colorSalud(s) }} title={etiquetaSalud(s)}>
                 {conteos[s] ?? 0}
               </span>
             ))}
           </div>
-          {/* La barra proporcional: el desglose que un conteo no da. Sin
-              proyectos no se pinta —una barra vacía se lee como «todo verde»—. */}
-          {total > 0 ? (
-            <div
-              className="mt-2 flex h-1.5 overflow-hidden rounded-full"
-              role="img"
-              aria-label={SALUDES.map(
-                (s) => `${etiquetaSalud(s)}: ${conteos[s] ?? 0}`,
-              ).join(", ")}
-            >
-              {SALUDES.map((s) => {
-                const n = conteos[s] ?? 0;
-                if (n === 0) return null;
-                return (
-                  <span
-                    key={s}
-                    style={{
-                      width: `${(n / total) * 100}%`,
-                      backgroundColor: HEALTH_FILL[s],
-                    }}
-                  />
-                );
-              })}
-            </div>
-          ) : null}
-          <p className="text-[11px] text-[var(--color-tertiary)]">
-            {total > 0
-              ? `${SALUDES.map((s) => etiquetaSalud(s).toLowerCase()).join(" · ")} — de ${total}`
-              : "Sin proyectos activos que evaluar"}
-          </p>
+          {/* La barra proporcional: el desglose que un conteo no da. */}
+          <div
+            className="flex h-1 overflow-hidden rounded-full"
+            role="img"
+            aria-label={SALUDES.map(
+              (s) => `${etiquetaSalud(s)}: ${conteos[s] ?? 0}`,
+            ).join(", ")}
+          >
+            {SALUDES.map((s) => {
+              const n = conteos[s] ?? 0;
+              if (n === 0) return null;
+              return (
+                <span
+                  key={s}
+                  style={{
+                    width: `${(n / total) * 100}%`,
+                    backgroundColor: HEALTH_FILL[s],
+                  }}
+                />
+              );
+            })}
+          </div>
         </>
+      ) : (
+        <p className="text-[11px] text-[var(--text-tertiary)]">
+          Sin proyectos activos que evaluar
+        </p>
       )}
     </>
   );
   // Las mismas clases que `KpiCard`: comparte fila con cinco de ellas y una
   // caja distinta en medio se lee como que esa tarjeta es de otra cosa.
-  const clases =
-    "group flex h-full flex-col gap-1 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)] transition-colors";
+  const clases = "group flex h-full flex-col gap-2 p-4 transition-colors hover:bg-[var(--color-subtle)]";
   return href ? (
-    <Link
-      href={href}
-      className={cn(
-        clases,
-        "hover:border-[var(--border-strong)] hover:bg-[var(--color-subtle)]",
-      )}
-    >
-      {cuerpo}
+    <Link href={href} className="block focus:outline-none">
+      <div className={clases}>{cuerpo}</div>
     </Link>
   ) : (
     <div className={clases}>{cuerpo}</div>
@@ -151,8 +135,8 @@ export function ListaTop({
   vacio: string;
 }) {
   return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--color-tertiary)]">
+    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-4 py-3.5 shadow-[var(--relieve-isla)]">
+      <h3 className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
         {titulo}
       </h3>
       {cargando ? (
@@ -165,10 +149,11 @@ export function ListaTop({
           ))}
         </div>
       ) : filas.length === 0 ? (
-        <p className="mt-3 text-xs text-[var(--color-tertiary)]">{vacio}</p>
+        <p className="mt-3 text-xs text-[var(--text-tertiary)]">{vacio}</p>
       ) : (
-        <ul className="mt-2 divide-y divide-[var(--border-subtle)]">
-          {filas.map((f) => {
+        <ul className="mt-2.5">
+          {filas.map((f, i) => {
+            const esUltimo = i === filas.length - 1;
             const contenido = (
               <>
                 <span className="min-w-0 flex-1 truncate" title={f.titulo}>
@@ -176,13 +161,13 @@ export function ListaTop({
                 </span>
                 <span className="shrink-0 whitespace-nowrap text-right">
                   <span
-                    className="font-semibold tabular-nums"
+                    className="font-mono text-[12.5px] font-medium tabular-nums"
                     style={f.color ? { color: f.color } : undefined}
                   >
                     {f.cifra}
                   </span>
                   {f.detalle ? (
-                    <span className="ml-1.5 text-[11px] text-[var(--color-tertiary)]">
+                    <span className="ml-1.5 text-[11px] text-[var(--text-faint)]">
                       {f.detalle}
                     </span>
                   ) : null}
@@ -190,16 +175,22 @@ export function ListaTop({
               </>
             );
             return (
-              <li key={f.id} className="text-[13px] text-[var(--color-primary)]">
+              <li
+                key={f.id}
+                className={cn(
+                  "text-[13px] text-[var(--text-primary)]",
+                  !esUltimo && "border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)]",
+                )}
+              >
                 {f.href ? (
                   <Link
                     href={f.href}
-                    className="flex items-center gap-2 py-1.5 hover:text-[var(--color-accent-fg)]"
+                    className="flex items-center gap-2.5 py-1.5 hover:text-[var(--color-accent-fg)]"
                   >
                     {contenido}
                   </Link>
                 ) : (
-                  <span className="flex items-center gap-2 py-1.5">{contenido}</span>
+                  <span className="flex items-center gap-2.5 py-1.5">{contenido}</span>
                 )}
               </li>
             );
@@ -272,8 +263,8 @@ export function SemaforoConsolidado({
 
   return (
     <div>
-      <ul className="space-y-1.5">
-        {DIMENSIONES.map((d) => {
+      <ul className="flex flex-col">
+        {DIMENSIONES.map((d, i) => {
           const conteos = { red: 0, yellow: 0, green: 0 };
           for (const fila of filas) {
             const c = fila.dims?.[d.clave];
@@ -285,24 +276,27 @@ export function SemaforoConsolidado({
           return (
             <li
               key={d.clave}
-              className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] px-3 py-2"
+              className={cn(
+                "flex h-7.5 items-center gap-2.5 text-[12.5px]",
+                i > 0 && "border-t border-[var(--border-subtle)] shadow-[var(--linea-surco-arriba)]",
+              )}
             >
               <span
                 aria-hidden
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                className="h-2 w-2 shrink-0 rounded-full"
                 style={{
                   backgroundColor: evaluados > 0 ? HEALTH_FILL[peor] : "var(--color-muted)",
                 }}
               />
-              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-primary)]">
+              <span className="min-w-0 flex-1 truncate font-medium text-[var(--text-primary)]">
                 {d.etiqueta}
               </span>
               {evaluados === 0 ? (
-                <span className="text-[11px] text-[var(--color-tertiary)]">
+                <span className="text-[11px] text-[var(--text-faint)]">
                   sin evaluar
                 </span>
               ) : (
-                <span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-[var(--color-tertiary)]">
+                <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-[var(--text-tertiary)]">
                   <span style={{ color: colorSalud(peor) }} className="font-semibold">
                     {etiquetaSalud(peor)}
                   </span>
@@ -316,7 +310,7 @@ export function SemaforoConsolidado({
         })}
       </ul>
       {corte ? (
-        <p className="mt-2.5 text-[11px] text-[var(--color-tertiary)]">{corte}</p>
+        <p className="mt-2.5 text-[11px] text-[var(--text-faint)]">{corte}</p>
       ) : null}
     </div>
   );
