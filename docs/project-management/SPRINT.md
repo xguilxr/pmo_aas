@@ -33,9 +33,17 @@ preguntas contestadas (DEC-033) — desbloquea **US-223 a US-226**.
 ### Reestructura de plataforma — lo que queda
 
 Planeación en `docs/epics/drafts/reestructura-*.md`; mapas en
-`docs/architecture/mapa-{backend,frontend}.md`. W1 y Fase 2 cerradas. Queda **W3**
-RLS de Postgres y **W8** el `drop` de `business_units`/`departments` cuando el
-contador de compat lo confirme.
+`docs/architecture/mapa-{backend,frontend}.md`. W1 y Fase 2 cerradas.
+
+**W3 (RLS de Postgres) triagiada** (2026-08-27, OK owner por chat) — 3 US en
+`status:triage`, secuenciales: **US-240 #599** (ADR de activación de RLS +
+FKs de `tenant_id` faltantes) bloquea **US-241 #600** (RLS dominio jerarquía
++ trinquete CI) y **US-242 #601** (RLS dominio proyectos). Bloque propuesto:
+**Reestructura-W3** — falta tu confirmación para pasar de INBOX a
+IN-PROGRESS y poner US-240 en `status:ready`.
+
+Queda **W8** el `drop` de `business_units`/`departments` cuando el contador
+de compat lo confirme.
 
 ### Producto — abierto
 
