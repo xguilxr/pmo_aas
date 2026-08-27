@@ -197,7 +197,10 @@ function buildAdminNav(): NavItem {
       {
         id: "tenant-ai",
         label: "IA",
-        icono: "star",
+        // Sin equivalente de Sparkles en el set Keyline; el mockup usa
+        // "info" (no "star") para este ítem de nav en las 5 pantallas que
+        // lo muestran (superadmin y admin del tenant).
+        icono: "info",
         href: "/admin/ai",
         match: (p) => p.startsWith("/admin/ai"),
       },
@@ -243,49 +246,96 @@ function buildAdminNav(): NavItem {
   };
 }
 
-// 4 ítems raíz, en este orden (US-041, issue #19).
-const SUPERADMIN_NAV: NavItem[] = [
+// Navegación agrupada de superadmin (patrón fijado en la ronda 6 de la
+// especificación de revamp): los 4 rótulos Plataforma/Tenants/Seguridad/
+// Sistema son idénticos en las 5 pantallas de superadmin — cualquier
+// pantalla nueva hereda este árbol completo, no un subconjunto.
+const SUPERADMIN_GRUPOS: GrupoNav[] = [
   {
-    id: "sa-overview",
-    label: "Visión General",
-    icono: "layout-dashboard",
-    href: "/superadmin",
-    match: (p) => p === "/superadmin",
+    id: "sa-plataforma",
+    titulo: "Plataforma",
+    items: [
+      {
+        id: "sa-overview",
+        label: "Visión General",
+        icono: "layout-dashboard",
+        href: "/superadmin",
+        match: (p) => p === "/superadmin",
+      },
+    ],
   },
   {
-    id: "sa-tenants",
-    label: "Tenants",
-    icono: "server",
-    href: "/superadmin/tenants",
-    match: (p) => p.startsWith("/superadmin/tenants"),
+    id: "sa-tenants-grupo",
+    titulo: "Tenants",
+    items: [
+      {
+        id: "sa-tenants",
+        label: "Tenants",
+        icono: "server",
+        href: "/superadmin/tenants",
+        match: (p) => p.startsWith("/superadmin/tenants"),
+      },
+      {
+        id: "sa-users",
+        label: "Usuarios",
+        icono: "users",
+        href: "/superadmin/users",
+        match: (p) => p.startsWith("/superadmin/users"),
+      },
+      {
+        id: "sa-permission-requests",
+        label: "Permisos",
+        icono: "lock",
+        href: "/superadmin/permission-requests",
+        match: (p) => p.startsWith("/superadmin/permission-requests"),
+      },
+    ],
   },
   {
-    id: "sa-users",
-    label: "Usuarios",
-    icono: "users",
-    href: "/superadmin/users",
-    match: (p) => p.startsWith("/superadmin/users"),
+    id: "sa-seguridad",
+    titulo: "Seguridad",
+    items: [
+      {
+        // Mockup 6e — agregado a nivel plataforma de cuentas bloqueadas y
+        // auditoría de superadmin (ver /superadmin/security).
+        id: "sa-security",
+        label: "Seguridad",
+        icono: "circle-alert",
+        href: "/superadmin/security",
+        match: (p) => p.startsWith("/superadmin/security"),
+      },
+    ],
   },
   {
-    id: "sa-permission-requests",
-    label: "Permisos",
-    icono: "lock",
-    href: "/superadmin/permission-requests",
-    match: (p) => p.startsWith("/superadmin/permission-requests"),
-  },
-  {
-    id: "sa-ai",
-    label: "IA",
-    icono: "star",
-    href: "/superadmin/ai",
-    match: (p) => p.startsWith("/superadmin/ai"),
-  },
-  {
-    id: "sa-logs",
-    label: "Logs platform",
-    icono: "file-text",
-    href: "/superadmin/logs",
-    match: (p) => p.startsWith("/superadmin/logs"),
+    id: "sa-sistema",
+    titulo: "Sistema",
+    items: [
+      {
+        // Mockup 6f — reemplaza el redirect legacy de /superadmin/health
+        // (US-026) por la vista de versión, migraciones, colas e incidentes.
+        id: "sa-system",
+        label: "Sistema",
+        icono: "settings",
+        href: "/superadmin/health",
+        match: (p) => p.startsWith("/superadmin/health"),
+      },
+      {
+        id: "sa-logs",
+        label: "Logs platform",
+        icono: "file-text",
+        href: "/superadmin/logs",
+        match: (p) => p.startsWith("/superadmin/logs"),
+      },
+      {
+        // Sin equivalente de Sparkles en el set Keyline; el mockup usa
+        // "info" (no "star") para este ítem de nav específico.
+        id: "sa-ai",
+        label: "IA",
+        icono: "info",
+        href: "/superadmin/ai",
+        match: (p) => p.startsWith("/superadmin/ai"),
+      },
+    ],
   },
 ];
 
@@ -546,7 +596,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       // que el recorrido sigue: se hace por grupo en vez de sobre una lista.
       for (const grupo of GRUPOS_NAV) collectExpandedIds(grupo.items, pathname, next);
       if (adminVisible) collectExpandedIds([adminNav], pathname, next);
-      collectExpandedIds(SUPERADMIN_NAV, pathname, next);
+      for (const grupo of SUPERADMIN_GRUPOS) collectExpandedIds(grupo.items, pathname, next);
       return next;
     });
   }, [pathname, adminVisible, adminNav]);
@@ -718,20 +768,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                 />
               </div>
             ) : null}
-            {userReady && user?.is_superadmin ? (
-              <div className="mt-0.5">
-                <RotuloDeGrupo titulo="Plataforma" oculto={collapsed} />
-                <NavTree
-                  items={SUPERADMIN_NAV}
-                  pathname={pathname}
-                  onNavigate={close}
-                  expanded={expanded}
-                  toggle={toggle}
-                  collapsed={collapsed}
-                  onExpandSidebar={() => setCollapsedPersisted(false)}
-                />
-              </div>
-            ) : null}
+            {userReady && user?.is_superadmin
+              ? SUPERADMIN_GRUPOS.map((grupo) => (
+                  <div key={grupo.id} className="mt-0.5">
+                    <RotuloDeGrupo titulo={grupo.titulo} oculto={collapsed} />
+                    <NavTree
+                      items={grupo.items}
+                      pathname={pathname}
+                      onNavigate={close}
+                      expanded={expanded}
+                      toggle={toggle}
+                      collapsed={collapsed}
+                      onExpandSidebar={() => setCollapsedPersisted(false)}
+                    />
+                  </div>
+                ))
+              : null}
           </nav>
         </aside>
 
