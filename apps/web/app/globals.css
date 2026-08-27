@@ -148,6 +148,9 @@
   --relieve-control: inset 0 1px 0 #FFFFFF, 0 1px 1.5px rgba(20, 22, 26, .045);
   --relieve-isla: inset 0 1px 0 #FFFFFF, 0 1px 2px rgba(20, 22, 26, .045);
   --hundido: inset 0 1px 2px rgba(20, 22, 26, .05);
+  /* Marcador de hito del Gantt (rombo): bisel hundido para que lea como una
+     ficha tallada, no un cuadrado rotado plano. */
+  --relieve-hito: inset 0 -1px 2px rgba(20, 22, 26, .15);
 
   /* Chrome — sidebar claro a sangre (Revamp v2). Ya no flota: sin
      border-radius ni margin, columna con border-right. El pill activo es
