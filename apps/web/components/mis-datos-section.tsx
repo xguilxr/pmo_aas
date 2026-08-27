@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Trash2 } from "lucide-react";
 
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { apiBase, ApiError, apiFetch } from "@/lib/api";
 import { clearSession, getStoredUser } from "@/lib/auth-storage";
@@ -83,8 +84,11 @@ export function MisDatosSection() {
   }
 
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6">
-      <h2 className="text-lg font-semibold text-[var(--color-primary)]">Tus datos</h2>
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
+      <div className="flex items-center gap-2">
+        <Icono nombre="database" size={20} className="text-[var(--color-tertiary)]" />
+        <h2 className="text-lg font-semibold text-[var(--color-primary)]">Tus datos</h2>
+      </div>
 
       <div className="mt-4">
         <h3 className="text-sm font-medium text-[var(--color-secondary)]">
@@ -101,12 +105,12 @@ export function MisDatosSection() {
           onClick={exportar}
           loading={descargando}
         >
-          <Download className="h-4 w-4" aria-hidden />
+          <Icono nombre="download" size={15} />
           Descargar mis datos
         </Button>
       </div>
 
-      <div className="mt-6 border-t border-[var(--border-default)] pt-6">
+      <div className="mt-6 border-t border-[var(--border-default)] pt-6 shadow-[var(--linea-surco-arriba)]">
         <h3 className="text-sm font-medium text-[var(--color-danger-fg)]">
           Eliminar mis datos personales
         </h3>
@@ -134,12 +138,9 @@ export function MisDatosSection() {
         />
 
         {error ? (
-          <div
-            role="alert"
-            className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger-fg)]"
-          >
+          <Banner variant="danger" className="mt-3">
             {error}
-          </div>
+          </Banner>
         ) : null}
 
         <Button
@@ -149,7 +150,7 @@ export function MisDatosSection() {
           loading={suprimiendo}
           disabled={confirmacion.trim().toLowerCase() !== correo.toLowerCase()}
         >
-          <Trash2 className="h-4 w-4" aria-hidden />
+          <Icono nombre="bin" size={15} />
           Eliminar mis datos
         </Button>
       </div>

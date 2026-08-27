@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { ShieldCheck } from "lucide-react";
 
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { apiFetch } from "@/lib/api";
 import { fetchMe } from "@/lib/auth";
 import { getStoredUser } from "@/lib/auth-storage";
@@ -92,7 +93,7 @@ export function AvisoPrivacidadGate({ children }: { children: ReactNode }) {
       <div className="w-full max-w-2xl rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
         <div className="mb-5 flex items-start gap-3">
           <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
-            <ShieldCheck className="h-5 w-5" aria-hidden />
+            <Icono nombre="lock" size={18} />
           </div>
           <div>
             <h1 className="text-xl font-semibold text-[var(--color-primary)]">
@@ -123,15 +124,12 @@ export function AvisoPrivacidadGate({ children }: { children: ReactNode }) {
         )}
 
         {error ? (
-          <div
-            role="alert"
-            className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger-fg)]"
-          >
+          <Banner variant="danger" className="mt-4">
             {error}
-          </div>
+          </Banner>
         ) : null}
 
-        <div className="mt-6 flex flex-col gap-3 border-t border-[var(--border-default)] pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-6 flex flex-col gap-3 border-t border-[var(--border-default)] pt-5 shadow-[var(--linea-surco-arriba)] sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[var(--color-tertiary)]">
             Si no estás de acuerdo, cierra sesión y habla con quien administre tu
             organización.
