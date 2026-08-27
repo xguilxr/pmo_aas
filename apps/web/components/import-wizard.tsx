@@ -1,14 +1,15 @@
 "use client";
 
-import { AlertTriangle, FileSpreadsheet, Sparkles, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { esSinDato } from "@/lib/sin-dato";
 import { confirmarDestructivo } from "@/lib/confirmar";
 import {
@@ -44,6 +45,16 @@ type Step = "upload" | "sheet" | "preview" | "done";
 
 const ACCEPT = ".xlsx,.csv,.mpp,.xml,.mpx,.mspdi";
 const NEEDS_MAPPING: ImportSource[] = ["xlsx", "csv"];
+
+// El tono "IA" del sistema es el mismo que "info" (hue 258) — así aparece en
+// el resto del producto (badges "IA" de minutas, etc.). No es un color propio.
+const IA_TONE = "bg-[var(--color-info-bg)] text-[var(--color-info-fg)]";
+
+const STATUS_BADGE_VARIANT: Record<string, "success" | "info" | "warning"> = {
+  completed: "success",
+  in_progress: "info",
+  on_hold: "warning",
+};
 
 type ImportWizardProps = {
   open: boolean;
@@ -429,19 +440,21 @@ export function ImportWizard({
       ) : null}
 
       {step === "done" ? (
-        <div className="space-y-2 text-center">
+        <div className="flex flex-col items-center gap-2 py-2 text-center">
+          <Icono nombre="circle-check" size={26} className="text-[var(--color-success-fg)]" />
           <p className="text-sm font-semibold text-[var(--color-success-fg)]">
             {/* DAT-12: sin el resumen, «se importaron 0 tareas» dice que la
                 importación no trajo nada, cuando lo que pasa es que no sabemos
                 cuántas trajo. Son dos cosas distintas y la primera alarma. */}
             {esSinDato(doneSummary?.imported)
-              ? "✓ Listo — la importación terminó"
-              : `✓ Listo — se importaron ${doneSummary?.imported} tareas`}
+              ? "Listo — la importación terminó"
+              : `Listo — se importaron ${doneSummary?.imported} tareas`}
           </p>
           {/* US-188 nivel 2: transparencia de lo que normalizó la IA. */}
           {doneSummary && (doneSummary.aiStatuses > 0 || doneSummary.aiResources > 0) ? (
-            <p className="text-xs text-[var(--color-tertiary)]">
-              ✨ La IA normalizó {doneSummary.aiStatuses} estado(s) y
+            <p className="flex items-center gap-1.25 text-xs text-[var(--color-tertiary)]">
+              <Icono nombre="info" size={13} />
+              La IA normalizó {doneSummary.aiStatuses} estado(s) y
               asignó {doneSummary.aiResources} responsable(s).
             </p>
           ) : null}
@@ -555,15 +568,15 @@ function UploadStep({
         const f = e.dataTransfer.files?.[0];
         if (f) void onFile(f);
       }}
-      className={
-        "flex flex-col items-center gap-2 rounded-[var(--radius-xl)] border-2 border-dashed py-10 text-center cursor-pointer hover:border-[var(--color-accent)] hover:bg-[var(--color-surface)]" +
-        (dragging
-          ? " border-[var(--color-accent)] bg-[var(--color-surface)]"
-          : " border-[var(--border-default)] bg-[var(--color-subtle)]") +
-        (busy ? " pointer-events-none opacity-60" : "")
-      }
+      className={cn(
+        "flex cursor-pointer flex-col items-center gap-2 rounded-[var(--radius-xl)] border-2 border-dashed py-10 text-center hover:border-[var(--color-accent)] hover:bg-[var(--color-surface)]",
+        dragging
+          ? "border-[var(--color-accent)] bg-[var(--color-surface)]"
+          : "border-[var(--border-default)] bg-[var(--color-subtle)]",
+        busy && "pointer-events-none opacity-60",
+      )}
     >
-      <Upload className="h-8 w-8 text-[var(--color-tertiary)]" aria-hidden />
+      <Icono nombre="upload" size={24} className="text-[var(--color-tertiary)]" />
       <span className="text-sm font-medium text-[var(--color-primary)]">
         {busy ? "Procesando…" : "Arrastrá tu archivo aquí o hacé click"}
       </span>
@@ -609,16 +622,14 @@ function SheetStep({
               type="button"
               onClick={() => onPick(name)}
               disabled={busy}
-              className={
-                "flex w-full items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-left text-sm hover:bg-[var(--color-subtle)]" +
-                (busy ? " pointer-events-none opacity-60" : "") +
-                (current === name
-                  ? " border-[var(--color-accent)] bg-[var(--color-subtle)]"
-                  : "")
-              }
+              className={cn(
+                "flex w-full items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-left text-sm hover:bg-[var(--color-subtle)]",
+                busy && "pointer-events-none opacity-60",
+                current === name && "border-[var(--color-accent)] bg-[var(--color-subtle)]",
+              )}
             >
               <span className="flex items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+                <Icono nombre="file-spreadsheet" size={15} className="text-[var(--color-tertiary)]" />
                 {name}
               </span>
               {current === name ? <Badge variant="neutral">Actual</Badge> : null}
@@ -672,52 +683,60 @@ function PreviewStep({
   );
   return (
     <div className="space-y-3">
-      {/* US-189: resumen en lenguaje llano — lo primero que se lee. */}
+      {/* US-189: resumen en lenguaje llano — lo primero que se lee.
+          "Resumen antes de acción poco reversible": borde + fondo del
+          semáforo, sin mono (son sustantivos, no cifras aisladas). */}
       <div
-        className={
-          "rounded-[var(--radius-md)] border px-3 py-2 text-sm font-medium " +
-          (taskCount > 0
-            ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
-            : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300")
-        }
+        className={cn(
+          "flex items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2.25 text-[13px] font-medium",
+          taskCount > 0
+            ? "border-[var(--color-success-border)] bg-[var(--color-success-bg)] text-[var(--color-success-fg)]"
+            : "border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]",
+        )}
       >
+        <Icono
+          nombre={taskCount > 0 ? "circle-check" : "triangle-alert"}
+          size={15}
+          className="flex-none"
+        />
         {taskCount > 0 ? (
-          <>
-            Se importarán <strong>{taskCount}</strong> tareas
+          <span>
+            Se importarán <span className="font-mono">{taskCount}</span> tareas
             {warnings.length > 0
-              ? ` · ${warnings.length} aviso${warnings.length > 1 ? "s" : ""} para revisar`
+              ? <> · <span className="font-mono">{warnings.length}</span> aviso{warnings.length > 1 ? "s" : ""} para revisar</>
               : " · todo se ve bien"}
-          </>
+          </span>
         ) : (
-          <>
-            No reconocimos las columnas de tu archivo. Probá
-            {" "}
+          <span>
+            No reconocimos las columnas de tu archivo. Probá{" "}
             <strong>Interpretar archivo con IA</strong> o ajustá las
             columnas manualmente abajo.
-          </>
+          </span>
         )}
       </div>
 
       <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div className="text-xs text-[var(--color-tertiary)]">
-          <span className="mr-3">
-            Origen: <strong>{preview.source.toUpperCase()}</strong>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--color-tertiary)]">
+          <span>
+            Origen: <strong className="font-semibold text-[var(--color-secondary)]">{preview.source.toUpperCase()}</strong>
           </span>
           {preview.sheet_used ? (
-            <span className="mr-3">
-              Hoja: <strong>{preview.sheet_used}</strong>
+            <span>
+              Hoja: <strong className="font-semibold text-[var(--color-secondary)]">{preview.sheet_used}</strong>
             </span>
           ) : null}
-          {/* ENH-053: badge cuando la IA refinó el mapeo. */}
+          {/* ENH-053: badge cuando la IA refinó el mapeo. El tono "IA" del
+              sistema es el mismo "info" (hue 258) que el resto del producto. */}
           {aiUsed && !aiStructure ? (
-            <span className="ml-3 inline-flex items-center rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-              ✨ Mapeo asistido por IA
+            <span className={cn("inline-flex h-5 items-center gap-1.25 rounded-full px-2 text-[11px] font-semibold", IA_TONE)}>
+              <Icono nombre="info" size={12} />
+              Mapeo asistido por IA
             </span>
           ) : null}
           {/* US-188 nivel 3: la vista previa es una propuesta de la IA. */}
           {aiStructure ? (
-            <span className="ml-3 inline-flex items-center gap-1 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-              <Sparkles className="h-3 w-3" aria-hidden />
+            <span className={cn("inline-flex h-5 items-center gap-1.25 rounded-full px-2 text-[11px] font-semibold", IA_TONE)}>
+              <Icono nombre="info" size={12} />
               Plan interpretado por IA — revisá antes de importar
             </span>
           ) : null}
@@ -732,6 +751,7 @@ function PreviewStep({
               onChangeStrategy(e.target.value as "merge" | "replace")
             }
             aria-label="Estrategia de import"
+            className="w-55"
           >
             {/* US-189: opciones en lenguaje llano. */}
             <option value="merge">Agregar y actualizar tareas</option>
@@ -742,11 +762,8 @@ function PreviewStep({
 
       {missingName && needsMapping && !aiStructure ? (
         <Banner variant="warning">
-          <span className="inline-flex items-center gap-1.5">
-            <AlertTriangle className="h-4 w-4" aria-hidden />
-            Asigná una columna al campo <strong>Nombre</strong> antes de
-            confirmar, o dejá que la IA interprete el archivo.
-          </span>
+          Asigná una columna al campo <strong>Nombre</strong> antes de
+          confirmar, o dejá que la IA interprete el archivo.
         </Banner>
       ) : null}
 
@@ -761,7 +778,7 @@ function PreviewStep({
             onClick={onAiInterpret}
             disabled={busy}
           >
-            <Sparkles className="h-4 w-4" aria-hidden />
+            <Icono nombre="info" size={14} />
             {busy ? "Interpretando…" : "Interpretar archivo con IA"}
           </Button>
         </div>
@@ -771,12 +788,9 @@ function PreviewStep({
           huérfanos, % dudoso, estados no reconocidos). */}
       {warnings.length > 0 ? (
         <Banner variant="warning">
-          <ul className="space-y-1">
+          <ul className="list-disc space-y-1 pl-4">
             {warnings.map((w) => (
-              <li key={w.code} className="flex items-start gap-1.5">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                <span>{w.message}</span>
-              </li>
+              <li key={w.code}>{w.message}</li>
             ))}
           </ul>
         </Banner>
@@ -790,11 +804,14 @@ function PreviewStep({
       {/* US-189: el mapeo de columnas es detalle avanzado — colapsado
           cuando el auto-detect funcionó, abierto si falta lo esencial. */}
       {needsMapping && !aiStructure ? (
-        <details open={missingName || taskCount === 0}>
-          <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+        <details
+          open={missingName || taskCount === 0}
+          className="rounded-[var(--radius-md)] border border-[var(--border-strong)] shadow-[var(--linea-surco-arriba)]"
+        >
+          <summary className="cursor-pointer px-3 py-2.25 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-tertiary)]">
             Ajustar columnas (avanzado)
           </summary>
-          <div className="mt-1.5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 border-t border-[var(--border-subtle)] p-3 sm:grid-cols-2 lg:grid-cols-3">
             {headerLabels.map((label, idx) => {
               const sample = sampleData.find((r) => r[idx] != null && r[idx] !== "")?.[idx];
               const lowConf =
@@ -815,10 +832,11 @@ function PreviewStep({
                     </span>
                     {lowConf ? (
                       <span
-                        className="shrink-0 text-[10px] text-amber-600"
+                        className="inline-flex shrink-0 items-center gap-1 text-[10px] text-[var(--color-warning-fg)]"
                         title="La sugerencia tiene baja confianza — verifica el mapeo."
                       >
-                        ⚠ baja confianza
+                        <Icono nombre="triangle-alert" size={11} />
+                        baja confianza
                       </span>
                     ) : null}
                   </div>
@@ -861,32 +879,33 @@ function PreviewStep({
           con color, hitos ◆ — y scroll para ver varias líneas. */}
       {parsedPreview.length > 0 ? (
         <div>
-          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-tertiary)]">
             Así se verá en el sistema
             {taskCount > parsedPreview.length
               ? ` (primeras ${parsedPreview.length} de ${taskCount})`
               : ` (${parsedPreview.length} tareas)`}
           </div>
-          <div className="max-h-[340px] overflow-auto rounded-[var(--radius-md)] border border-[var(--border-default)]">
-            <table className="min-w-full text-xs">
-              <thead className="sticky top-0 z-10 bg-[var(--color-subtle)]">
+          <div className="max-h-[340px] overflow-auto rounded-[var(--radius-xl)] border border-[var(--border-default)] shadow-[var(--relieve-isla)]">
+            <table className="w-full table-fixed text-xs">
+              <thead className="sticky top-0 z-10 border-b border-[var(--border-default)] bg-[var(--color-subtle)] shadow-[var(--linea-surco)]">
                 <tr>
                   {[
-                    "WBS",
-                    "Tarea",
-                    "Inicio",
-                    "Fin",
-                    "%",
-                    "Estado",
-                    "Área",
-                    "Responsable",
-                    "Pred.",
+                    { label: "WBS", width: 52 },
+                    { label: "Tarea", width: undefined },
+                    { label: "Inicio", width: 84 },
+                    { label: "Fin", width: 84 },
+                    { label: "%", width: 48 },
+                    { label: "Estado", width: 96 },
+                    { label: "Área", width: 100 },
+                    { label: "Responsable", width: 116 },
+                    { label: "Pred.", width: 56 },
                   ].map((h) => (
                     <th
-                      key={h}
-                      className="border-b border-[var(--border-default)] px-2 py-1.5 text-left text-[11px] font-medium text-[var(--color-tertiary)]"
+                      key={h.label}
+                      style={h.width ? { width: h.width } : undefined}
+                      className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-[0.05em] text-[var(--color-tertiary)]"
                     >
-                      {h}
+                      {h.label}
                     </th>
                   ))}
                 </tr>
@@ -896,60 +915,63 @@ function PreviewStep({
                   const depth = t.wbs_code
                     ? Math.max(0, t.wbs_code.split(".").filter(Boolean).length - 1)
                     : 0;
+                  const indent = depth * 14;
+                  const estado = t.status ?? "not_started";
+                  const badgeVariant = STATUS_BADGE_VARIANT[estado] ?? "neutral";
+                  const estadoLabel = t.status
+                    ? (TASK_STATUS_LABEL[t.status] ?? t.status)
+                    : "No iniciada";
                   return (
                     <tr
                       key={t.row_number}
-                      className="border-t border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]"
+                      className="h-8 border-t border-[var(--border-subtle)] even:bg-[var(--color-subtle)]/40 hover:bg-[var(--color-subtle)]"
                     >
-                      <td className="px-2 py-1.5 tabular-nums text-[var(--color-tertiary)]">
+                      <td
+                        className="px-2 font-mono text-[11px] text-[var(--color-tertiary)]"
+                        style={{ paddingLeft: 8 + indent }}
+                      >
                         {t.wbs_code ?? "—"}
                       </td>
                       <td
-                        className="max-w-[260px] truncate px-2 py-1.5 text-[var(--color-primary)]"
-                        style={{ paddingLeft: `${8 + depth * 16}px` }}
+                        className={cn(
+                          "overflow-hidden text-ellipsis whitespace-nowrap px-2",
+                          depth === 0 ? "font-semibold" : "font-normal",
+                          t.is_milestone ? "text-[var(--color-warning-fg)]" : "text-[var(--color-primary)]",
+                        )}
+                        style={{ paddingLeft: 8 + indent }}
                         title={t.name}
                       >
-                        {t.is_milestone ? (
-                          <span className="mr-1 text-purple-600">◆</span>
-                        ) : null}
+                        {t.is_milestone ? "◆ " : null}
                         {t.name}
                       </td>
-                      <td className="whitespace-nowrap px-2 py-1.5 text-[var(--color-secondary)]">
-                        {t.start_date ?? "—"}
+                      <td className="px-2 font-mono text-[11px] text-[var(--color-secondary)]">
+                        {t.start_date ?? <span className="text-[var(--color-tertiary)]">—</span>}
                       </td>
-                      <td className="whitespace-nowrap px-2 py-1.5 text-[var(--color-secondary)]">
-                        {t.end_date ?? "—"}
+                      <td className="px-2 font-mono text-[11px] text-[var(--color-secondary)]">
+                        {t.end_date ?? <span className="text-[var(--color-tertiary)]">—</span>}
                       </td>
-                      <td className="px-2 py-1.5 tabular-nums text-[var(--color-secondary)]">
-                        {t.progress}%
+                      <td className="px-2 font-mono text-[11px] text-[var(--color-secondary)]">
+                        {t.is_milestone ? (
+                          <span className="text-[var(--color-tertiary)]">—</span>
+                        ) : (
+                          `${t.progress}%`
+                        )}
                       </td>
-                      <td className="px-2 py-1.5">
+                      <td className="px-2">
                         {/* ENH-199: chip de color como en el plan (ENH-188). */}
-                        <span
-                          className={
-                            "inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold " +
-                            (t.status === "completed"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : t.status === "in_progress"
-                                ? "bg-blue-100 text-blue-700"
-                                : t.status === "on_hold"
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-slate-100 text-slate-600")
-                          }
-                        >
-                          {t.status
-                            ? (TASK_STATUS_LABEL[t.status] ?? t.status)
-                            : "No iniciada"}
-                        </span>
+                        <Badge variant={badgeVariant}>{estadoLabel}</Badge>
                       </td>
-                      <td className="whitespace-nowrap px-2 py-1.5 text-[var(--color-secondary)]">
-                        {t.area ?? "—"}
+                      <td className="overflow-hidden text-ellipsis whitespace-nowrap px-2 text-[var(--color-secondary)]">
+                        {t.area ?? <span className="text-[var(--color-tertiary)]">—</span>}
                       </td>
-                      <td className="max-w-[140px] truncate px-2 py-1.5 text-[var(--color-secondary)]" title={t.resources ?? ""}>
-                        {t.resources ?? "—"}
+                      <td
+                        className="overflow-hidden text-ellipsis whitespace-nowrap px-2 text-[var(--color-secondary)]"
+                        title={t.resources ?? ""}
+                      >
+                        {t.resources ?? <span className="text-[var(--color-tertiary)]">—</span>}
                       </td>
-                      <td className="px-2 py-1.5 tabular-nums text-[var(--color-secondary)]">
-                        {t.predecessors ?? "—"}
+                      <td className="px-2 font-mono text-[11px] text-[var(--color-secondary)]">
+                        {t.predecessors ?? <span className="text-[var(--color-tertiary)]">—</span>}
                       </td>
                     </tr>
                   );
@@ -1019,10 +1041,8 @@ function PreviewStep({
 
       {preview.errors.length > 0 ? (
         <Banner variant="warning">
-          <div className="text-xs">
-            <strong>{preview.errors.length}</strong> filas con errores no
-            críticos en el preview. Se omitirán al confirmar.
-          </div>
+          <strong>{preview.errors.length}</strong> filas con errores no
+          críticos en el preview. Se omitirán al confirmar.
         </Banner>
       ) : null}
     </div>
