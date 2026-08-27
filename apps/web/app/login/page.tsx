@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
-import { LogIn, MailCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { ApiError } from "@/lib/api";
@@ -104,155 +104,64 @@ function LoginForm() {
 
   if (desafio) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[var(--color-app)] px-4 py-12">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
-              <MailCheck className="h-6 w-6" aria-hidden />
+      <main className="flex min-h-screen items-center justify-center bg-[var(--color-subtle)] px-4 py-12">
+        <div className="flex w-full max-w-[480px] flex-col gap-6">
+          <div className="flex flex-col items-center gap-2.5 text-center">
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
+              <Icono nombre="bell" size={20} />
             </div>
-            <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+            <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
               Revisa tu correo
             </h1>
-            <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+            <p className="text-[13px] leading-[1.5] text-[var(--text-tertiary)]">
               Tu cuenta administra la organización, así que te enviamos un código
               de 6 dígitos. Caduca en 10 minutos.
             </p>
           </div>
 
-          <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
-            <form onSubmit={enviarCodigo} noValidate className="space-y-4">
-              <div>
-                <label
-                  htmlFor="codigo"
-                  className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-                >
-                  Código
-                </label>
-                <Input
-                  id="codigo"
-                  name="codigo"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  autoFocus
-                  required
-                  maxLength={6}
-                  disabled={submitting}
-                  value={codigo}
-                  onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))}
-                  placeholder="000000"
-                  className="text-center text-lg tracking-[0.4em]"
-                />
-              </div>
-
-              <label className="flex items-start gap-2.5 text-sm text-[var(--color-secondary)]">
-                <Checkbox
-                  checked={recordarEquipo}
-                  disabled={submitting}
-                  onChange={(e) => setRecordarEquipo(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <span>
-                  No volver a pedirme el código en este equipo
-                  <span className="block text-xs text-[var(--color-tertiary)]">
-                    Durante {diasRecordado} días. Desmárcalo si el equipo no es
-                    tuyo.
-                  </span>
-                </span>
-              </label>
-
-              {error ? (
-                <div
-                  role="alert"
-                  className="rounded-[var(--radius-md)] border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger-fg)]"
-                >
-                  {error}
-                </div>
-              ) : null}
-
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full"
-                loading={submitting}
-                disabled={codigo.length < 6}
-              >
-                Entrar
-              </Button>
-
-              <div className="text-center text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDesafio(null);
-                    setCodigo("");
-                    setError(null);
-                  }}
-                  className="text-[var(--color-tertiary)] hover:text-[var(--color-primary)] hover:underline"
-                >
-                  Volver
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--color-app)] px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
-            <LogIn className="h-6 w-6" aria-hidden />
-          </div>
-          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">PMO-aaS</h1>
-          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-            Ingresa a tu espacio de trabajo
-          </p>
-        </div>
-
-        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <form
+            onSubmit={enviarCodigo}
+            noValidate
+            className="flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5.5 shadow-[var(--relieve-isla)]"
+          >
             <div>
               <label
-                htmlFor="identifier"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                htmlFor="codigo"
+                className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
               >
-                Usuario o correo
+                Código
               </label>
               <Input
-                id="identifier"
-                name="identifier"
-                type="text"
-                autoComplete="username"
+                id="codigo"
+                name="codigo"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 autoFocus
                 required
+                maxLength={6}
                 disabled={submitting}
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="admin@acme.pmoaas.local"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))}
+                placeholder="000000"
+                className="h-10.5 text-center font-mono text-[17px] tracking-[0.4em]"
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="password"
-                className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
-              >
-                Contraseña
-              </label>
-              <PasswordInput
-                id="password"
-                name="password"
-                autoComplete="current-password"
-                required
+            <label className="flex items-start gap-2.25 text-[12.5px] text-[var(--text-secondary)]">
+              <Checkbox
+                checked={recordarEquipo}
                 disabled={submitting}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                onChange={(e) => setRecordarEquipo(e.target.checked)}
+                className="mt-0.25"
               />
-            </div>
+              <span>
+                No volver a pedirme el código en este equipo
+                <span className="block text-[11px] text-[var(--text-faint)]">
+                  Durante {diasRecordado} días. Desmárcalo si el equipo no es
+                  tuyo.
+                </span>
+              </span>
+            </label>
 
             {error ? (
               <div
@@ -268,23 +177,120 @@ function LoginForm() {
               size="lg"
               className="w-full"
               loading={submitting}
-              disabled={!identifier.trim() || !password}
+              disabled={codigo.length < 6}
             >
-              {submitting ? "Ingresando…" : "Iniciar sesión"}
+              Entrar
             </Button>
 
             <div className="text-center text-xs">
-              <Link
-                href="/forgot-password"
-                className="text-[var(--color-tertiary)] hover:text-[var(--color-primary)] hover:underline"
+              <button
+                type="button"
+                onClick={() => {
+                  setDesafio(null);
+                  setCodigo("");
+                  setError(null);
+                }}
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:underline"
               >
-                ¿Olvidaste tu contraseña?
-              </Link>
+                Volver
+              </button>
             </div>
           </form>
         </div>
+      </main>
+    );
+  }
 
-        <p className="mt-6 text-center text-xs text-[var(--color-tertiary)]">
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[var(--color-subtle)] px-4 py-12">
+      <div className="flex w-full max-w-[480px] flex-col gap-6">
+        <div className="flex flex-col items-center gap-2.5 text-center">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
+            <Icono nombre="lock" size={20} />
+          </div>
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
+            PMO-aaS
+          </h1>
+          <p className="text-[13px] text-[var(--text-tertiary)]">
+            Ingresa a tu espacio de trabajo
+          </p>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="flex flex-col gap-3.5 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5.5 shadow-[var(--relieve-isla)]"
+        >
+          <div>
+            <label
+              htmlFor="identifier"
+              className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
+            >
+              Usuario o correo
+            </label>
+            <Input
+              id="identifier"
+              name="identifier"
+              type="text"
+              autoComplete="username"
+              autoFocus
+              required
+              disabled={submitting}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="admin@acme.pmoaas.local"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="password"
+              className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
+            >
+              Contraseña
+            </label>
+            <PasswordInput
+              id="password"
+              name="password"
+              autoComplete="current-password"
+              required
+              disabled={submitting}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
+
+          {error ? (
+            <div
+              role="alert"
+              className="rounded-[var(--radius-md)] border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger-fg)]"
+            >
+              {error}
+            </div>
+          ) : null}
+
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            loading={submitting}
+            disabled={!identifier.trim() || !password}
+          >
+            {submitting ? "Ingresando…" : "Iniciar sesión"}
+          </Button>
+
+          <div className="text-center text-xs">
+            <Link
+              href="/forgot-password"
+              className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:underline"
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
+        </form>
+
+        <p className="text-center text-[11.5px] text-[var(--text-faint)]">
           PMO-aaS · Project Management Office as a Service
         </p>
       </div>
@@ -296,8 +302,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-[var(--color-app)]">
-          <div className="text-sm text-[var(--color-tertiary)]">Cargando…</div>
+        <main className="flex min-h-screen items-center justify-center bg-[var(--color-subtle)]">
+          <div className="text-sm text-[var(--text-tertiary)]">Cargando…</div>
         </main>
       }
     >
