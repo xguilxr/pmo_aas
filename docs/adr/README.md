@@ -97,18 +97,13 @@ solo de capa de aplicación**.
 >    `effective_tenant_id` del request, sobre una conexión cuyo rol **nunca**
 >    tiene `BYPASSRLS`. Se implementa en US-241, junto con las primeras
 >    policies — no hay policy que probar todavía.
-> 2. **Bypass de superadmin y jobs de plataforma.** El plan
+> 2. **Bypass de superadmin y jobs de plataforma — decisión revisada, ver
+>    el update de abajo (2026-08-27, US-241).** El plan
 >    (`reestructura-modelo-datos.md` §3.3, punto 5) dejó dos opciones sin
 >    elegir: rol de conexión aparte, o un centinela `app.tenant_id = '*'`
->    contemplado en la policy. **Se elige rol de conexión aparte**
->    (`pmoaas_platform`, con `BYPASSRLS`). Un centinela mueve el control a
->    una cadena que cualquier ruta podría fijar por error o por default; un
->    rol de conexión separado lo deja en la configuración de infraestructura
->    — visible con `\du`, y elegido solo por la capa de dependencias
->    (`Depends(get_superadmin)` en rutas, `SessionLocal` propio en el
->    worker), nunca por un valor que viaje en la petición. El rol de la API
->    normal jamás tiene `BYPASSRLS`. Se implementa junto con la primera
->    policy real, en US-241.
+>    contemplado en la policy. Esta entrada eligió rol de conexión aparte;
+>    el owner pidió el centinela, robustecido. Queda el punto 1 (modelo de
+>    sesión) sin cambios.
 >
 > La migración `20260827_0116` cierra el inventario pendiente: agrega el FK
 > `tenant_id → tenants.id` que faltaba en 13 tablas (`change_approvers`,
@@ -122,6 +117,50 @@ solo de capa de aplicación**.
 > tiene `relationship()` que cascadear) dejaba esas dos tablas huérfanas
 > tras un hard-delete. Esta migración lo cierra como efecto colateral
 > correcto, no como alcance nuevo.
+
+> **Update 2026-08-27 (revisión, US-241) — centinela robustecido, no rol
+> aparte.** El owner revisó el punto 2 de arriba y pidió el centinela
+> (`app.tenant_id = '*'`) en vez del rol de conexión — menos infraestructura
+> nueva (un solo rol, un solo engine) — con el riesgo que esa entrada le
+> señalaba reducido al mínimo posible. Cuatro capas, no una:
+>
+> 1. **Un único call site en todo el código puede escribir el centinela:**
+>    `api/deps.py::get_superadmin`. Ninguna otra ruta ni dependencia lo
+>    toca — todas las rutas bajo `/superadmin/*` pasan por ahí, así que no
+>    hay un segundo camino que alguien tenga que acordarse de blindar. El
+>    worker **no** usa el centinela en ningún caso: `snapshot_all_tenants`
+>    (el único job que hoy recorre todos los tenants) fija el `tenant_id`
+>    de cada iteración en vez de pedir visibilidad total — más código, cero
+>    superficie nueva de centinela.
+> 2. **El centinela nunca nace de un valor de la petición.** `fijar_tenant_
+>    actual()` (`app/core/tenant_context.py`) solo lo escribe cuando el
+>    *llamador* pasa `alcance_plataforma=True` como argumento explícito —
+>    nunca porque `tenant_id` contenga la cadena `"*"`. Un JWT o un query
+>    param que trajera literalmente `"*"` no activa nada: ese valor viaja
+>    como dato, no como el argumento con nombre que la función exige.
+> 3. **Se escribe con `set_config()`, no con `SET LOCAL` interpolado.**
+>    `SET LOCAL app.tenant_id = '{valor}'` sería concatenar SQL — lo que
+>    prohíbe `security-multitenant.md` §7. `SELECT set_config('app.tenant_id',
+>    :val, true)` acepta bind parameter; el tercer argumento (`true` =
+>    `is_local`) es el equivalente funcional de `SET LOCAL`.
+> 4. **El trinquete de CI no confía en que alguien audite a mano.**
+>    `tests/test_us241_rls_trinquete.py` grepea el árbol de `apps/api/app`
+>    y falla si el literal `alcance_plataforma=True` aparece en un archivo
+>    que no sea `api/deps.py` — la lección del 2026-08-19 en
+>    `LESSONS.md` ("un trinquete que lee código no ve tras una
+>    indirección") aplica literal: la llamada está escrita una vez, no en
+>    un bucle sobre una lista, para que un grep la vea sin ambigüedad. Cada
+>    activación además queda en el log (`structlog`, `pmoaas.tenant_context`)
+>    — no hay `GlitchTip` (ADR-011), así que la traza vive en Railway Logs,
+>    pero vive.
+>
+> Lo que esto **no** resuelve: un bug futuro en `get_superadmin` mismo
+> (el único call site) seguiría escalando de más. Es el trade-off aceptado
+> al elegir un punto único: menos superficie, pero ese punto pesa más.
+> Mitigación parcial: `get_superadmin` ya es el gate de mayor privilegio
+> del sistema (`is_superadmin=True`, el flag más restringido que hay) y
+> toda acción bajo él se audita (`security-multitenant.md` §4) — el
+> centinela no le agrega una puerta nueva, amplía una que ya existía.
 
 **Contexto:**
 Multi-tenant tiene 3 patrones: DB-per-tenant, schema-per-tenant, shared-schema con RLS. Cada uno con trade-offs distintos.

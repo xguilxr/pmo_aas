@@ -323,6 +323,14 @@ async def snapshot_tenant(
     snapshot_date = snapshot_date or date.today()
     written = 0
 
+    # US-241 / ADR-003 — `snapshot_all_tenants` llama esto una vez por
+    # tenant reusando la MISMA sesión (`db`). El GUC de RLS se re-fija en
+    # cada llamada — nunca el centinela: se recorre tenant por tenant, no
+    # se necesita ver más de uno a la vez.
+    from app.core.tenant_context import fijar_tenant_actual
+
+    await fijar_tenant_actual(db, tenant_id)
+
     # US-180: refrescar la salud auto de todos los proyectos del tenant
     # antes de contar, y llevar el desglose por dimensiones al snapshot
     # de scope proyecto (extras.health_dimensions) para tendencias.

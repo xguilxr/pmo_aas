@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import select
 
+from app.core.tenant_context import fijar_tenant_actual
 from app.models.notification import Notification
 from app.models.organization import Organization
 from app.models.tenant import Tenant
@@ -38,6 +39,11 @@ async def _send(notification_id: str) -> dict:
         ).scalar_one_or_none()
         if notif is None:
             return {"skipped": "not_found"}
+
+        # US-241 / ADR-003 — recién acá se conoce el tenant (viene de la
+        # fila, no de un parámetro de la task). El resto del bloque consulta
+        # `Organization` (dominio jerarquía, con RLS desde esta oleada).
+        await fijar_tenant_actual(db, str(notif.tenant_id))
 
         # Dedupe: si el user ya leyó in-app dentro de la ventana, no mandes email.
         if notif.is_read and notif.read_at:

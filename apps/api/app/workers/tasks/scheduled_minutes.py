@@ -20,6 +20,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
+from app.core.tenant_context import fijar_tenant_actual
 from app.models.audit import AuditLog
 from app.models.organization import Organization
 from app.models.project import Project
@@ -106,6 +107,12 @@ async def _send(scheduled_id: str) -> dict:
 
         tenant_id = UUID(str(sched.tenant_id))
         project_id = UUID(str(sched.project_id))
+
+        # US-241 / ADR-003 — recién acá se conoce el tenant. `Project` y
+        # `Organization` de abajo son dominio jerarquía, con RLS desde esta
+        # oleada.
+        await fijar_tenant_actual(db, str(tenant_id))
+
         project = (
             await db.execute(
                 select(Project).where(

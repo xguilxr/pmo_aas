@@ -15,9 +15,11 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**US-240 #599** (Reestructura-W3, RLS) — ADR-003 + migración `0116` (FKs de
-`tenant_id`). Verde: lint, mypy, 2078 tests. Falta push + comment de cierre.
-Bloquea **US-241 #600** (RLS jerarquía) → **US-242 #601** (RLS proyectos).
+**US-240 #599 fix-committed.** **US-241 #600** (RLS jerarquía, centinela
+robustecido) — migración `0117` + wiring en `deps.py` y worker. Verde:
+2080 tests. Falta push. **Verificar owner**: si el rol Postgres de Railway
+es superusuario, `FORCE ROW LEVEL SECURITY` no filtra nada (ADR-003).
+Bloquea **US-242 #601**.
 
 **Revamp v2 terminado** (2026-08-27, batch del owner;
 detalle en `SPRINT-DONE-HISTORY.md`). Lo pendiente:
@@ -36,9 +38,8 @@ contestadas (DEC-033) — desbloquea **US-223 a US-226**.
 
 ### Reestructura de plataforma — lo que queda
 
-Planeación en `docs/epics/drafts/reestructura-*.md`. W1 y Fase 2 cerradas.
-**W3 en IN-PROGRESS** (arriba). Queda **W8** el `drop` de
-`business_units`/`departments` cuando el contador de compat lo confirme.
+W1 y Fase 2 cerradas. **W3 en IN-PROGRESS** (arriba). Queda **W8** el
+`drop` de `business_units`/`departments` cuando el contador lo confirme.
 
 ### Producto — abierto
 

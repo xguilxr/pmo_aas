@@ -14,6 +14,7 @@ from app.core.permissions import (
     module_action_to_capability,
 )
 from app.core.security import decode_access_token
+from app.core.tenant_context import fijar_tenant_actual
 from app.db.session import get_db
 from app.models.tenant_permission import TenantRolePermissionOverride
 from app.models.user import User
@@ -251,12 +252,23 @@ async def get_current_user(
             if r.module in ADMIN_CAPABILITIES:
                 capability_overrides.setdefault(r.role_type, {})[r.module] = r.granted
 
-    return CurrentUser(
+    cu = CurrentUser(
         user=user,
         tenant_ids=[UUID(t) for t in tenant_ids_raw],
         active_tenant_id=active_tenant_id,
         capability_overrides=capability_overrides,
     )
+
+    # US-241 / ADR-003 — RLS lee `app.tenant_id` de la sesión de Postgres, no
+    # del filtro `WHERE` de cada query. Se fija una sola vez, aquí, porque
+    # `get_current_user` es el único punto por el que pasan todas las
+    # peticiones autenticadas (mismo razonamiento que el presupuesto de
+    # arriba). `effective_tenant_id` puede ser `None` (superadmin sin
+    # `join-as-admin`): `fijar_tenant_actual` no fija nada y la sesión queda
+    # fail-closed para tablas tenant-scoped, que es lo correcto ahí.
+    await fijar_tenant_actual(db, cu.effective_tenant_id)
+
+    return cu
 
 
 def require_capability(name: str):
@@ -303,7 +315,9 @@ def require_authenticated() -> Callable[..., Awaitable[CurrentUser]]:
     return _checker
 
 
-async def get_superadmin(cu: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+async def get_superadmin(
+    cu: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> CurrentUser:
     if not cu.is_superadmin:
         raise forbidden(
             code="FORBIDDEN",
@@ -315,6 +329,16 @@ async def get_superadmin(cu: CurrentUser = Depends(get_current_user)) -> Current
                     "administra la plataforma.",
             ),
         )
+    # US-241 / ADR-003 — único call site permitido del centinela de RLS.
+    # `db` es la misma sesión que `get_current_user` ya usó (FastAPI cachea
+    # la dependencia `get_db` dentro del mismo request): esto ESCALA el
+    # `app.tenant_id` que `get_current_user` acaba de fijar al centinela, no
+    # lo fija por primera vez. Toda ruta bajo `/superadmin/*` pasa por acá —
+    # no hay una segunda dependencia "de verdad cross-tenant" que alguien
+    # tenga que acordarse de usar en su lugar, porque una acción de
+    # superadmin que cascadeara un DELETE sobre tablas con RLS (p. ej.
+    # `hard_delete_tenant`) necesita ver esas filas para poder borrarlas.
+    await fijar_tenant_actual(db, None, alcance_plataforma=True)
     return cu
 
 

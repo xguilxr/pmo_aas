@@ -22,6 +22,7 @@ from decimal import Decimal
 from sqlalchemy import desc, select
 
 from app.core.config import settings
+from app.core.tenant_context import fijar_tenant_actual
 from app.core.unidades import razon_a_pct_decimal, segundos_a_ms
 from app.models.ai import AIJob, Report
 from app.models.modules import MeetingMinute, Risk
@@ -116,6 +117,7 @@ async def _alert_superadmin_platform_failure(
         from app.services.notifications import PLATFORM_AI_ALERT, enqueue_notification
 
         async with db_session() as db:
+            await fijar_tenant_actual(db, tenant_id)
             superadmins = (
                 await db.execute(
                     select(User).where(
@@ -353,6 +355,7 @@ async def _run_minute(
         MINUTE_NORMALIZE_SYSTEM if source_type == "minute" else MINUTE_SYSTEM
     )
     async with db_session() as db:
+        await fijar_tenant_actual(db, tenant_id)
         job = await _mark_running(db, job_id)
         if job is None:
             logger.warning("minute task: job %s not found", job_id)
@@ -361,6 +364,7 @@ async def _run_minute(
     started = datetime.now(UTC)
     try:
         async with db_session() as db:
+            await fijar_tenant_actual(db, tenant_id)
             tenant_cfg = await load_tenant_ai(db, tenant_id)
             platform_groq = await resolve_groq_config(db)
             # US-185: memoria de proyecto — bloque <CONTEXTO_DEL_PROYECTO>
@@ -509,6 +513,7 @@ async def _run_minute(
         # `participants_flat` ya cumple — el merge anterior reusa ese campo.
 
         async with db_session() as db:
+            await fijar_tenant_actual(db, tenant_id)
             job = (
                 await db.execute(select(AIJob).where(AIJob.id == job_id))
             ).scalar_one()
@@ -581,6 +586,7 @@ async def _run_minute(
     except Exception as exc:
         logger.exception("minute task failed job=%s", job_id)
         async with db_session() as db:
+            await fijar_tenant_actual(db, tenant_id)
             await _mark_failed(db, job_id, f"{type(exc).__name__}: {exc}")
 
 
@@ -592,6 +598,7 @@ async def _run_report(
     requested_by: str | None,
 ) -> None:
     async with db_session() as db:
+        await fijar_tenant_actual(db, tenant_id)
         job = await _mark_running(db, job_id)
         if job is None:
             return
@@ -599,6 +606,7 @@ async def _run_report(
     started = datetime.now(UTC)
     try:
         async with db_session() as db:
+            await fijar_tenant_actual(db, tenant_id)
             p = (
                 await db.execute(
                     select(Project).where(
@@ -690,6 +698,7 @@ async def _run_report(
         }
 
         async with db_session() as db:
+            await fijar_tenant_actual(db, tenant_id)
             rep = Report(
                 tenant_id=tenant_id, project_id=project_id,
                 title=f"Reporte {project_folio} — {datetime.now(UTC).strftime('%Y-%m-%d')}",
@@ -726,6 +735,7 @@ async def _run_report(
     except Exception as exc:
         logger.exception("report task failed job=%s", job_id)
         async with db_session() as db:
+            await fijar_tenant_actual(db, tenant_id)
             await _mark_failed(db, job_id, f"{type(exc).__name__}: {exc}")
 
 
@@ -768,6 +778,7 @@ async def _run_context_summary(tenant_id: str, project_id: str) -> None:
     from app.services.ai.prompts import PROJECT_MEMORY_SYSTEM
 
     async with db_session() as db:
+        await fijar_tenant_actual(db, tenant_id)
         tenant_cfg = await load_tenant_ai(db, tenant_id)
         platform_groq = await resolve_groq_config(db)
         if tenant_cfg.mode == "disabled":
@@ -834,6 +845,7 @@ async def _run_context_summary(tenant_id: str, project_id: str) -> None:
         return
 
     async with db_session() as db:
+        await fijar_tenant_actual(db, tenant_id)
         ctx = (
             await db.execute(
                 select(ProjectAIContext).where(

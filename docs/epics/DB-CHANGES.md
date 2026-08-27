@@ -1322,6 +1322,66 @@ sin recrear la tabla, y no hace falta emularlo — el esquema de tests nace de
 `Base.metadata.create_all`, que ya lee el FK desde el modelo actualizado en el
 mismo commit.
 
+---
+
+## 0117 — RLS en el dominio jerarquía (US-241 / ADR-003)
+
+DDL puro: `ENABLE ROW LEVEL SECURITY` + `FORCE ROW LEVEL SECURITY` + una
+policy `FOR ALL` en `organizations`, `portfolios`, `business_units`,
+`departments`, `programs`, `projects`. No agrega columnas ni tablas — se
+apoya en el FK de la 0116.
+
+**Policy con centinela.** `USING (tenant_id = current_setting('app.tenant_id',
+true) OR current_setting('app.tenant_id', true) = '*')`, con el mismo texto en
+`WITH CHECK` (sin eso, un `INSERT`/`UPDATE` cruzando tenant pasaría la lectura
+y quedaría escrito igual). El centinela `'*'` es la decisión revisada de
+ADR-003 (owner, 2026-08-27): un solo call site en todo el código puede
+escribirlo (`api/deps.py::get_superadmin`), nunca a partir de un valor de la
+petición. Detalle completo y las cuatro capas de blindaje en `ADR-003`.
+
+**`FORCE` y su límite — léase antes de dar esto por cerrado en producción.**
+La app conecta con un único rol (`database.md` línea 33), que es además el
+dueño de las tablas: sin `FORCE`, la policy existiría y no filtraría nada.
+`FORCE` no alcanza si ese rol es además **superusuario** de Postgres —
+RLS nunca aplica a un superusuario, con o sin `FORCE`. La migración consulta
+`pg_roles` y deja un `log.warning` si el rol conectado califica; si ese aviso
+aparece en un despliegue real, la policy corrió pero no protege nada todavía.
+No se pudo confirmar el rol real de Railway desde este entorno — **queda como
+verificación pendiente del owner**.
+
+**Consecuencia para migraciones futuras.** El DDL no pasa por RLS, pero
+cualquier migración que backfillee datos de estas seis tablas sí — tiene que
+fijar el centinela (`SELECT set_config('app.tenant_id', '*', true)`) al
+principio de su `upgrade()`/`downgrade()`, o verá (y afectará) cero filas en
+silencio.
+
+**Wiring de código en el mismo commit, no en esta migración.**
+`app/core/tenant_context.py::fijar_tenant_actual` queda enganchado en
+`api/deps.py::get_current_user` (toda petición autenticada, con el
+`tenant_id` del request) y en `get_superadmin` (el centinela). En el worker,
+en los cinco puntos que tocan estas tablas: `ai.py` (11 sitios — el
+`tenant_id` de cada job ya viene de parámetro), `notifications.py` y
+`scheduled_minutes.py`/`scheduled_reports.py` (el tenant se conoce recién
+tras la primera query, así que se fija ahí), y
+`services/analytics/snapshots.py::snapshot_tenant` — la única función que de
+verdad recorre todos los tenants; en vez de usar el centinela, fija el
+`tenant_id` de **cada** iteración, uno a la vez. `respaldo.py` (backup diario
+vía `pg_dump`) no usa SQLAlchemy y no necesita cambio de código: `pg_dump`
+pone `row_security = off` por default, así que sigue viendo todas las filas
+mientras el rol que lo corre sea el dueño de las tablas o tenga privilegio
+suficiente — mismo rol único que todo lo demás, sin BYPASSRLS necesario para
+esto en particular.
+
+**Trinquete de cobertura, no de comportamiento real.** `tests/
+test_us241_rls_trinquete.py` corre en SQLite (sin RLS) y comprueba dos cosas
+verificables sin Postgres: que toda tabla tenant-scoped nueva esté clasificada
+(cubierta u honestamente pendiente) y que el centinela no aparezca fuera de
+su call site permitido. No hay, todavía, un test automatizado que conecte a
+Postgres real y confirme que la policy filtra de verdad — este repo no tiene
+fixture de Postgres para pytest hoy (solo el gate manual `alembic upgrade
+head && downgrade base && upgrade head`). Verificarlo con datos reales queda
+como paso manual del owner tras desplegar.
+
 **Esta migración no activa RLS.** Eso es US-241 (jerarquía) y US-242
 (proyectos) — el aislamiento real sigue siendo solo de capa de aplicación hasta
 que esas dos cierren (`security-multitenant.md` §1, `ADR-003`).
