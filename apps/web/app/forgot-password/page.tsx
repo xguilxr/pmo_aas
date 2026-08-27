@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { ArrowLeft, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { forgotPassword } from "@/lib/auth";
 
@@ -29,49 +29,49 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--color-app)] px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
-            <Mail className="h-6 w-6" aria-hidden />
+    <main className="flex min-h-screen items-center justify-center bg-[var(--color-subtle)] px-4 py-12">
+      <div className="flex w-full max-w-[480px] flex-col gap-6">
+        <div className="flex flex-col items-center gap-2.5 text-center">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
+            <Icono nombre="mail" size={20} />
           </div>
-          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
             Restablecer contraseña
           </h1>
-          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+          <p className="text-[13px] text-[var(--text-tertiary)]">
             Te enviaremos un link por correo.
           </p>
         </div>
 
-        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5.5 shadow-[var(--relieve-isla)]">
           {submitted ? (
             <div className="space-y-4">
-              <p className="text-sm text-[var(--color-secondary)]">
-                Si <strong className="text-[var(--color-primary)]">{email}</strong>{" "}
+              <p className="text-[13px] text-[var(--text-secondary)]">
+                Si <strong className="text-[var(--text-primary)]">{email}</strong>{" "}
                 corresponde a un usuario registrado, enviamos un link para
                 restablecer tu contraseña. El link expira en <strong>30
                 minutos</strong>.
               </p>
-              <p className="text-xs text-[var(--color-tertiary)]">
+              <p className="text-xs text-[var(--text-faint)]">
                 No recibirás más emails si el correo no está registrado —
                 por seguridad no confirmamos si un email existe o no.
               </p>
               <div className="flex justify-center pt-2">
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-1 text-sm text-[var(--color-accent)] hover:underline"
+                  className="inline-flex items-center gap-1 text-[13px] text-[var(--color-accent)] hover:underline"
                 >
-                  <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+                  <Icono nombre="arrow-left" size={13} />
                   Volver a iniciar sesión
                 </Link>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3.5">
               <div>
                 <label
                   htmlFor="email"
-                  className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]"
+                  className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]"
                 >
                   Correo electrónico
                 </label>
@@ -100,7 +100,7 @@ export default function ForgotPasswordPage() {
               <div className="text-center text-xs">
                 <Link
                   href="/login"
-                  className="text-[var(--color-tertiary)] hover:text-[var(--color-primary)] hover:underline"
+                  className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:underline"
                 >
                   Volver a iniciar sesión
                 </Link>

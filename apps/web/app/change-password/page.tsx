@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
-import { Check, KeyRound, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { PasswordInput } from "@/components/ui/password-input";
 import { RequireAuth } from "@/components/require-auth";
 import { ApiError } from "@/lib/api";
@@ -66,107 +66,107 @@ function ChangePasswordForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--color-app)] px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
-            <KeyRound className="h-6 w-6" aria-hidden />
+    <main className="flex min-h-screen items-center justify-center bg-[var(--color-subtle)] px-4 py-12">
+      <div className="flex w-full max-w-[480px] flex-col gap-6">
+        <div className="flex flex-col items-center gap-2.5 text-center">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-xl)] bg-[var(--color-primary)] text-[var(--color-inverse)]">
+            <Icono nombre="lock" size={20} />
           </div>
-          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">Cambia tu contraseña</h1>
-          <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
+            Cambia tu contraseña
+          </h1>
+          <p className="text-[13px] text-[var(--text-tertiary)]">
             {user?.must_change_password
               ? "Define una contraseña nueva antes de continuar."
               : "Actualiza tu contraseña."}
           </p>
         </div>
 
-        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            <div>
-              <label htmlFor="current" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
-                Contraseña actual
-              </label>
-              <PasswordInput
-                id="current"
-                autoComplete="current-password"
-                required
-                disabled={submitting}
-                value={current}
-                onChange={(e) => setCurrent(e.target.value)}
-              />
-            </div>
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="flex flex-col gap-3.5 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5.5 shadow-[var(--relieve-isla)]"
+        >
+          <div>
+            <label htmlFor="current" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
+              Contraseña actual
+            </label>
+            <PasswordInput
+              id="current"
+              autoComplete="current-password"
+              required
+              disabled={submitting}
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+            />
+          </div>
 
-            <div>
-              <label htmlFor="next" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
-                Nueva contraseña
-              </label>
-              <PasswordInput
-                id="next"
-                autoComplete="new-password"
-                required
-                disabled={submitting}
-                value={next}
-                onChange={(e) => setNext(e.target.value)}
-              />
-              <ul className="mt-2 space-y-1 text-xs">
-                {checks.map((c) => (
-                  <li
-                    key={c.label}
-                    className={
-                      c.ok
-                        ? "flex items-center gap-1.5 text-[var(--color-success-fg)]"
-                        : "flex items-center gap-1.5 text-[var(--color-tertiary)]"
-                    }
-                  >
-                    {c.ok ? (
-                      <Check className="h-3.5 w-3.5" aria-hidden />
-                    ) : (
-                      <X className="h-3.5 w-3.5" aria-hidden />
-                    )}
-                    {c.label}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div>
+            <label htmlFor="next" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
+              Nueva contraseña
+            </label>
+            <PasswordInput
+              id="next"
+              autoComplete="new-password"
+              required
+              disabled={submitting}
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+            />
+            <ul className="mt-2 space-y-1 text-xs">
+              {checks.map((c) => (
+                <li
+                  key={c.label}
+                  className={
+                    c.ok
+                      ? "flex items-center gap-1.5 text-[var(--color-success-fg)]"
+                      : "flex items-center gap-1.5 text-[var(--text-tertiary)]"
+                  }
+                >
+                  <Icono nombre={c.ok ? "check" : "x"} size={13} />
+                  {c.label}
+                </li>
+              ))}
+            </ul>
+          </div>
 
-            <div>
-              <label htmlFor="confirm" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
-                Confirmar nueva contraseña
-              </label>
-              <PasswordInput
-                id="confirm"
-                autoComplete="new-password"
-                required
-                disabled={submitting}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                invalid={confirm.length > 0 && !matches}
-              />
-              {confirm.length > 0 && !matches ? (
-                <p className="mt-1 text-xs text-[var(--color-danger-fg)]">Las contraseñas no coinciden</p>
-              ) : null}
-            </div>
-
-            {error ? (
-              <div
-                role="alert"
-                className="rounded-[var(--radius-md)] border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger-fg)]"
-              >
-                {error}
-              </div>
+          <div>
+            <label htmlFor="confirm" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
+              Confirmar nueva contraseña
+            </label>
+            <PasswordInput
+              id="confirm"
+              autoComplete="new-password"
+              required
+              disabled={submitting}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              invalid={confirm.length > 0 && !matches}
+            />
+            {confirm.length > 0 && !matches ? (
+              <p className="mt-1 text-xs text-[var(--color-danger-fg)]">Las contraseñas no coinciden</p>
             ) : null}
+          </div>
 
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full"
-              loading={submitting}
-              disabled={!canSubmit}
+          {error ? (
+            <div
+              role="alert"
+              className="rounded-[var(--radius-md)] border border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] px-3 py-2 text-sm text-[var(--color-danger-fg)]"
             >
-              {submitting ? "Guardando…" : "Guardar contraseña"}
-            </Button>
-          </form>
-        </div>
+              {error}
+            </div>
+          ) : null}
+
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            loading={submitting}
+            disabled={!canSubmit}
+          >
+            {submitting ? "Guardando…" : "Guardar contraseña"}
+          </Button>
+        </form>
       </div>
     </main>
   );
