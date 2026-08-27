@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { BarChart3 } from "lucide-react";
+import { Icono } from "@/components/ui/icono";
 
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -1016,7 +1016,7 @@ function DashboardInner() {
         </div>
         <Link href={rutaVistaMaestra}>
           <Button type="button" variant="secondary" size="sm">
-            <BarChart3 className="mr-1 h-3.5 w-3.5" aria-hidden />
+            <Icono nombre="file-spreadsheet" size={14} className="mr-1" />
             Abrir la vista maestra
           </Button>
         </Link>

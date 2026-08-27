@@ -6,16 +6,6 @@ import {
   useEffect,
   useState,
 } from "react";
-import {
-  AlertTriangle,
-  Check,
-  CheckCircle2,
-  ExternalLink,
-  FileText,
-  KeyRound,
-  Plug,
-  XCircle,
-} from "lucide-react";
 
 import { ConsumoDeIAPanel } from "@/components/consumo-de-ia";
 import { Badge } from "@/components/ui/badge";
@@ -239,9 +229,10 @@ export default function TenantAdminAIPage() {
       >
         <div className="space-y-3">
           <div className="flex items-start gap-2 text-[13px] text-[var(--color-secondary)]">
-            <AlertTriangle
-              className="h-5 w-5 shrink-0 text-[var(--color-warning-fg)]"
-              aria-hidden
+            <Icono
+              nombre="triangle-alert"
+              size={19}
+              className="shrink-0 text-[var(--color-warning-fg)]"
             />
             <p>
               Cambiar de <strong>{MODE_LABEL[data.mode]}</strong> a{" "}
@@ -410,7 +401,7 @@ function PermanentInstructionsSection({
   return (
     <section className="space-y-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center gap-2">
-        <FileText className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+        <Icono nombre="file-text" size={15} className="text-[var(--color-tertiary)]" />
         <h2 className="text-sm font-semibold text-[var(--color-primary)]">
           Instrucciones permanentes de IA
         </h2>
@@ -466,10 +457,7 @@ function BYOSection({
   return (
     <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center gap-2">
-        <Plug
-          className="h-4 w-4 text-[var(--color-tertiary)]"
-          aria-hidden
-        />
+        <Icono nombre="link" size={15} className="text-[var(--color-tertiary)]" />
         <h2 className="text-sm font-semibold text-[var(--color-primary)]">
           Conectar tu proveedor
         </h2>
@@ -882,7 +870,7 @@ function ProviderCard({
           <Badge variant="danger">Última prueba falló</Badge>
         ) : connected && testStatus === "ok" ? (
           <Badge variant="success">
-            <Check className="mr-1 h-3 w-3" aria-hidden />
+            <Icono nombre="check" size={12} className="mr-1" />
             Conectado
           </Badge>
         ) : connected ? (
@@ -1128,7 +1116,7 @@ function WizardKey({
           htmlFor="wiz-key"
           className="mb-1.5 flex items-center gap-1 text-sm font-medium text-[var(--color-secondary)]"
         >
-          <KeyRound className="h-3.5 w-3.5" aria-hidden />
+          <Icono nombre="lock" size={14} />
           API key
         </label>
         <PasswordInput
@@ -1333,9 +1321,10 @@ function WizardTest({
           <span className="inline-flex items-center gap-1 text-[13px]">
             {result.ok ? (
               <>
-                <CheckCircle2
-                  className="h-4 w-4 text-[var(--color-success-fg)]"
-                  aria-hidden
+                <Icono
+                  nombre="circle-check"
+                  size={15}
+                  className="text-[var(--color-success-fg)]"
                 />
                 <span className="text-[var(--color-success-fg)]">
                   Conexión OK
@@ -1346,9 +1335,10 @@ function WizardTest({
               </>
             ) : (
               <>
-                <XCircle
-                  className="h-4 w-4 text-[var(--color-danger-fg)]"
-                  aria-hidden
+                <Icono
+                  nombre="circle-x"
+                  size={15}
+                  className="text-[var(--color-danger-fg)]"
                 />
                 <span className="text-[var(--color-danger-fg)]">
                   {result.error ?? "Falló"}
@@ -1440,7 +1430,7 @@ function DeepLinks({
           className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
         >
           Generar API key
-          <ExternalLink className="h-3 w-3" aria-hidden />
+          <Icono nombre="arrow-up-right" size={12} />
         </a>
       ) : null}
       <a
@@ -1450,7 +1440,7 @@ function DeepLinks({
         className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
       >
         Documentación
-        <ExternalLink className="h-3 w-3" aria-hidden />
+        <Icono nombre="arrow-up-right" size={12} />
       </a>
     </div>
   );

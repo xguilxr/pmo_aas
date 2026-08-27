@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
@@ -220,7 +219,7 @@ export function LessonDetailPage({
             disabled={saving}
             aria-label="Borrar lección"
           >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+            <Icono nombre="bin" size={14} /> Borrar
           </Button>
         </div>
       </div>
@@ -419,7 +418,7 @@ export function LessonDetailPage({
               Cancelar
             </Button>
             <Button variant="danger" onClick={handleDelete} loading={deleting}>
-              <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+              <Icono nombre="bin" size={14} /> Borrar
             </Button>
           </>
         }
@@ -481,7 +480,7 @@ export function LessonBackLink({ href, label }: { href: string; label: string })
       href={href}
       className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
     >
-      <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+      <Icono nombre="arrow-left" size={14} />
       {label}
     </Link>
   );
