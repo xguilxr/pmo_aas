@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, Download, FileText, Save } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -144,7 +144,7 @@ export default function ProjectCharterEditPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center gap-2">
         <BackLink fallbackHref={`/pmo/projects/${charter.project_id}`} />
-        <nav className="text-xs text-[var(--color-tertiary)]">
+        <nav className="text-[11px] text-[var(--text-tertiary)]">
           <Link href="/pmo/projects" className="hover:underline">
             Proyectos
           </Link>
@@ -162,14 +162,14 @@ export default function ProjectCharterEditPage() {
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)] text-[var(--color-secondary)]">
-            <FileText className="h-5 w-5" aria-hidden />
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-subtle)] text-[var(--text-secondary)]">
+            <Icono nombre="file-text" size={18} />
           </span>
           <div>
-            <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
+            <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
               Project Charter
             </h1>
-            <p className="mt-1 text-sm text-[var(--color-tertiary)]">
+            <p className="mt-1 text-sm text-[var(--text-tertiary)]">
               Secciones 1–3 editables. Sección 4 (datos de gestión) se sincroniza
               automáticamente desde el proyecto.
             </p>
@@ -188,7 +188,7 @@ export default function ProjectCharterEditPage() {
               )
             }
           >
-            <Download className="h-4 w-4" aria-hidden />
+            <Icono nombre="download" size={15} />
             Descargar DOCX
           </Button>
           <Button
@@ -202,12 +202,12 @@ export default function ProjectCharterEditPage() {
               )
             }
           >
-            <Download className="h-4 w-4" aria-hidden />
+            <Icono nombre="download" size={15} />
             Descargar PDF
           </Button>
           <Link href={`/pmo/projects/${charter.project_id}`}>
             <Button variant="ghost">
-              <ArrowLeft className="h-4 w-4" aria-hidden />
+              <Icono nombre="arrow-left" size={15} />
               Volver al proyecto
             </Button>
           </Link>
@@ -384,7 +384,7 @@ export default function ProjectCharterEditPage() {
           </Field>
         </Section>
 
-        <div className="flex items-center justify-end gap-2 border-t border-[var(--border-default)] pt-4">
+        <div className="flex items-center justify-end gap-2 border-t border-[var(--border-default)] pt-4 shadow-[var(--linea-surco-arriba)]">
           <Button
             type="button"
             variant="secondary"
@@ -394,7 +394,7 @@ export default function ProjectCharterEditPage() {
             Cancelar
           </Button>
           <Button type="submit" loading={saving}>
-            <Save className="h-4 w-4" aria-hidden />
+            <Icono nombre="check" size={15} />
             Guardar charter
           </Button>
         </div>
@@ -411,8 +411,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-      <h2 className="mb-4 text-sm font-semibold text-[var(--color-primary)]">
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
+      <h2 className="mb-4 text-sm font-semibold text-[var(--text-primary)]">
         {title}
       </h2>
       <div className="space-y-4">{children}</div>
@@ -431,7 +431,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+      <span className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">
         {label}
         {required ? <span className="text-[var(--color-danger-fg)]"> *</span> : null}
       </span>
