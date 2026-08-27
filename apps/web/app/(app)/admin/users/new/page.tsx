@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { ArrowLeft, Check, RefreshCw, X } from "lucide-react";
 
 import { Banner } from "@/components/ui/banner";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api";
 import { createUser, listRoles, type AdminRole, type RoleType } from "@/lib/api/admin";
@@ -121,29 +123,28 @@ export default function NewUserPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <Link
-          href="/admin/users"
-          className="inline-flex items-center gap-1 text-sm text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Volver a usuarios
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--color-primary)]">
-          Nuevo usuario
-        </h1>
-        <p className="mt-1 text-sm text-[var(--color-tertiary)]">
-          Crea una cuenta y asígnale roles. La contraseña se entrega una sola vez.
-        </p>
+      <div className="space-y-2">
+        <Breadcrumb
+          items={[
+            { href: "/admin/users", label: "Usuarios" },
+            { label: "Nuevo usuario" },
+          ]}
+        />
+        <div>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Nuevo usuario</h1>
+          <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
+            Crea una cuenta y asígnale roles. La contraseña se entrega una sola vez.
+          </p>
+        </div>
       </div>
 
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="space-y-5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]"
+        className="space-y-5 rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-8"
       >
         <div>
-          <label htmlFor="full_name" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+          <label htmlFor="full_name" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
             Nombre completo
           </label>
           <Input
@@ -158,7 +159,7 @@ export default function NewUserPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+            <label htmlFor="username" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
               Usuario
             </label>
             <Input
@@ -171,12 +172,12 @@ export default function NewUserPage() {
               required
               invalid={username.length > 0 && !usernameValid}
             />
-            <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+            <p className="mt-1 text-[12px] text-[var(--text-tertiary)]">
               3 a 64 caracteres. Letras, números, <code>.</code> <code>_</code> <code>-</code>.
             </p>
           </div>
           <div>
-            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+            <label htmlFor="email" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
               Correo
             </label>
             <Input
@@ -195,35 +196,40 @@ export default function NewUserPage() {
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label htmlFor="password" className="block text-sm font-medium text-[var(--color-secondary)]">
+            <label htmlFor="password" className="block text-[12.5px] font-medium text-[var(--text-secondary)]">
               Contraseña inicial
             </label>
             <button
               type="button"
               onClick={handleGenerate}
               disabled={submitting}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--color-primary)] hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--text-primary)] hover:underline"
             >
-              <RefreshCw className="h-3 w-3" aria-hidden />
+              <Icono nombre="refresh-cw" size={13} />
               Generar segura
             </button>
           </div>
-          <Input
-            id="password"
-            type={showPassword ? "text" : "password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={submitting}
-            autoComplete="new-password"
-            required
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            className="mt-1 text-xs text-[var(--color-tertiary)] hover:text-[var(--color-primary)]"
-          >
-            {showPassword ? "Ocultar" : "Mostrar"}
-          </button>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={submitting}
+              autoComplete="new-password"
+              required
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-pressed={showPassword}
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-[var(--radius-xs)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+            >
+              <Icono nombre={showPassword ? "eye-off" : "eye"} size={15} />
+            </button>
+          </div>
           <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
             {policyChecks.map((c) => (
               <li
@@ -231,14 +237,10 @@ export default function NewUserPage() {
                 className={
                   c.ok
                     ? "flex items-center gap-1.5 text-[var(--color-success-fg)]"
-                    : "flex items-center gap-1.5 text-[var(--color-tertiary)]"
+                    : "flex items-center gap-1.5 text-[var(--text-tertiary)]"
                 }
               >
-                {c.ok ? (
-                  <Check className="h-3.5 w-3.5" aria-hidden />
-                ) : (
-                  <X className="h-3.5 w-3.5" aria-hidden />
-                )}
+                <Icono nombre={c.ok ? "check" : "x"} size={13} />
                 {c.label}
               </li>
             ))}
@@ -246,11 +248,11 @@ export default function NewUserPage() {
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-medium text-[var(--color-secondary)]">Roles</p>
+          <p className="mb-2 text-[12.5px] font-medium text-[var(--text-secondary)]">Roles</p>
           {loadingRoles ? (
-            <p className="text-xs text-[var(--color-tertiary)]">Cargando roles…</p>
+            <p className="text-xs text-[var(--text-tertiary)]">Cargando roles…</p>
           ) : roles.length === 0 ? (
-            <p className="text-xs text-[var(--color-tertiary)]">
+            <p className="text-xs text-[var(--text-tertiary)]">
               Los permisos se gestionan por <Link href="/admin/permissions" className="underline">capability del rol</Link>{" "}
               (admin/user). La asignación se hará desde esta página en US-078.
             </p>
@@ -269,11 +271,11 @@ export default function NewUserPage() {
                       disabled={submitting}
                     />
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-[var(--color-primary)]">
+                      <div className="text-sm font-medium text-[var(--text-primary)]">
                         {r.name}
                       </div>
                       {r.description ? (
-                        <div className="text-xs text-[var(--color-tertiary)]">{r.description}</div>
+                        <div className="text-xs text-[var(--text-tertiary)]">{r.description}</div>
                       ) : null}
                     </div>
                   </label>
@@ -284,21 +286,20 @@ export default function NewUserPage() {
         </div>
 
         <div>
-          <label htmlFor="role_type" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+          <label htmlFor="role_type" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
             Rol del tenant
           </label>
-          <select
+          <Select
             id="role_type"
             value={roleType}
             onChange={(e) => setRoleType(e.target.value as RoleType)}
             disabled={submitting}
-            className="w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm"
           >
             <option value="user">PM — operador del tenant (visibilidad por asignación)</option>
             <option value="pm_sr">PM Sr — acceso admin completo al tenant</option>
             <option value="admin">Admin — metaconfig + acceso admin completo</option>
-          </select>
-          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+          </Select>
+          <p className="mt-1 text-xs text-[var(--text-tertiary)]">
             <Link href="/admin/permissions" className="underline">
               Ver qué hace cada rol
             </Link>
@@ -306,15 +307,15 @@ export default function NewUserPage() {
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-medium text-[var(--color-secondary)]">
+          <p className="mb-2 text-[12.5px] font-medium text-[var(--text-secondary)]">
             Acceso a organizaciones
           </p>
-          <p className="mb-2 text-xs text-[var(--color-tertiary)]">
+          <p className="mb-2 text-xs text-[var(--text-tertiary)]">
             Por defecto el usuario tendrá acceso a todas las organizaciones del
             tenant. Desmarca para excluirlo de orgs específicas.
           </p>
           {orgs.length === 0 ? (
-            <p className="text-xs text-[var(--color-tertiary)]">
+            <p className="text-xs text-[var(--text-tertiary)]">
               Sin organizaciones activas en el tenant.
             </p>
           ) : (
@@ -337,7 +338,7 @@ export default function NewUserPage() {
                       }
                       disabled={submitting}
                     />
-                    <span className="text-sm text-[var(--color-primary)]">
+                    <span className="text-sm text-[var(--text-primary)]">
                       {o.name}
                     </span>
                   </label>
@@ -357,7 +358,7 @@ export default function NewUserPage() {
 
         {error ? <Banner variant="danger">{error}</Banner> : null}
 
-        <div className="flex justify-end gap-2 border-t border-[var(--border-default)] pt-4">
+        <div className="flex justify-end gap-2 border-t border-[var(--border-default)] pt-4 shadow-[var(--linea-surco-arriba)]">
           <Button
             type="button"
             variant="secondary"

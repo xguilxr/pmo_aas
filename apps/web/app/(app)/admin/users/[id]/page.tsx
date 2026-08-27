@@ -3,19 +3,13 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
-import {
-  Copy,
-  KeyRound,
-  Lock,
-  PowerOff,
-  ShieldOff,
-} from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -320,8 +314,8 @@ function UserDetail() {
         <BackLink fallbackHref="/admin/users" />
         <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-semibold text-[var(--color-primary)]">{user.full_name}</h1>
-            <p className="text-sm text-[var(--color-tertiary)]">
+            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{user.full_name}</h1>
+            <p className="text-[13px] text-[var(--text-tertiary)]">
               {user.username} · {user.email}
             </p>
           </div>
@@ -363,11 +357,11 @@ function UserDetail() {
       <form
         onSubmit={handleSave}
         noValidate
-        className="space-y-5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]"
+        className="space-y-5 rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-8"
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="full_name" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+            <label htmlFor="full_name" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
               Nombre completo
             </label>
             <Input
@@ -379,7 +373,7 @@ function UserDetail() {
             />
           </div>
           <div>
-            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+            <label htmlFor="email" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
               Correo
             </label>
             <Input
@@ -395,9 +389,9 @@ function UserDetail() {
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-medium text-[var(--color-secondary)]">Roles</p>
+          <p className="mb-2 text-[12.5px] font-medium text-[var(--text-secondary)]">Roles</p>
           {roles.length === 0 ? (
-            <p className="text-xs text-[var(--color-tertiary)]">
+            <p className="text-xs text-[var(--text-tertiary)]">
               Los permisos se gestionan por <Link href="/admin/permissions" className="underline">capability del rol</Link>{" "}
               (admin/user). La asignación se hará desde esta página en US-078.
             </p>
@@ -416,11 +410,11 @@ function UserDetail() {
                       disabled={saving}
                     />
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-[var(--color-primary)]">
+                      <div className="text-sm font-medium text-[var(--text-primary)]">
                         {r.name}
                       </div>
                       {r.description ? (
-                        <div className="text-xs text-[var(--color-tertiary)]">{r.description}</div>
+                        <div className="text-xs text-[var(--text-tertiary)]">{r.description}</div>
                       ) : null}
                     </div>
                   </label>
@@ -431,21 +425,20 @@ function UserDetail() {
         </div>
 
         <div>
-          <label htmlFor="role_type" className="mb-1.5 block text-sm font-medium text-[var(--color-secondary)]">
+          <label htmlFor="role_type" className="mb-1.5 block text-[12.5px] font-medium text-[var(--text-secondary)]">
             Rol del tenant
           </label>
-          <select
+          <Select
             id="role_type"
             value={roleType}
             onChange={(e) => setRoleType(e.target.value as RoleType)}
             disabled={saving}
-            className="w-full rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 py-2 text-sm"
           >
             <option value="user">PM — operador del tenant (visibilidad por asignación)</option>
             <option value="pm_sr">PM Sr — acceso admin completo al tenant</option>
             <option value="admin">Admin — metaconfig + acceso admin completo</option>
-          </select>
-          <p className="mt-1 text-xs text-[var(--color-tertiary)]">
+          </Select>
+          <p className="mt-1 text-xs text-[var(--text-tertiary)]">
             <Link href="/admin/permissions" className="underline">
               Ver qué hace cada rol
             </Link>
@@ -453,15 +446,15 @@ function UserDetail() {
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-medium text-[var(--color-secondary)]">
+          <p className="mb-2 text-[12.5px] font-medium text-[var(--text-secondary)]">
             Acceso a organizaciones
           </p>
-          <p className="mb-2 text-xs text-[var(--color-tertiary)]">
+          <p className="mb-2 text-xs text-[var(--text-tertiary)]">
             Por defecto el usuario tiene acceso a todas las organizaciones del
             tenant. Desmarca para excluirlo de orgs específicas.
           </p>
           {orgs.length === 0 ? (
-            <p className="text-xs text-[var(--color-tertiary)]">
+            <p className="text-xs text-[var(--text-tertiary)]">
               Sin organizaciones activas en el tenant.
             </p>
           ) : (
@@ -478,7 +471,7 @@ function UserDetail() {
                       onChange={(e) => toggleExcludeOrg(o.id, e.target.checked)}
                       disabled={saving}
                     />
-                    <span className="text-sm text-[var(--color-primary)]">
+                    <span className="text-sm text-[var(--text-primary)]">
                       {o.name}
                     </span>
                   </label>
@@ -496,7 +489,7 @@ function UserDetail() {
           label="Cuenta activa"
         />
 
-        <div className="flex justify-end gap-2 border-t border-[var(--border-default)] pt-4">
+        <div className="flex justify-end gap-2 border-t border-[var(--border-default)] pt-4 shadow-[var(--linea-surco-arriba)]">
           <Button
             type="button"
             variant="secondary"
@@ -521,10 +514,10 @@ function UserDetail() {
       {/* US-169 — Asignación de scope para PM / Acceso total para admin y pm_sr */}
       <UserScopeAssignmentPicker userId={userId} roleType={roleType} />
 
-      <section className="space-y-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-sm)]">
+      <section className="space-y-3 rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-8">
         <header>
-          <h2 className="text-base font-semibold text-[var(--color-primary)]">Acciones</h2>
-          <p className="text-xs text-[var(--color-tertiary)]">
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">Acciones</h2>
+          <p className="text-xs text-[var(--text-tertiary)]">
             Resetear, desbloquear o desactivar esta cuenta.
           </p>
         </header>
@@ -537,7 +530,7 @@ function UserDetail() {
               setResetOpen(true);
             }}
           >
-            <KeyRound className="h-4 w-4" aria-hidden />
+            <Icono nombre="lock" size={15} />
             Resetear contraseña
           </Button>
           <Button
@@ -552,7 +545,7 @@ function UserDetail() {
                 : "Marca al usuario para que cambie su contraseña en el próximo ingreso (sin tocar la actual)."
             }
           >
-            <KeyRound className="h-4 w-4" aria-hidden />
+            <Icono nombre="refresh-cw" size={15} />
             Forzar cambio próximo login
           </Button>
           <Button
@@ -561,7 +554,7 @@ function UserDetail() {
             onClick={handleUnlock}
             loading={unlocking}
           >
-            <Lock className="h-4 w-4" aria-hidden />
+            <Icono nombre="unlock" size={15} />
             Desbloquear
           </Button>
           <Button
@@ -572,12 +565,12 @@ function UserDetail() {
           >
             {user.is_active ? (
               <>
-                <PowerOff className="h-4 w-4" aria-hidden />
+                <Icono nombre="user-x" size={15} />
                 Desactivar
               </>
             ) : (
               <>
-                <ShieldOff className="h-4 w-4" aria-hidden />
+                <Icono nombre="user-minus" size={15} />
                 Inactivo
               </>
             )}
@@ -621,18 +614,18 @@ function UserDetail() {
       >
         {resetTemp ? (
           <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-subtle)] p-3">
-            <code className="flex-1 break-all font-mono text-sm">{resetTemp}</code>
+            <code className="flex-1 break-all text-[13px] tracking-[0.01em]">{resetTemp}</code>
             <button
               type="button"
               onClick={copyTempPassword}
               aria-label="Copiar"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-secondary)] hover:bg-[var(--color-muted)]"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-secondary)] hover:bg-[var(--color-muted)]"
             >
-              <Copy className="h-4 w-4" aria-hidden />
+              <Icono nombre="copy" size={15} />
             </button>
           </div>
         ) : (
-          <p className="text-sm text-[var(--color-secondary)]">
+          <p className="text-sm text-[var(--text-secondary)]">
             ¿Confirmas resetear la contraseña de <strong>{user.full_name}</strong>?
           </p>
         )}
@@ -658,7 +651,7 @@ function UserDetail() {
           </>
         }
       >
-        <p className="text-sm text-[var(--color-secondary)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           ¿Confirmas desactivar a <strong>{user.full_name}</strong>?
         </p>
       </Modal>
@@ -742,7 +735,7 @@ function PermissionRequestModal({
   return (
     <Modal open={open} onClose={onClose} title="Solicitar cambio de permiso">
       <form onSubmit={submit} className="space-y-4">
-        <p className="text-sm text-[var(--color-secondary)]">
+        <p className="text-sm text-[var(--text-secondary)]">
           Estás pidiendo al SuperAdmin un cambio de permiso para{" "}
           <strong>{targetUserLabel}</strong>. Recibirás respuesta por email +
           notificación in-app.
@@ -757,7 +750,7 @@ function PermissionRequestModal({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase text-[var(--color-tertiary)]">
+            <label className="mb-1 block text-xs font-medium uppercase text-[var(--text-tertiary)]">
               Módulo
             </label>
             <Input
@@ -768,7 +761,7 @@ function PermissionRequestModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase text-[var(--color-tertiary)]">
+            <label className="mb-1 block text-xs font-medium uppercase text-[var(--text-tertiary)]">
               Acción
             </label>
             <Input
@@ -781,7 +774,7 @@ function PermissionRequestModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase text-[var(--color-tertiary)]">
+          <label className="mb-1 block text-xs font-medium uppercase text-[var(--text-tertiary)]">
             Tipo de cambio
           </label>
           <Select
@@ -794,7 +787,7 @@ function PermissionRequestModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase text-[var(--color-tertiary)]">
+          <label className="mb-1 block text-xs font-medium uppercase text-[var(--text-tertiary)]">
             Motivo (mínimo 10 caracteres)
           </label>
           <Textarea
