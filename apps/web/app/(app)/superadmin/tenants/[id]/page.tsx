@@ -2,31 +2,19 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  AlertTriangle,
-  Building2,
-  ChevronRight,
-  FolderKanban,
-  LogIn,
-  Network,
-  Pause,
-  Play,
-  ServerCog,
-  Trash2,
-  Users,
-  Workflow,
-} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { confirmarDestructivo } from "@/lib/confirmar";
+import { SIN_DATO } from "@/lib/sin-dato";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import {
   getTenantDetail,
@@ -196,35 +184,44 @@ export default function TenantDetailPage() {
         ]}
       />
 
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <ServerCog className="h-8 w-8 text-[var(--color-tertiary)]" aria-hidden />
-          <div>
-            <h1 className="text-2xl font-semibold text-[var(--color-primary)]">{tenant.name}</h1>
-            {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
-            <div className="mt-0.5 flex items-center gap-2 text-xs">
-              <span className="font-mono text-[var(--color-tertiary)]">{tenant.slug}</span>
-              {!tenant.is_active ? <Badge variant="danger">Inactivo</Badge> : null}
-            </div>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2.5">
+            <Icono nombre="server" size={22} className="text-[var(--text-tertiary)]" />
+            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
+              {tenant.name}
+            </h1>
+            <span
+              aria-label={tenant.is_active ? "Activo" : "Inactivo"}
+              title={tenant.is_active ? "Activo" : "Inactivo"}
+              className={`inline-block h-2.25 w-2.25 rounded-full ${
+                tenant.is_active ? "bg-[var(--color-success-fg)]" : "bg-[var(--color-danger-fg)]"
+              }`}
+            />
+            {!tenant.is_active ? <Badge variant="danger">Inactivo</Badge> : null}
           </div>
+          {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
+          <span className="font-mono text-[12px] tracking-[0.01em] text-[var(--text-faint)]">
+            {tenant.slug}
+          </span>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={handleJoin} loading={joining}>
-            <LogIn className="h-4 w-4" aria-hidden />
+            <Icono nombre="arrow-right" size={15} />
             Unirme como admin
           </Button>
           <Button variant="secondary" onClick={toggleFreeze} disabled={busy || frozen === null}>
-            {frozen ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}
+            <Icono nombre={frozen ? "unlock" : "lock"} size={15} />
             {frozen ? "Descongelar" : "Congelar"}
           </Button>
           {tenant.is_active ? (
             <Button variant="danger" onClick={() => setConfirmSoft(true)}>
-              <Trash2 className="h-4 w-4" aria-hidden />
+              <Icono nombre="circle-alert" size={15} />
               Desactivar
             </Button>
           ) : null}
           <Button variant="danger" onClick={() => setConfirmHard(true)}>
-            <AlertTriangle className="h-4 w-4" aria-hidden />
+            <Icono nombre="triangle-alert" size={15} />
             Borrar permanente
           </Button>
         </div>
@@ -233,31 +230,21 @@ export default function TenantDetailPage() {
       {notice ? <Banner variant="success">{notice}</Banner> : null}
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <StatCard label="Usuarios" value={users.length} />
-        <StatCard label="Organizaciones" value={organizations.length} />
-        <StatCard label="Programas" value={programs.length} />
-      </section>
-
-      <div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => router.push(`/superadmin/tenants/${tenant.id}/users`)}
-        >
-          Gestionar role_type de usuarios →
-        </Button>
-      </div>
-
       <HierarchyOverview detail={data} />
 
-      <section className="grid gap-5 lg:grid-cols-2">
+      <section className="grid gap-3.5 lg:grid-cols-2">
         <UsersInlineSection
           tenantId={tenant.id}
           users={users}
           onChanged={refresh}
         />
+        <div className="flex flex-col gap-3.5">
+          <BillingCard />
+          <FeatureFlagsCard />
+        </div>
+      </section>
+
+      <section className="grid gap-3.5 lg:grid-cols-2">
         <DetailList
           title="Organizaciones"
           items={organizations.map((o) => ({
@@ -306,7 +293,7 @@ export default function TenantDetailPage() {
           ))}
         </nav>
 
-        <div className="rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
+        <div className="rounded-[var(--radius-window)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
           {fullLoading ? (
             <div className="space-y-2 p-5">
               <Skeleton className="h-4 w-48" />
@@ -317,7 +304,7 @@ export default function TenantDetailPage() {
             <FullTable
               head={["Folio", "Nombre", "Fase", "Salud"]}
               rows={(fullData?.projects ?? []).map((p) => [
-                <span key={p.id} className="font-mono text-[11px]">
+                <span key={p.id} className="text-[12px] tracking-[0.01em]">
                   {p.folio}
                 </span>,
                 p.name,
@@ -352,7 +339,7 @@ export default function TenantDetailPage() {
                 <span key={`${l.id}-m`} className="text-[12px]">
                   {l.module ?? "—"}
                 </span>,
-                <span key={`${l.id}-e`} className="font-mono text-[11px]">
+                <span key={`${l.id}-e`} className="text-[12px] tracking-[0.01em]">
                   {l.entity_type ?? "—"}
                   {l.entity_id ? ` · ${l.entity_id.slice(0, 8)}` : ""}
                 </span>,
@@ -378,7 +365,7 @@ export default function TenantDetailPage() {
                 <span key={`${j.id}-m`} className="text-[12px]">
                   {j.model_used ?? "—"}
                 </span>,
-                <span key={`${j.id}-t`} className="tabular-nums text-[12px]">
+                <span key={`${j.id}-t`} className="pr-3.5 text-right tabular-nums text-[12px]">
                   {(j.tokens_in ?? 0) + (j.tokens_out ?? 0)}
                 </span>,
               ])}
@@ -469,10 +456,10 @@ function FullTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-[13px]">
-        <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
+        <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)] shadow-[var(--linea-surco)]">
           <tr>
             {head.map((h) => (
-              <th key={h} className="h-10 px-4 font-medium">
+              <th key={h} className="h-8.5 px-4 font-medium">
                 {h}
               </th>
             ))}
@@ -490,9 +477,9 @@ function FullTable({
             </tr>
           ) : (
             rows.map((cells, i) => (
-              <tr key={i} className="border-b border-[var(--border-subtle)]">
+              <tr key={i} className="border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)]">
                 {cells.map((c, j) => (
-                  <td key={j} className="px-4 py-2">
+                  <td key={j} className="h-11 px-4 py-2">
                     {c}
                   </td>
                 ))}
@@ -501,15 +488,6 @@ function FullTable({
           )}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-      <p className="text-xs text-[var(--color-tertiary)]">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-[var(--color-primary)]">{value}</p>
     </div>
   );
 }
@@ -531,22 +509,22 @@ function DetailList({
   emptyLabel: string;
 }) {
   return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-      <div className="border-b border-[var(--border-default)] px-4 py-3 text-sm font-medium text-[var(--color-primary)]">
+    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+      <div className="border-b border-[var(--border-default)] px-4 py-3 text-sm font-medium text-[var(--text-primary)] shadow-[var(--linea-surco)]">
         {title}
       </div>
       <div className="max-h-72 divide-y divide-[var(--border-subtle)] overflow-y-auto">
         {items.length === 0 ? (
-          <div className="px-4 py-6 text-center text-sm text-[var(--color-tertiary)]">
+          <div className="px-4 py-6 text-center text-sm text-[var(--text-tertiary)]">
             {emptyLabel}
           </div>
         ) : (
           items.map((it) => (
             <div key={it.key} className="flex items-center justify-between gap-2 px-4 py-3">
               <div className="min-w-0">
-                <p className="truncate text-sm text-[var(--color-primary)]">{it.primary}</p>
+                <p className="truncate text-sm text-[var(--text-primary)]">{it.primary}</p>
                 {it.secondary ? (
-                  <p className="truncate text-xs text-[var(--color-tertiary)]">{it.secondary}</p>
+                  <p className="truncate text-xs text-[var(--text-tertiary)]">{it.secondary}</p>
                 ) : null}
               </div>
               {it.badge ? <Badge variant="danger">{it.badge}</Badge> : null}
@@ -566,7 +544,12 @@ type RoleType = "admin" | "user" | "viewer";
  * editable directamente en la página detalle del tenant. Antes el
  * `<DetailList>` plain no exponía la opción y el owner reportó "no
  * me da la opción de modificar el rol". El deep-link a la página
- * /users dedicada se mantiene en el botón superior.
+ * /users dedicada se mantiene en el link superior de la tarjeta.
+ *
+ * 6d (Revamp v2) — la tarjeta también expone, al pie, el resumen de
+ * "Seguridad" (último login / intentos fallidos / sesiones activas):
+ * ninguno de esos tres campos tiene endpoint todavía, así que se
+ * marcan `SIN_DATO` + «pendiente de backend» en vez de inventarlos.
  */
 function UsersInlineSection({
   tenantId,
@@ -611,14 +594,14 @@ function UsersInlineSection({
   }
 
   return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-      <div className="flex items-center justify-between gap-2 border-b border-[var(--border-default)] px-4 py-3">
-        <span className="text-sm font-medium text-[var(--color-primary)]">
-          Usuarios ({users.length})
+    <div className="flex flex-col rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+      <div className="flex h-9.5 items-center justify-between gap-2 border-b border-[var(--border-default)] px-3.5 shadow-[var(--linea-surco)]">
+        <span className="text-[13px] font-semibold text-[var(--text-primary)]">
+          Usuarios · {users.length}
         </span>
         <button
           type="button"
-          className="text-[11px] text-[var(--color-accent)] hover:underline"
+          className="text-[11.5px] text-[var(--color-accent)] hover:underline"
           onClick={() => router.push(`/superadmin/tenants/${tenantId}/users`)}
         >
           Ver tabla expandida →
@@ -626,7 +609,7 @@ function UsersInlineSection({
       </div>
       <div className="max-h-[380px] divide-y divide-[var(--border-subtle)] overflow-y-auto">
         {users.length === 0 ? (
-          <div className="px-4 py-6 text-center text-sm text-[var(--color-tertiary)]">
+          <div className="px-4 py-6 text-center text-sm text-[var(--text-tertiary)]">
             Sin usuarios
           </div>
         ) : (
@@ -637,11 +620,11 @@ function UsersInlineSection({
             return (
               <div
                 key={u.id}
-                className="flex items-center justify-between gap-2 px-4 py-2.5"
+                className="flex min-h-11 items-center justify-between gap-2 px-3.5 py-1.5"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium text-[var(--color-primary)]">
+                    <p className="truncate text-[12.5px] font-medium text-[var(--text-primary)]">
                       {u.username}
                     </p>
                     {u.is_superadmin ? (
@@ -651,7 +634,7 @@ function UsersInlineSection({
                       <Badge variant="danger">Inactivo</Badge>
                     ) : null}
                   </div>
-                  <p className="truncate text-xs text-[var(--color-tertiary)]">
+                  <p className="truncate text-[11px] text-[var(--text-tertiary)]">
                     {u.email}
                   </p>
                 </div>
@@ -686,6 +669,66 @@ function UsersInlineSection({
           })
         )}
       </div>
+
+      <div className="mt-auto flex flex-col gap-2 border-t border-[var(--border-default)] px-3.5 py-3 shadow-[var(--linea-surco-arriba)]">
+        <div className="flex items-center justify-between">
+          <span className="text-[11.5px] font-semibold text-[var(--text-primary)]">Seguridad</span>
+          <span className="text-[10px] italic text-[var(--text-faint)]">pendiente de backend</span>
+        </div>
+        <SecurityRow label="Último login" />
+        <SecurityRow label="Intentos fallidos (24h)" />
+        <SecurityRow label="Sesiones activas" />
+      </div>
+    </div>
+  );
+}
+
+function SecurityRow({ label }: { label: string }) {
+  return (
+    <span className="flex items-center justify-between text-[12px] text-[var(--text-secondary)]">
+      {label}
+      <span className="font-mono text-[var(--text-faint)]">{SIN_DATO}</span>
+    </span>
+  );
+}
+
+/** 6d (Revamp v2) — plan/facturación del tenant: sin endpoint todavía. */
+function BillingCard() {
+  return (
+    <div className="flex flex-col gap-2.5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-4 py-3.5 shadow-[var(--relieve-isla)]">
+      <div className="flex items-center justify-between">
+        <span className="text-[13px] font-semibold text-[var(--text-primary)]">Facturación</span>
+        <span className="text-[10px] italic text-[var(--text-faint)]">pendiente de backend</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2.5">
+        <BillingField label="MRR" />
+        <BillingField label="Próxima renovación" />
+        <BillingField label="Método de pago" />
+      </div>
+    </div>
+  );
+}
+
+function BillingField({ label }: { label: string }) {
+  return (
+    <span className="flex flex-col gap-0.5">
+      <span className="text-[10.5px] text-[var(--text-tertiary)]">{label}</span>
+      <span className="font-mono text-[13px] text-[var(--text-faint)]">{SIN_DATO}</span>
+    </span>
+  );
+}
+
+/** 6d (Revamp v2) — feature flags por tenant: sin endpoint todavía. */
+function FeatureFlagsCard() {
+  return (
+    <div className="flex flex-col gap-2.5 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-4 py-3.5 shadow-[var(--relieve-isla)]">
+      <div className="flex items-center justify-between">
+        <span className="text-[13px] font-semibold text-[var(--text-primary)]">Feature flags</span>
+        <span className="text-[10px] italic text-[var(--text-faint)]">pendiente de backend</span>
+      </div>
+      <p className="text-[12.5px] text-[var(--text-tertiary)]">
+        La gestión de flags por tenant todavía no tiene endpoint. Se habilitará en una fase futura.
+      </p>
     </div>
   );
 }
@@ -693,35 +736,28 @@ function UsersInlineSection({
 function HierarchyOverview({ detail }: { detail: TenantDetail }) {
   const h = detail.hierarchy;
   const nodes = [
-    { icon: <Building2 className="h-4 w-4" aria-hidden />, label: "Orgs", value: h.organization_count },
-    { icon: <Workflow className="h-4 w-4" aria-hidden />, label: "Portafolios", value: h.portfolio_count },
-    { icon: <Network className="h-4 w-4" aria-hidden />, label: "Programas", value: h.program_count },
-    { icon: <FolderKanban className="h-4 w-4" aria-hidden />, label: "Proyectos", value: h.project_count },
+    { icon: "building", label: "Orgs", value: h.organization_count },
+    { icon: "folders", label: "Portafolios", value: h.portfolio_count },
+    { icon: "git-branch", label: "Programas", value: h.program_count },
+    { icon: "folder", label: "Proyectos", value: h.project_count },
   ];
   return (
-    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-tertiary)]">
-        Jerarquía (overview)
-      </h2>
-      <ol className="flex flex-wrap items-center gap-1.5 text-sm">
-        {nodes.map((n, i) => (
-          <li key={n.label} className="flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-subtle)] px-2.5 py-1.5">
-              <span className="text-[var(--color-tertiary)]">{n.icon}</span>
-              <span className="text-[var(--color-tertiary)]">{n.label}</span>
-              <span className="font-semibold tabular-nums text-[var(--color-primary)]">
-                {n.value}
-              </span>
-            </span>
-            {i < nodes.length - 1 ? (
-              <ChevronRight
-                className="h-3.5 w-3.5 text-[var(--color-tertiary)]"
-                aria-hidden
-              />
-            ) : null}
-          </li>
-        ))}
-      </ol>
+    <section
+      aria-label="Jerarquía del tenant"
+      className="flex flex-wrap items-center gap-2 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3.5 py-3 shadow-[var(--relieve-isla)]"
+    >
+      {nodes.map((n, i) => (
+        <div key={n.label} className="flex items-center gap-2">
+          <span className="flex items-center gap-1.75 text-[13px] text-[var(--text-primary)]">
+            <Icono nombre={n.icon} size={14} className="text-[var(--text-tertiary)]" />
+            {n.label}
+            <span className="font-mono font-semibold tabular-nums">{n.value}</span>
+          </span>
+          {i < nodes.length - 1 ? (
+            <Icono nombre="chevron-right" size={14} className="text-[var(--border-strong)]" />
+          ) : null}
+        </div>
+      ))}
     </section>
   );
 }
