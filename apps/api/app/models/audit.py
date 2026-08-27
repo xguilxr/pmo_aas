@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import JSON, DateTime, Index, Integer, String, event, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, event, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -20,7 +20,12 @@ class AuditLog(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id: Mapped[UUID | None] = mapped_column(String(36))
+    #: `ON DELETE SET NULL`, no `CASCADE`: el registro es de solo anexado
+    #: (AM-08, más abajo) y la fila que audita el propio hard-delete del
+    #: tenant no puede desaparecer con el tenant que describe.
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        String(36), ForeignKey("tenants.id", ondelete="SET NULL")
+    )
     user_id: Mapped[UUID | None] = mapped_column(String(36))
     #: MCS IA-02 — «toda acción ejecutada por un componente de IA DEBE
     #: registrarse en el registro de auditoría, **distinguible de una acción

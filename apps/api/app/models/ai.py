@@ -11,7 +11,9 @@ class AIJob(Base, TimestampMixin):
     __tablename__ = "ai_jobs"
 
     id: Mapped[UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    tenant_id: Mapped[UUID] = mapped_column(String(36), nullable=False, index=True)
+    tenant_id: Mapped[UUID] = mapped_column(
+        String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     project_id: Mapped[UUID | None] = mapped_column(String(36))
     kind: Mapped[str] = mapped_column(String(64), nullable=False)  # minute_from_transcript|progress_report
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
@@ -33,7 +35,9 @@ class Report(Base, TimestampMixin):
     __tablename__ = "reports"
 
     id: Mapped[UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    tenant_id: Mapped[UUID] = mapped_column(String(36), nullable=False, index=True)
+    tenant_id: Mapped[UUID] = mapped_column(
+        String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     project_id: Mapped[UUID] = mapped_column(String(36), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     sections: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)

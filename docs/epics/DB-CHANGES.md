@@ -1283,6 +1283,49 @@ Aquí no hay nada que suponer.
 **`users.tenant_id` no se toca.** Sigue siendo el inquilino de origen. La
 membresía añade inquilinos; no reemplaza el de origen.
 
+---
+
+## 0116 — FKs de `tenant_id` faltantes (US-240 / ADR-003)
+
+Primer paso de la oleada **W3** (RLS de Postgres, `reestructura-modelo-datos.md`
+§8): antes de activar RLS por tabla hace falta que **toda** tabla tenant-scoped
+tenga un FK real de `tenant_id` a `tenants.id`. Una policy `USING (tenant_id =
+current_setting('app.tenant_id', true))` confía en el valor de la columna tal
+cual está — si puede apuntar a un tenant inexistente, la policy no lo detecta.
+
+No agrega columnas ni tablas: solo el `ForeignKey` que faltaba en 13 tablas que
+ya tenían la columna sin protección — `change_approvers`, `approval_tokens`
+(`ON DELETE CASCADE`), `plan_baselines`, `risks`, `issues`, `change_requests`,
+`documents`, `lessons`, `meeting_minutes` (las seis últimas vía `_ModuleBase`,
+un solo cambio de modelo para seis tablas físicas), `risk_actions`, `ai_jobs`,
+`reports`, `tasks` — todas `ON DELETE CASCADE`, igual que el resto del esquema.
+
+**`audit_log` es la excepción: `ON DELETE SET NULL`, no `CASCADE`.** El registro
+es de solo anexado (AM-08); la fila que audita el propio `tenant.hard_delete` no
+puede desaparecer con el tenant que describe. La columna ya era nullable
+(eventos platform-wide del superadmin), así que `SET NULL` no cambia su
+contrato.
+
+**Hallazgo de paso, no alcance nuevo.** `ai_jobs` y `reports` no tenían **ningún**
+FK — ni a `tenants` ni a `projects`. `superadmin.py::hard_delete_tenant` borra
+el tenant confiando en "cascada elimina todo" (comentario del propio endpoint),
+pero `Tenant` no declara ningún `relationship()`: esa cascada es 100% de FK de
+Postgres. Sin FK, esas dos tablas quedaban huérfanas tras un hard-delete. Esta
+migración lo cierra igual que a las demás, sin ampliar el issue.
+
+**Se para antes de escribir el constraint.** Ninguna de estas columnas estuvo
+nunca protegida por FK, así que no hay garantía de que todo valor existente
+apunte a un tenant real. La migración cuenta huérfanos antes de tocar el
+esquema y falla con la lista completa si encuentra alguno — mismo criterio que
+la 0108 con `programs.portfolio_id`. Rama de SQLite: no soporta `ADD CONSTRAINT`
+sin recrear la tabla, y no hace falta emularlo — el esquema de tests nace de
+`Base.metadata.create_all`, que ya lee el FK desde el modelo actualizado en el
+mismo commit.
+
+**Esta migración no activa RLS.** Eso es US-241 (jerarquía) y US-242
+(proyectos) — el aislamiento real sigue siendo solo de capa de aplicación hasta
+que esas dos cierren (`security-multitenant.md` §1, `ADR-003`).
+
 **La bajada** suelta el índice antes que la tabla y pierde las membresías
 **adicionales**; las de origen siguen en `users.tenant_id`. Verificada en los dos
 sentidos sobre SQLite con usuarios previos: la siembra da dos membresías, el

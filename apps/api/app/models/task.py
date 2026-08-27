@@ -23,7 +23,9 @@ class Task(Base, TimestampMixin):
     __tablename__ = "tasks"
 
     id: Mapped[UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    tenant_id: Mapped[UUID] = mapped_column(String(36), nullable=False, index=True)
+    tenant_id: Mapped[UUID] = mapped_column(
+        String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     project_id: Mapped[UUID] = mapped_column(
         String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
     )

@@ -75,7 +75,10 @@ Frontend debe ser rápido (TTFB, hydration), accesible, mantenible y tener buena
 
 ## ADR-003 — PostgreSQL con RLS para multi-tenancy
 
-**Estado:** ⚠️ Aceptada en diseño 2026-04-18 — **NO implementada en producción.**
+**Estado:** ⚠️ **En implementación (2026-08-27)** — FKs de `tenant_id`
+completos (US-240); RLS por dominio en curso (US-241 jerarquía, US-242
+proyectos). Hasta que esas dos cierren, el aislamiento real **sigue siendo
+solo de capa de aplicación**.
 
 > **Update 2026-05-23:** Ninguna migración Alembic activa el RLS
 > (`ENABLE ROW LEVEL SECURITY`) ni crea policies. El aislamiento
@@ -84,6 +87,42 @@ Frontend debe ser rápido (TTFB, hydration), accesible, mantenible y tener buena
 > cada query. La defensa en profundidad vía RLS queda como deuda
 > técnica (ver `architecture/database.md` §"Lo que NO usamos" y
 > `architecture/security-multitenant.md`).
+
+> **Update 2026-08-27 (oleada W3 de la reestructura, US-240).** Retoma la
+> deuda. El diseño original dejaba dos decisiones sin fijar; esta ronda las
+> fija:
+>
+> 1. **Modelo de sesión.** La dependencia de sesión de DB
+>    (`app/db/session.py`) ejecutará `SET LOCAL app.tenant_id = :tid` con el
+>    `effective_tenant_id` del request, sobre una conexión cuyo rol **nunca**
+>    tiene `BYPASSRLS`. Se implementa en US-241, junto con las primeras
+>    policies — no hay policy que probar todavía.
+> 2. **Bypass de superadmin y jobs de plataforma.** El plan
+>    (`reestructura-modelo-datos.md` §3.3, punto 5) dejó dos opciones sin
+>    elegir: rol de conexión aparte, o un centinela `app.tenant_id = '*'`
+>    contemplado en la policy. **Se elige rol de conexión aparte**
+>    (`pmoaas_platform`, con `BYPASSRLS`). Un centinela mueve el control a
+>    una cadena que cualquier ruta podría fijar por error o por default; un
+>    rol de conexión separado lo deja en la configuración de infraestructura
+>    — visible con `\du`, y elegido solo por la capa de dependencias
+>    (`Depends(get_superadmin)` en rutas, `SessionLocal` propio en el
+>    worker), nunca por un valor que viaje en la petición. El rol de la API
+>    normal jamás tiene `BYPASSRLS`. Se implementa junto con la primera
+>    policy real, en US-241.
+>
+> La migración `20260827_0116` cierra el inventario pendiente: agrega el FK
+> `tenant_id → tenants.id` que faltaba en 13 tablas (`change_approvers`,
+> `approval_tokens`, `plan_baselines`, `risks`, `issues`, `change_requests`,
+> `documents`, `lessons`, `meeting_minutes`, `risk_actions`, `ai_jobs`,
+> `reports`, `tasks`) y en `audit_log` (`ON DELETE SET NULL`, no `CASCADE`:
+> es de solo anexado y el registro del propio hard-delete no debe
+> desaparecer con el tenant que describe). Hallazgo de paso: `ai_jobs` y
+> `reports` no tenían **ningún** FK — ni a `tenants` ni a `projects` — así
+> que `superadmin.py::hard_delete_tenant` (que confía en cascada de FK, no
+> tiene `relationship()` que cascadear) dejaba esas dos tablas huérfanas
+> tras un hard-delete. Esta migración lo cierra como efecto colateral
+> correcto, no como alcance nuevo.
+
 **Contexto:**
 Multi-tenant tiene 3 patrones: DB-per-tenant, schema-per-tenant, shared-schema con RLS. Cada uno con trade-offs distintos.
 

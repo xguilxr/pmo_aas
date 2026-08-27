@@ -20,12 +20,12 @@ revisar_cada: 180d
 - 1 base de datos Postgres para todos los tenants.
 - Cada tabla tenant-scoped tiene `tenant_id` (`String(36)` UUID, indexado, `NOT NULL` salvo `users` para superadmins y `audit_log` para eventos platform-wide).
 - **El aislamiento se aplica en la capa de aplicación**: cada endpoint declara `Depends(get_current_tenant_id)` y filtra `WHERE tenant_id = :tid` en cada query.
-- **Sin RLS** en Postgres (ver `database.md` §"Lo que NO usamos"). Una migración a RLS está como deuda en `DECISIONS.md`.
+- **Sin RLS** en Postgres todavía (ver `database.md` §"Lo que NO usamos"). Decisión y diseño en [`ADR-003`](../adr/README.md#adr-003) — **en implementación desde 2026-08-27** (oleada W3): FKs de `tenant_id` completos (US-240), RLS por dominio en curso (US-241 jerarquía, US-242 proyectos). Hasta que esas dos cierren, el aislamiento real sigue siendo el de abajo.
 
-**Descartadas:**
+**Descartadas (en su momento — RLS se retoma 2026-08-27, ver ADR-003):**
 - *Schema-per-tenant* — coste de migraciones × N tenants.
 - *DB-per-tenant* — coste de infra y backups.
-- *RLS Postgres* en MVP — costo de implementación. Queda como deuda priorizable.
+- *RLS Postgres* en MVP — costo de implementación. Quedó como deuda priorizable.
 
 > **Las amenazas y sus controles viven en [`modelo-amenazas.md`](./modelo-amenazas.md).**
 > Este documento describe cómo funciona el aislamiento. Aquél describe qué lo rompe y qué lo

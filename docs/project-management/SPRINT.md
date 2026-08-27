@@ -15,13 +15,17 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Sin US activa.** **Revamp v2 terminado** (2026-08-27, batch del owner;
+**US-240 #599** (Reestructura-W3, RLS) — ADR-003 + migración `0116` (FKs de
+`tenant_id`). Verde: lint, mypy, 2078 tests. Falta push + comment de cierre.
+Bloquea **US-241 #600** (RLS jerarquía) → **US-242 #601** (RLS proyectos).
+
+**Revamp v2 terminado** (2026-08-27, batch del owner;
 detalle en `SPRINT-DONE-HISTORY.md`). Lo pendiente:
 `docs/epics/drafts/plan-post-revamp.md` (US desde 227).
 
 **Fase 2 mergeada** (PR #595, US-203–US-222, mig. `0112`–`0115`). Falta
-**desplegar `0105`–`0115`** leyendo el registro (abajo). EP021: las cuatro
-preguntas contestadas (DEC-033) — desbloquea **US-223 a US-226**.
+**desplegar `0105`–`0115`** (registro abajo). EP021: las cuatro preguntas
+contestadas (DEC-033) — desbloquea **US-223 a US-226**.
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).
@@ -32,18 +36,9 @@ preguntas contestadas (DEC-033) — desbloquea **US-223 a US-226**.
 
 ### Reestructura de plataforma — lo que queda
 
-Planeación en `docs/epics/drafts/reestructura-*.md`; mapas en
-`docs/architecture/mapa-{backend,frontend}.md`. W1 y Fase 2 cerradas.
-
-**W3 (RLS de Postgres) triagiada** (2026-08-27, OK owner por chat) — 3 US en
-`status:triage`, secuenciales: **US-240 #599** (ADR de activación de RLS +
-FKs de `tenant_id` faltantes) bloquea **US-241 #600** (RLS dominio jerarquía
-+ trinquete CI) y **US-242 #601** (RLS dominio proyectos). Bloque propuesto:
-**Reestructura-W3** — falta tu confirmación para pasar de INBOX a
-IN-PROGRESS y poner US-240 en `status:ready`.
-
-Queda **W8** el `drop` de `business_units`/`departments` cuando el contador
-de compat lo confirme.
+Planeación en `docs/epics/drafts/reestructura-*.md`. W1 y Fase 2 cerradas.
+**W3 en IN-PROGRESS** (arriba). Queda **W8** el `drop` de
+`business_units`/`departments` cuando el contador de compat lo confirme.
 
 ### Producto — abierto
 
@@ -64,8 +59,6 @@ de compat lo confirme.
   razonados, no medidos; se ajustan en `settings`.
 - [ ] **`design-system/tokens.md`** describe una paleta previa a D-7 y ADR-023.
   Marcado `reemplazado`; reescribirlo es trabajo de diseño.
-- [ ] **Las cuatro preguntas de `EP021-catalogo-de-ia.md`.** Son definiciones, no
-  aprobaciones; la cuarta decide si hay un segundo sistema de autorización.
 - [ ] **DCMA 14-point.** La línea base que lo bloqueaba ya está (US-212).
 
 - 2026-08-07 — **Conformidad cerrada** (ADR-036): `docs/conformidad/asvs-l1.md`.

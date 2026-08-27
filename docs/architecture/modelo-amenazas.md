@@ -174,8 +174,14 @@ transporte.
 **FC-2 · STRIDE: divulgación · Estado: CONTROLADA**
 
 El aislamiento es de capa de aplicación: cada consulta filtra por `tenant_id`.
-Sin RLS en Postgres (decisión registrada en `security-multitenant.md`). Un
-`WHERE` que se olvide rompe el aislamiento.
+Sin RLS en Postgres (decisión y diseño en `ADR-003`). Un `WHERE` que se
+olvide rompe el aislamiento.
+
+**En progreso (2026-08-27):** oleada W3 agrega RLS por dominio como defensa
+en profundidad — US-240 (FKs de `tenant_id` completos) cerrado, US-241
+(jerarquía) y US-242 (proyectos) en curso. Hasta que esas dos cierren, este
+control de capa de aplicación sigue siendo el único, y el riesgo de abajo
+("un `WHERE` que se olvide") sigue vigente sin mitigar por RLS.
 
 **Control:** suite dedicada de B1, verificada por mutación — quitar un filtro la
 hace fallar en lectura, modificación y borrado.

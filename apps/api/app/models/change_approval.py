@@ -33,7 +33,9 @@ class ChangeApprover(Base, TimestampMixin):
     )
 
     id: Mapped[UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    tenant_id: Mapped[UUID] = mapped_column(String(36), nullable=False)
+    tenant_id: Mapped[UUID] = mapped_column(
+        String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
     change_id: Mapped[UUID] = mapped_column(
         String(36),
         ForeignKey("change_requests.id", ondelete="CASCADE"),
@@ -60,7 +62,9 @@ class ApprovalToken(Base):
     )
 
     id: Mapped[UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    tenant_id: Mapped[UUID] = mapped_column(String(36), nullable=False)
+    tenant_id: Mapped[UUID] = mapped_column(
+        String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
     change_id: Mapped[UUID] = mapped_column(
         String(36),
         ForeignKey("change_requests.id", ondelete="CASCADE"),

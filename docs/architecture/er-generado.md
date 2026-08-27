@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-20
+revisado: 2026-08-27
 revisar_cada: nunca
 ---
 
@@ -19,7 +19,7 @@ revisar_cada: nunca
 La descripción en prosa de cada tabla vive en
 [`database.md`](database.md): eso no está en el modelo y no se puede derivar.
 
-**62 tablas · 170 relaciones declaradas por clave foránea.**
+**62 tablas · 184 relaciones declaradas por clave foránea.**
 
 ```mermaid
 erDiagram
@@ -32,11 +32,13 @@ erDiagram
     USERS |o--o{ ACTORS : user_id
     USERS ||--o{ ADMIN_OTP_CODES : user_id
     USERS |o--o{ AI_JOBS : requested_by
+    TENANTS ||--o{ AI_JOBS : tenant_id
     USERS |o--o{ AI_REPORT_TEMPLATES : created_by
     PROJECTS ||--o{ AI_REPORT_TEMPLATES : project_id
     TENANTS ||--o{ AI_REPORT_TEMPLATES : tenant_id
     ACTORS ||--o{ APPROVAL_TOKENS : actor_id
     CHANGE_REQUESTS ||--o{ APPROVAL_TOKENS : change_id
+    TENANTS ||--o{ APPROVAL_TOKENS : tenant_id
     AREAS ||--o{ AREA_ASSIGNMENTS : area_id
     USERS |o--o{ AREA_ASSIGNMENTS : created_by
     ORGANIZATIONS |o--o{ AREA_ASSIGNMENTS : organization_id
@@ -50,21 +52,25 @@ erDiagram
     TENANTS ||--o{ ASSISTANT_CONVERSATIONS : tenant_id
     USERS ||--o{ ASSISTANT_CONVERSATIONS : user_id
     ASSISTANT_CONVERSATIONS ||--o{ ASSISTANT_MESSAGES : conversation_id
+    TENANTS |o--o{ AUDIT_LOG : tenant_id
     USERS |o--o{ BUSINESS_UNITS : created_by
     ORGANIZATIONS ||--o{ BUSINESS_UNITS : organization_id
     TENANTS ||--o{ BUSINESS_UNITS : tenant_id
     ACTORS ||--o{ CHANGE_APPROVERS : actor_id
     CHANGE_REQUESTS ||--o{ CHANGE_APPROVERS : change_id
+    TENANTS ||--o{ CHANGE_APPROVERS : tenant_id
     USERS |o--o{ CHANGE_REQUESTS : approved_by
     USERS |o--o{ CHANGE_REQUESTS : created_by
     PROJECTS ||--o{ CHANGE_REQUESTS : project_id
     USERS |o--o{ CHANGE_REQUESTS : requested_by
+    TENANTS ||--o{ CHANGE_REQUESTS : tenant_id
     BUSINESS_UNITS ||--o{ DEPARTMENTS : business_unit_id
     USERS |o--o{ DEPARTMENTS : created_by
     TENANTS ||--o{ DEPARTMENTS : tenant_id
     USERS ||--o{ DISPOSITIVOS_CONFIABLES : user_id
     USERS |o--o{ DOCUMENTS : created_by
     PROJECTS ||--o{ DOCUMENTS : project_id
+    TENANTS ||--o{ DOCUMENTS : tenant_id
     USERS |o--o{ DOCUMENTS : uploaded_by
     TENANTS ||--o{ FOLIO_SEQUENCES : tenant_id
     AREAS |o--o{ ISSUES : area_id
@@ -74,11 +80,14 @@ erDiagram
     ACTORS |o--o{ ISSUES : owner_actor_id
     USERS |o--o{ ISSUES : owner_id
     PROJECTS ||--o{ ISSUES : project_id
+    TENANTS ||--o{ ISSUES : tenant_id
     USERS |o--o{ LESSONS : created_by
     ACTORS |o--o{ LESSONS : owner_actor_id
     PROJECTS ||--o{ LESSONS : project_id
+    TENANTS ||--o{ LESSONS : tenant_id
     USERS |o--o{ MEETING_MINUTES : created_by
     PROJECTS ||--o{ MEETING_MINUTES : project_id
+    TENANTS ||--o{ MEETING_MINUTES : tenant_id
     TENANTS ||--o{ METRIC_SNAPSHOTS : tenant_id
     TENANTS ||--o{ NOTIFICATIONS : tenant_id
     USERS ||--o{ NOTIFICATIONS : user_id
@@ -93,6 +102,7 @@ erDiagram
     TENANTS ||--o{ PERMISSION_CHANGE_REQUESTS : tenant_id
     PLAN_BASELINES ||--o{ PLAN_BASELINE_TASKS : baseline_id
     PROJECTS ||--o{ PLAN_BASELINES : project_id
+    TENANTS ||--o{ PLAN_BASELINES : tenant_id
     USERS |o--o{ PORTFOLIOS : created_by
     ORGANIZATIONS ||--o{ PORTFOLIOS : organization_id
     ACTORS |o--o{ PORTFOLIOS : owner_actor_id
@@ -150,10 +160,12 @@ erDiagram
     USERS |o--o{ REPORT_TEMPLATES : created_by
     TENANTS ||--o{ REPORT_TEMPLATES : tenant_id
     USERS |o--o{ REPORTS : created_by
+    TENANTS ||--o{ REPORTS : tenant_id
     ACTORS ||--o{ RISK_ACTION_ASSIGNEES : actor_id
     RISK_ACTIONS ||--o{ RISK_ACTION_ASSIGNEES : risk_action_id
     USERS |o--o{ RISK_ACTIONS : created_by
     RISKS ||--o{ RISK_ACTIONS : risk_id
+    TENANTS ||--o{ RISK_ACTIONS : tenant_id
     AREAS |o--o{ RISKS : area_id
     USERS |o--o{ RISKS : created_by
     ACTORS |o--o{ RISKS : on_hold_actor_id
@@ -161,6 +173,7 @@ erDiagram
     ACTORS |o--o{ RISKS : owner_actor_id
     USERS |o--o{ RISKS : owner_id
     PROJECTS ||--o{ RISKS : project_id
+    TENANTS ||--o{ RISKS : tenant_id
     TENANTS ||--o{ ROLES : tenant_id
     USERS |o--o{ SCHEDULED_MINUTES : created_by
     PROJECTS ||--o{ SCHEDULED_MINUTES : project_id
@@ -180,6 +193,7 @@ erDiagram
     TASKS |o--o{ TASKS : parent_id
     PROJECTS ||--o{ TASKS : project_id
     TASKS |o--o{ TASKS : related_milestone_id
+    TENANTS ||--o{ TASKS : tenant_id
     AREAS ||--o{ TEAMS : area_id
     USERS |o--o{ TEAMS : created_by
     TENANTS ||--o{ TEAMS : tenant_id
@@ -193,7 +207,6 @@ erDiagram
     TENANTS ||--o{ USER_TENANT_MEMBERSHIPS : tenant_id
     USERS ||--o{ USER_TENANT_MEMBERSHIPS : user_id
     TENANTS |o--o{ USERS : tenant_id
-    AUDIT_LOG { }
     PLATFORM_AI_SETTINGS { }
     REPORT_SECTIONS { }
 ```
