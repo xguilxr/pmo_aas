@@ -4,10 +4,10 @@
 // Decisiones). Drag & drop nativo (sin librería) para avanzar/retroceder de
 // fase. Las columnas son los estados del tipo; soltar una tarjeta en otra
 // columna dispara `onMove(id, nuevoEstado)`.
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
+import { Icono } from "@/components/ui/icono";
 import { cn } from "@/lib/cn";
 
 export type KanbanColumn = { id: string; label: string };
@@ -62,7 +62,7 @@ export function RaidKanban({
                 : "border-[var(--border-default)]",
             )}
           >
-            <header className="mb-2 flex items-center justify-between px-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-secondary)]">
+            <header className="mb-2 flex h-8.5 items-center justify-between px-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-secondary)]">
               <span>{col.label}</span>
               <span className="tabular-nums text-[var(--color-tertiary)]">
                 {colItems.length}
@@ -79,12 +79,12 @@ export function RaidKanban({
                     setOverCol(null);
                   }}
                   className={cn(
-                    "cursor-grab rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] p-2 shadow-[var(--shadow-sm)] active:cursor-grabbing",
+                    "cursor-grab rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] p-2 shadow-[var(--relieve-isla)] active:cursor-grabbing",
                     busyId === it.id && "opacity-50",
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[10px] text-[var(--color-tertiary)]">
+                    <span className="text-[10.5px] tracking-[0.01em] text-[var(--color-tertiary)]">
                       {it.folio}
                     </span>
                     {it.accent}
@@ -113,9 +113,9 @@ export function RaidKanban({
                           ? `Mover "${it.title}" a ${columns[ci - 1].label}`
                           : "Sin fase anterior"
                       }
-                      className="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)] disabled:opacity-30 disabled:hover:bg-transparent"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)] disabled:opacity-30 disabled:hover:bg-transparent"
                     >
-                      <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+                      <Icono nombre="chevron-left" size={14} />
                     </button>
                     <button
                       type="button"
@@ -131,9 +131,9 @@ export function RaidKanban({
                           ? `Mover "${it.title}" a ${columns[ci + 1].label}`
                           : "Sin fase siguiente"
                       }
-                      className="inline-flex h-6 w-6 items-center justify-center rounded text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)] disabled:opacity-30 disabled:hover:bg-transparent"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-primary)] disabled:opacity-30 disabled:hover:bg-transparent"
                     >
-                      <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                      <Icono nombre="chevron-right" size={14} />
                     </button>
                   </div>
                 </div>
