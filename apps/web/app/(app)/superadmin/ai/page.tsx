@@ -135,7 +135,8 @@ export default function SuperadminAIPage() {
   }
 
   return (
-    <div className="space-y-5">
+    // US-203 §4.1 — formulario: ancho acotado (declarado en check_ancho.py).
+    <div className="mx-auto max-w-4xl space-y-5">
       <header className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 text-[24px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
           <Icono nombre="info" size={20} className="text-[var(--color-accent)]" />

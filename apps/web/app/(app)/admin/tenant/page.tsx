@@ -180,7 +180,7 @@ function TenantAdminPageInner() {
       : 0;
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+    <div className="mx-auto max-w-5xl flex flex-col gap-4">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
           Tenant
