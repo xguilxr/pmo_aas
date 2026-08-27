@@ -3,21 +3,10 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  Download,
-  MessageSquare,
-  Pencil,
-  Plus,
-  Save,
-  Sparkles,
-  Trash2,
-  X,
-} from "lucide-react";
-
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -135,7 +124,7 @@ export default function MinutePreviewPage() {
           href={`/pmo/projects/${id}/minutes`}
           className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
         >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Volver
+          <Icono nombre="arrow-left" size={14} /> Volver
         </Link>
         <Banner variant="danger">{error}</Banner>
       </div>
@@ -150,7 +139,7 @@ export default function MinutePreviewPage() {
           Minutas
         </Link>
         <span className="mx-1">/</span>
-        <span className="font-mono text-[var(--color-secondary)]">
+        <span className="text-[12px] tracking-[0.01em] text-[var(--color-secondary)]">
           {minute.folio}
         </span>
       </nav>
@@ -161,10 +150,10 @@ export default function MinutePreviewPage() {
             href={`/pmo/projects/${id}/minutes`}
             className="inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
           >
-            <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Volver
+            <Icono nombre="arrow-left" size={14} /> Volver
           </Link>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-            <MessageSquare className="h-6 w-6 text-[var(--color-accent)]" aria-hidden />
+            <Icono nombre="message" size={20} className="text-[var(--color-accent)]" />
             {minute.title}
           </h1>
           <p className="text-[12px] text-[var(--text-tertiary)]">
@@ -176,7 +165,7 @@ export default function MinutePreviewPage() {
               <>
                 {" · "}
                 <Badge variant="info">
-                  <Sparkles className="h-3 w-3" aria-hidden /> IA
+                  <Icono nombre="info" size={13} /> IA
                 </Badge>
               </>
             ) : null}
@@ -189,12 +178,12 @@ export default function MinutePreviewPage() {
               type="button"
               onClick={() => void handleExport(f.key)}
               disabled={busyExport !== null}
-              className="inline-flex h-8 items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--color-surface)] px-2.5 text-[12px] text-[var(--color-secondary)] hover:bg-[var(--color-subtle)] disabled:opacity-60"
+              className="inline-flex h-8 items-center gap-1 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2.5 text-[12px] text-[var(--color-secondary)] shadow-[var(--relieve-control)] hover:bg-[var(--color-subtle)] disabled:opacity-60"
             >
               {busyExport === f.key ? (
                 <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)]" />
               ) : (
-                <Download className="h-3.5 w-3.5" aria-hidden />
+                <Icono nombre="download" size={14} />
               )}
               {f.label}
             </button>
@@ -205,7 +194,7 @@ export default function MinutePreviewPage() {
             onClick={() => setConfirmDelete(true)}
             aria-label="Borrar minuta"
           >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+            <Icono nombre="bin" size={14} /> Borrar
           </Button>
         </div>
       </header>
@@ -215,7 +204,7 @@ export default function MinutePreviewPage() {
       {/* BUG-063: resumen visible al inicio (read-only en detail; el
           form de generación es el lugar para editar). */}
       {minute.description ? (
-        <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+        <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]">
           <h2 className="mb-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
             Resumen
           </h2>
@@ -238,7 +227,7 @@ export default function MinutePreviewPage() {
         const fn = (minute.raid_suggestions as { _meta?: { free_notes?: string } } | undefined)?._meta?.free_notes;
         if (!fn) return null;
         return (
-          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-sm)]">
+          <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]">
             <h2 className="mb-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
               Notas libres
             </h2>
@@ -277,7 +266,7 @@ export default function MinutePreviewPage() {
               onClick={handleDelete}
               loading={deleting}
             >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden /> Borrar
+              <Icono nombre="bin" size={14} /> Borrar
             </Button>
           </>
         }
@@ -309,7 +298,7 @@ function CollapsibleSection({
   return (
     <details
       open={defaultOpen}
-      className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]"
+      className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]"
     >
       <summary className="flex cursor-pointer items-center justify-between gap-2 border-b border-[var(--border-default)] px-4 py-2.5 text-[13px] font-semibold text-[var(--color-primary)]">
         <span>{title}</span>
@@ -391,15 +380,15 @@ function ParticipantsSection({
         editing ? (
           <>
             <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
-              <X className="h-3.5 w-3.5" aria-hidden /> Cancelar
+              <Icono nombre="x" size={14} /> Cancelar
             </Button>
             <Button size="sm" onClick={commit} loading={saving}>
-              <Save className="h-3.5 w-3.5" aria-hidden /> Guardar
+              <Icono nombre="check" size={14} /> Guardar
             </Button>
           </>
         ) : (
           <Button size="sm" variant="ghost" onClick={start}>
-            <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
+            <Icono nombre="pen" size={14} /> Editar
           </Button>
         )
       }
@@ -472,7 +461,7 @@ function ParticipantsSection({
                 onClick={() => setDraft((d) => d.filter((_, j) => j !== i))}
                 aria-label={`Quitar ${p.name || "participante"}`}
               >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                <Icono nombre="bin" size={14} />
               </Button>
             </div>
           ))}
@@ -481,7 +470,7 @@ function ParticipantsSection({
             variant="ghost"
             onClick={() => setDraft((d) => [...d, { name: "", role: "" }])}
           >
-            <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar participante
+            <Icono nombre="plus" size={14} /> Agregar participante
           </Button>
         </div>
       )}
@@ -528,15 +517,15 @@ function TopicsSection({
         editing ? (
           <>
             <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
-              <X className="h-3.5 w-3.5" aria-hidden /> Cancelar
+              <Icono nombre="x" size={14} /> Cancelar
             </Button>
             <Button size="sm" onClick={commit} loading={saving}>
-              <Save className="h-3.5 w-3.5" aria-hidden /> Guardar
+              <Icono nombre="check" size={14} /> Guardar
             </Button>
           </>
         ) : (
           <Button size="sm" variant="ghost" onClick={start}>
-            <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
+            <Icono nombre="pen" size={14} /> Editar
           </Button>
         )
       }
@@ -623,7 +612,7 @@ function TopicsSection({
                   variant="ghost"
                   onClick={() => setDraft((d) => d.filter((_, j) => j !== i))}
                 >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden /> Quitar tema
+                  <Icono nombre="bin" size={14} /> Quitar tema
                 </Button>
               </div>
             </div>
@@ -633,7 +622,7 @@ function TopicsSection({
             variant="ghost"
             onClick={() => setDraft((d) => [...d, { title: "", bullets: [] }])}
           >
-            <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar tema
+            <Icono nombre="plus" size={14} /> Agregar tema
           </Button>
         </div>
       )}
@@ -675,15 +664,15 @@ function AgreementsSection({
         editing ? (
           <>
             <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
-              <X className="h-3.5 w-3.5" aria-hidden /> Cancelar
+              <Icono nombre="x" size={14} /> Cancelar
             </Button>
             <Button size="sm" onClick={commit} loading={saving}>
-              <Save className="h-3.5 w-3.5" aria-hidden /> Guardar
+              <Icono nombre="check" size={14} /> Guardar
             </Button>
           </>
         ) : (
           <Button size="sm" variant="ghost" onClick={start}>
-            <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
+            <Icono nombre="pen" size={14} /> Editar
           </Button>
         )
       }
@@ -761,7 +750,7 @@ function AgreementsSection({
                   variant="ghost"
                   onClick={() => setDraft((d) => d.filter((_, j) => j !== i))}
                 >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden /> Quitar
+                  <Icono nombre="bin" size={14} /> Quitar
                 </Button>
               </div>
             </div>
@@ -776,7 +765,7 @@ function AgreementsSection({
               ])
             }
           >
-            <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar acuerdo
+            <Icono nombre="plus" size={14} /> Agregar acuerdo
           </Button>
         </div>
       )}

@@ -16,12 +16,11 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, FileText, MessageSquare, Plus, Sparkles, Trash2, Upload, Wand2, X } from "lucide-react";
-
 import { MinuteSaveModal } from "@/components/minute-save-modal";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -406,17 +405,17 @@ export default function NewMinutePage() {
   const modeMeta: Record<MinuteSourceType, { label: string; icon: React.ReactNode; hint: string }> = {
     transcript: {
       label: "Transcript",
-      icon: <FileText className="h-4 w-4" aria-hidden />,
+      icon: <Icono nombre="file-text" size={16} />,
       hint: "Sube o pega el transcript de la reunión. IA estructura la minuta.",
     },
     minute: {
       label: "Minuta",
-      icon: <MessageSquare className="h-4 w-4" aria-hidden />,
+      icon: <Icono nombre="message" size={16} />,
       hint: "Sube o pega una minuta ya redactada. IA la normaliza al modelo canónico preservando contenido.",
     },
     manual: {
       label: "Manual",
-      icon: <Wand2 className="h-4 w-4" aria-hidden />,
+      icon: <Icono nombre="pen" size={16} />,
       hint: "Form vacío con las 6 secciones. Sin IA — persiste directo al guardar.",
     },
   };
@@ -443,11 +442,11 @@ export default function NewMinutePage() {
           href={`/pmo/projects/${id}/minutes`}
           className="mt-2 inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
         >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          <Icono nombre="arrow-left" size={14} />
           Volver
         </Link>
         <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-          <Sparkles className="h-6 w-6 text-[var(--color-accent)]" aria-hidden />
+          <Icono nombre="info" size={20} className="text-[var(--color-accent)]" />
           Generar Minuta
         </h1>
         <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
@@ -464,7 +463,7 @@ export default function NewMinutePage() {
               {statusLabel} (job {jobId?.slice(0, 8)}…)
             </span>
             <Button size="sm" variant="secondary" onClick={handleCancel}>
-              <X className="h-3.5 w-3.5" aria-hidden /> Cancelar
+              <Icono nombre="x" size={14} /> Cancelar
             </Button>
           </div>
         </Banner>
@@ -472,7 +471,7 @@ export default function NewMinutePage() {
 
       {/* US-142: toggle 3 modos */}
       <div
-        className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-0.5 text-[12px]"
+        className="inline-flex rounded-[var(--radius-md)] bg-[var(--color-muted)] p-0.5 text-[12px] shadow-[var(--hundido)]"
         role="tablist"
         aria-label="Modo de generación"
       >
@@ -486,7 +485,7 @@ export default function NewMinutePage() {
             disabled={generating}
             className={`inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1.5 ${
               mode === m
-                ? "bg-[var(--color-surface)] font-medium shadow-sm"
+                ? "bg-[var(--color-surface)] font-medium shadow-[var(--relieve-control)]"
                 : "text-[var(--text-secondary)]"
             }`}
           >
@@ -534,7 +533,7 @@ export default function NewMinutePage() {
         {mode !== "manual" ? (
           <div className="mt-4 space-y-3">
             <div
-              className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--color-subtle)] p-0.5 text-[12px]"
+              className="inline-flex rounded-[var(--radius-md)] bg-[var(--color-muted)] p-0.5 text-[12px] shadow-[var(--hundido)]"
               role="tablist"
               aria-label="Fuente del texto"
             >
@@ -545,7 +544,7 @@ export default function NewMinutePage() {
                 onClick={() => setTextSource("paste")}
                 className={`rounded-[var(--radius-sm)] px-3 py-1.5 ${
                   textSource === "paste"
-                    ? "bg-[var(--color-surface)] font-medium shadow-sm"
+                    ? "bg-[var(--color-surface)] font-medium shadow-[var(--relieve-control)]"
                     : "text-[var(--text-secondary)]"
                 }`}
               >
@@ -558,7 +557,7 @@ export default function NewMinutePage() {
                 onClick={() => setTextSource("upload")}
                 className={`rounded-[var(--radius-sm)] px-3 py-1.5 ${
                   textSource === "upload"
-                    ? "bg-[var(--color-surface)] font-medium shadow-sm"
+                    ? "bg-[var(--color-surface)] font-medium shadow-[var(--relieve-control)]"
                     : "text-[var(--text-secondary)]"
                 }`}
               >
@@ -590,7 +589,7 @@ export default function NewMinutePage() {
             ) : (
               <Field label={mode === "minute" ? "Archivo de minuta" : "Archivo de transcript"}>
                 <label className="flex cursor-pointer items-center gap-2 rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] px-3 py-3 hover:bg-[var(--color-subtle)]">
-                  <Upload className="h-4 w-4 text-[var(--text-tertiary)]" aria-hidden />
+                  <Icono nombre="upload" size={16} className="text-[var(--text-tertiary)]" />
                   <input
                     type="file"
                     accept=".txt,.srt,.md,.vtt,.docx"
@@ -615,7 +614,7 @@ export default function NewMinutePage() {
                 loading={generating}
                 disabled={textInput.trim().length < 20}
               >
-                <Wand2 className="h-4 w-4" aria-hidden /> Generar Minuta
+                <Icono nombre="info" size={16} /> Generar Minuta
               </Button>
             </div>
           </div>
@@ -953,7 +952,7 @@ function RaidPanels({
                   <p className="text-[10.5px] text-[var(--text-tertiary)]">{meta.hint}</p>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => addOfType(meta.type)}>
-                  <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar
+                  <Icono nombre="plus" size={14} /> Agregar
                 </Button>
               </div>
               <div className="space-y-2">
@@ -981,7 +980,7 @@ function RaidPanels({
                           aria-label="Quitar"
                           className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--color-danger-fg)]"
                         >
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                          <Icono nombre="bin" size={14} />
                         </button>
                       </div>
                       <div className="grid gap-1.5 sm:grid-cols-2">
@@ -1028,7 +1027,7 @@ function ArrayEditor<T>({
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[12px] font-medium text-[var(--text-secondary)]">{title}</span>
         <Button size="sm" variant="ghost" onClick={onAdd}>
-          <Plus className="h-3.5 w-3.5" aria-hidden /> Agregar
+          <Icono nombre="plus" size={14} /> Agregar
         </Button>
       </div>
       <div className="space-y-2">
@@ -1040,7 +1039,7 @@ function ArrayEditor<T>({
               onClick={() => onRemove(i)}
               className="mt-1 inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--color-subtle)] hover:text-[var(--text-primary)]"
             >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              <Icono nombre="bin" size={14} />
             </button>
           </div>
         ))}
