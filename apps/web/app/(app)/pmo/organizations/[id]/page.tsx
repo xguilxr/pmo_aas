@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Download, FolderKanban, Layers, Plus, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProgramModal } from "@/components/program-modal";
 import { KpiBand, KpiCard } from "@/components/kpi-card";
@@ -200,11 +200,11 @@ export default function PmoOrganizationPage() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={panel.logo_url} alt="" className="h-full w-full object-cover" />
           ) : (
-            <Building2 className="h-6 w-6" aria-hidden />
+            <Icono nombre="building" size={22} />
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold text-[var(--color-primary)]">
+          <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
             {panel.name}
           </h1>
           {leido && <MarcaDeDatos periodo="vivo" actualizado={leido} />}
@@ -225,13 +225,13 @@ export default function PmoOrganizationPage() {
                 : "No tienes permiso para crear programas"
             }
           >
-            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+            <Icono nombre="plus" size={15} />
             Nuevo programa
           </Button>
           {canCreateProject ? (
             <Link href={`/pmo/projects/new?organization_id=${panel.id}`}>
               <Button variant="primary" size="sm">
-                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+                <Icono nombre="plus" size={15} />
                 Nuevo proyecto
               </Button>
             </Link>
@@ -244,7 +244,7 @@ export default function PmoOrganizationPage() {
               disabled={downloadingReport}
               title="Genera el reporte de status de la organización en PDF"
             >
-              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+              <Icono nombre="download" size={15} />
               {downloadingReport ? "Generando…" : "Reporte de Status (PDF)"}
             </Button>
           ) : null}
@@ -255,7 +255,7 @@ export default function PmoOrganizationPage() {
             disabled={downloadingOrganigrama}
             title="Descarga el organigrama con utilización de la organización en XLSX"
           >
-            <Users className="mr-1 h-3.5 w-3.5" aria-hidden />
+            <Icono nombre="users" size={15} />
             {downloadingOrganigrama ? "Generando…" : "Organigrama (XLSX)"}
           </Button>
           <Link
@@ -323,7 +323,7 @@ export default function PmoOrganizationPage() {
 
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <Layers className="h-4 w-4 text-[var(--color-tertiary)]" aria-hidden />
+          <Icono nombre="folders" size={16} className="text-[var(--color-tertiary)]" />
           <h2 className="text-sm font-semibold text-[var(--color-primary)]">
             Programas
           </h2>
@@ -350,10 +350,7 @@ export default function PmoOrganizationPage() {
 
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <FolderKanban
-            className="h-4 w-4 text-[var(--color-tertiary)]"
-            aria-hidden
-          />
+          <Icono nombre="folder" size={16} className="text-[var(--color-tertiary)]" />
           <h2 className="text-sm font-semibold text-[var(--color-primary)]">
             Proyectos
           </h2>
@@ -365,28 +362,30 @@ export default function PmoOrganizationPage() {
           </div>
         ) : (
           <div className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--shadow-sm)]">
-            <table className="w-full text-sm">
-              <thead className="border-b border-[var(--border-default)] text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Folio</th>
-                  <th className="px-3 py-2 font-medium">Nombre</th>
-                  <th className="px-3 py-2 font-medium">Programa</th>
-                  <th className="px-3 py-2 font-medium">Fase</th>
-                  <th className="px-3 py-2 font-medium">Salud</th>
-                  <th className="px-3 py-2 font-medium">PM</th>
-                </tr>
-              </thead>
-              <tbody>
-                {panel.projects.map((pj) => {
-                  const program = panel.programs.find(
-                    (pg) => pg.id === pj.program_id,
-                  );
-                  return (
-                    <ProjectRow key={pj.id} project={pj} programName={program?.name ?? "—"} />
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)] shadow-[var(--linea-surco)]">
+                  <tr>
+                    <th className="h-8.5 w-24 px-3.5 font-semibold">Folio</th>
+                    <th className="h-8.5 px-3.5 font-semibold">Nombre</th>
+                    <th className="h-8.5 w-40 px-3.5 font-semibold">Programa</th>
+                    <th className="h-8.5 w-28 px-3.5 font-semibold">Fase</th>
+                    <th className="h-8.5 w-16 px-3.5 font-semibold">Salud</th>
+                    <th className="h-8.5 w-36 px-3.5 font-semibold">PM</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {panel.projects.map((pj) => {
+                    const program = panel.programs.find(
+                      (pg) => pg.id === pj.program_id,
+                    );
+                    return (
+                      <ProjectRow key={pj.id} project={pj} programName={program?.name ?? "—"} />
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>
@@ -488,8 +487,8 @@ function ProjectRow({
           ? "var(--color-danger-fg)"
           : "var(--color-tertiary)";
   return (
-    <tr className="border-b border-[var(--border-subtle)] hover:bg-[var(--color-subtle)]">
-      <td className="px-3 py-2 font-mono text-xs text-[var(--color-tertiary)]">
+    <tr className="h-10.5 border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]">
+      <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap text-[12px] tracking-[0.01em] text-[var(--color-tertiary)]">
         <Link
           href={`/pmo/projects/${project.id}`}
           className="hover:text-[var(--color-accent)] hover:underline"
@@ -497,7 +496,7 @@ function ProjectRow({
           {project.folio ?? "—"}
         </Link>
       </td>
-      <td className="px-3 py-2">
+      <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap">
         <Link
           href={`/pmo/projects/${project.id}`}
           className="text-[var(--color-primary)] hover:text-[var(--color-accent)] hover:underline"
@@ -505,18 +504,20 @@ function ProjectRow({
           {project.name}
         </Link>
       </td>
-      <td className="px-3 py-2 text-[var(--color-secondary)]">{programName}</td>
-      <td className="px-3 py-2 text-[var(--color-secondary)]">
+      <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap text-[var(--color-secondary)]">
+        {programName}
+      </td>
+      <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap text-[var(--color-secondary)]">
         {project.phase ?? "—"}
       </td>
-      <td className="px-3 py-2">
+      <td className="px-3.5">
         <span
           className="inline-flex h-2.5 w-2.5 rounded-full"
           style={{ backgroundColor: healthColor }}
           aria-label={project.health_status ?? ""}
         />
       </td>
-      <td className="px-3 py-2 text-[var(--color-secondary)]">
+      <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap text-[var(--color-secondary)]">
         {project.pm_name ?? "—"}
       </td>
     </tr>

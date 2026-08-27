@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, Download, FileText, FolderKanban, Layers, TrendingUp, Users } from "lucide-react";
 
 import { BackLink } from "@/components/back-link";
 import { KpiBand, KpiCard } from "@/components/kpi-card";
@@ -11,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
 import { Gauge, Legend, PALETTE, Pie, RiskMatrix, colorSalud, serieColor, TrendLines } from "@/components/dashboard-charts";
@@ -225,7 +225,7 @@ export default function ProgramSummaryPage() {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] text-[var(--color-tertiary)]">
-            <Layers className="h-6 w-6" aria-hidden />
+            <Icono nombre="folders" size={22} />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-[var(--color-primary)]">
@@ -252,7 +252,7 @@ export default function ProgramSummaryPage() {
               disabled={downloadingReport}
               title="Descarga el reporte de status del programa en PDF"
             >
-              <Download className="mr-1 h-3.5 w-3.5" aria-hidden />
+              <Icono nombre="download" size={15} />
               {downloadingReport ? "Generando…" : "Status (PDF)"}
             </Button>
           ) : null}
@@ -263,7 +263,7 @@ export default function ProgramSummaryPage() {
             disabled={downloadingOrganigrama}
             title="Descarga el organigrama con utilización del programa en XLSX"
           >
-            <Users className="mr-1 h-3.5 w-3.5" aria-hidden />
+            <Icono nombre="users" size={15} />
             {downloadingOrganigrama ? "Generando…" : "Organigrama (XLSX)"}
           </Button>
         </div>
@@ -279,8 +279,8 @@ export default function ProgramSummaryPage() {
       >
         {(
           [
-            { v: "overview" as const, label: "Resumen", icon: <Layers className="h-3.5 w-3.5" aria-hidden /> },
-            { v: "reports" as const, label: "Reportes", icon: <FileText className="h-3.5 w-3.5" aria-hidden /> },
+            { v: "overview" as const, label: "Resumen", icon: <Icono nombre="folders" size={14} /> },
+            { v: "reports" as const, label: "Reportes", icon: <Icono nombre="file-text" size={14} /> },
           ]
         ).map((opt) => {
           const active = activeTab === opt.v;
@@ -336,7 +336,7 @@ export default function ProgramSummaryPage() {
 
         <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
-            <TrendingUp className="h-4 w-4" aria-hidden /> Presupuesto agregado
+            <Icono nombre="trending-up" size={16} /> Presupuesto agregado
           </div>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div>
@@ -418,91 +418,99 @@ export default function ProgramSummaryPage() {
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
-          <AlertTriangle className="h-4 w-4" aria-hidden /> Riesgos top del programa
+          <Icono nombre="triangle-alert" size={16} /> Riesgos top del programa
         </div>
         {data.top_risks.length === 0 ? (
           <p className="text-sm text-[var(--color-tertiary)]">
             Sin riesgos críticos (severidad ≥ 13) abiertos.
           </p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-                <th className="py-2">Folio</th>
-                <th className="py-2">Riesgo</th>
-                <th className="py-2">Proyecto</th>
-                <th className="py-2">Estado</th>
-                <th className="py-2 text-right">Severidad</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.top_risks.map((r) => (
-                <tr key={r.id} className="border-t border-[var(--border-subtle)]">
-                  <td className="py-2 font-mono text-xs">{r.folio ?? "—"}</td>
-                  <td className="py-2">{r.title}</td>
-                  <td className="py-2">
-                    <Link
-                      href={`/pmo/projects/${r.project_id}`}
-                      className="text-[var(--color-accent)] hover:underline"
-                    >
-                      {r.project_name ?? "—"}
-                    </Link>
-                  </td>
-                  <td className="py-2">{r.status}</td>
-                  <td className="py-2 text-right font-semibold tabular-nums">
-                    {r.severity}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="h-8.5 border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)] shadow-[var(--linea-surco)]">
+                  <th className="w-24 px-3.5">Folio</th>
+                  <th className="px-3.5">Riesgo</th>
+                  <th className="w-40 px-3.5">Proyecto</th>
+                  <th className="w-28 px-3.5">Estado</th>
+                  <th className="w-24 px-3.5 pr-3.5 text-right">Severidad</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.top_risks.map((r) => (
+                  <tr key={r.id} className="h-10.5 border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)]">
+                    <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap text-[12px] tracking-[0.01em] text-[var(--color-tertiary)]">
+                      {r.folio ?? "—"}
+                    </td>
+                    <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap">{r.title}</td>
+                    <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap">
+                      <Link
+                        href={`/pmo/projects/${r.project_id}`}
+                        className="text-[var(--color-accent)] hover:underline"
+                      >
+                        {r.project_name ?? "—"}
+                      </Link>
+                    </td>
+                    <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap">{r.status}</td>
+                    <td className="px-3.5 pr-3.5 text-right font-mono font-semibold tabular-nums">
+                      {r.severity}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
-          <FolderKanban className="h-4 w-4" aria-hidden /> Proyectos del programa
+          <Icono nombre="folder" size={16} /> Proyectos del programa
         </div>
         {data.projects.length === 0 ? (
           <p className="text-sm text-[var(--color-tertiary)]">
             Este programa aún no tiene proyectos.
           </p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-[var(--color-tertiary)]">
-                <th className="py-2">Folio</th>
-                <th className="py-2">Nombre</th>
-                <th className="py-2">Fase</th>
-                <th className="py-2">Salud</th>
-                <th className="py-2">PM</th>
-                <th className="py-2 text-right">Avance</th>
-                <th className="py-2 text-right">Plan / Real</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.projects.map((p) => (
-                <tr key={p.id} className="border-t border-[var(--border-subtle)]">
-                  <td className="py-2 font-mono text-xs">{p.folio ?? "—"}</td>
-                  <td className="py-2">
-                    <Link
-                      href={`/pmo/projects/${p.id}`}
-                      className="text-[var(--color-accent)] hover:underline"
-                    >
-                      {p.name}
-                    </Link>
-                  </td>
-                  <td className="py-2">{p.phase ?? "—"}</td>
-                  <td className="py-2">{healthBadge(p.health_status)}</td>
-                  <td className="py-2">{p.pm_name ?? "—"}</td>
-                  <td className="py-2 text-right tabular-nums">{p.progress}%</td>
-                  <td className="py-2 text-right tabular-nums text-xs">
-                    {money(p.budget, monedaDelPrograma)} / {money(p.actual_budget, monedaDelPrograma)}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="h-8.5 border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)] shadow-[var(--linea-surco)]">
+                  <th className="w-24 px-3.5">Folio</th>
+                  <th className="px-3.5">Nombre</th>
+                  <th className="w-28 px-3.5">Fase</th>
+                  <th className="w-16 px-3.5">Salud</th>
+                  <th className="w-32 px-3.5">PM</th>
+                  <th className="w-20 px-3.5 pr-3.5 text-right">Avance</th>
+                  <th className="w-40 px-3.5 pr-3.5 text-right">Plan / Real</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.projects.map((p) => (
+                  <tr key={p.id} className="h-10.5 border-b border-[var(--border-subtle)] shadow-[var(--linea-surco)]">
+                    <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap text-[12px] tracking-[0.01em] text-[var(--color-tertiary)]">
+                      {p.folio ?? "—"}
+                    </td>
+                    <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap">
+                      <Link
+                        href={`/pmo/projects/${p.id}`}
+                        className="text-[var(--color-accent)] hover:underline"
+                      >
+                        {p.name}
+                      </Link>
+                    </td>
+                    <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap">{p.phase ?? "—"}</td>
+                    <td className="px-3.5">{healthBadge(p.health_status)}</td>
+                    <td className="overflow-hidden px-3.5 text-ellipsis whitespace-nowrap">{p.pm_name ?? "—"}</td>
+                    <td className="px-3.5 pr-3.5 text-right font-mono tabular-nums">{p.progress}%</td>
+                    <td className="px-3.5 pr-3.5 text-right font-mono text-[12px] tabular-nums">
+                      {money(p.budget, monedaDelPrograma)} / {money(p.actual_budget, monedaDelPrograma)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
         </>

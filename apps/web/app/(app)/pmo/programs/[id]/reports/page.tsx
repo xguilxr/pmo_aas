@@ -7,9 +7,9 @@
  * detalle del programa (`?tab=reports`).
  */
 import { useParams } from "next/navigation";
-import { Network } from "lucide-react";
 
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Icono } from "@/components/ui/icono";
 import { ScopedReportsPanel } from "@/components/reports/level2/ScopedReportsPanel";
 
 export default function ProgramReportsPage() {
@@ -28,12 +28,12 @@ export default function ProgramReportsPage() {
       />
       <header>
         <div className="flex items-center gap-2">
-          <Network className="h-6 w-6 text-zinc-700" />
-          <h1 className="text-2xl font-semibold text-zinc-900">
+          <Icono nombre="folders" size={20} className="text-[var(--text-secondary)]" />
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
             Reportes del Programa (Nivel 2)
           </h1>
         </div>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-[var(--text-tertiary)]">
           Plantillas Nivel 2 con scope filtrado a este programa.
         </p>
       </header>
