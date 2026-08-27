@@ -11,9 +11,9 @@
  *   tarjetas "Foco PM" (qué pasó / responsable / fecha / siguiente acción).
  */
 import { useState } from "react";
-import { RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -49,28 +49,22 @@ export function HealthStatusCard({
   onEvaluate?: () => void;
 }) {
   return (
-    <article className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
-          Salud
-        </p>
-        <span className="rounded-full border border-[var(--border-subtle)] px-2 py-0.5 text-[10px] text-[var(--text-tertiary)]">
-          {source === "manual" ? "Declarada por PM" : "Automática"}
-        </span>
-      </div>
-      <div className="mt-2 flex items-center gap-2">
-        <span className={cn("h-3.5 w-3.5 rounded-full", healthTone(value))} />
-        <span className="text-lg font-semibold text-[var(--text-primary)]">
+    <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-4 py-3.5 shadow-[var(--relieve-isla)]">
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
+        Salud
+      </p>
+      <div className="mt-2.5 flex items-center gap-2">
+        <span className={cn("h-2.5 w-2.5 rounded-full", healthTone(value))} />
+        <span className="text-[19px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
           {HEALTH_LABEL[value]}
         </span>
       </div>
-      {source === "manual" && reason ? (
-        <p className="mt-1 line-clamp-2 text-xs text-[var(--text-secondary)]" title={reason}>
-          {reason}
-        </p>
-      ) : null}
+      <p className="mt-1 line-clamp-2 text-[11.5px] leading-[1.5] text-[var(--text-tertiary)]" title={reason ?? undefined}>
+        {source === "manual" ? "Declarada por PM" : "Automática"}
+        {source === "manual" && reason ? ` · ${reason}` : ""}
+      </p>
       {detail ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
           {detail.dimensions.map((d) => (
             <span
               key={d.key}
@@ -83,16 +77,16 @@ export function HealthStatusCard({
           ))}
         </div>
       ) : null}
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <Button size="sm" variant="secondary" onClick={onDeclare}>
+          Declarar
+        </Button>
         {/* US-191: evaluación 5+1 del período con historial. */}
         {onEvaluate ? (
-          <Button size="sm" onClick={onEvaluate}>
-            Evaluar salud
+          <Button size="sm" variant="secondary" onClick={onEvaluate}>
+            Evaluar 5+1
           </Button>
         ) : null}
-        <Button size="sm" variant="secondary" onClick={onDeclare}>
-          Declarar salud
-        </Button>
       </div>
     </article>
   );
@@ -173,7 +167,7 @@ export function HealthDeclareModal({
               onClick={onBackToAuto}
               className="gap-1.5"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <Icono nombre="rotate-ccw" size={14} />
               Volver a automática
             </Button>
           ) : (
@@ -337,7 +331,7 @@ export function HealthWhyPanel({ detail }: { detail: HealthDetail }) {
   return (
     <section
       aria-label="Por qué esta salud"
-      className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--color-surface)] p-5"
+      className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] px-4 py-3.5 shadow-[var(--relieve-isla)]"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-[var(--text-primary)]">
