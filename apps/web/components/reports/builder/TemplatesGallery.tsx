@@ -1,8 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, Trash2 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
+import { Icono } from "@/components/ui/icono";
 import type { ReportBuilderTemplate } from "@/lib/api/report-builder";
 
 type Props = {
@@ -37,7 +35,7 @@ export function TemplatesGallery({
   }
 
   return (
-    <div className="space-y-3 border-b border-zinc-200 bg-white p-3 text-xs">
+    <div className="space-y-3 border-b border-[var(--border-default)] bg-[var(--color-surface)] p-3.5 text-[12px]">
       {seeds.length > 0 && (
         <Section title="Plantillas seed">
           {seeds.map((t) => (
@@ -73,7 +71,7 @@ export function TemplatesGallery({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+      <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
         {title}
       </h3>
       <div className="flex flex-wrap gap-1.5">{children}</div>
@@ -91,11 +89,11 @@ type ChipProps = {
 
 function TemplateChip({ tpl, owned, onLoad, onTogglePublish, onDelete }: ChipProps) {
   return (
-    <div className="flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 pl-3 pr-1.5 py-0.5">
+    <div className="flex items-center gap-1 rounded-full border border-[var(--border-default)] bg-[var(--color-subtle)] py-0.5 pl-3 pr-1.5 shadow-[var(--relieve-control)]">
       <button
         type="button"
         onClick={onLoad}
-        className="text-zinc-800 hover:text-zinc-900"
+        className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
         title={tpl.description ?? tpl.name}
       >
         {tpl.name}
@@ -104,24 +102,20 @@ function TemplateChip({ tpl, owned, onLoad, onTogglePublish, onDelete }: ChipPro
         <button
           type="button"
           onClick={onTogglePublish}
-          className="rounded p-0.5 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700"
+          className="rounded-[var(--radius-sm)] p-0.5 text-[var(--text-tertiary)] hover:bg-[var(--color-muted)] hover:text-[var(--text-secondary)]"
           title={tpl.visibility === "project" ? "Despublicar" : "Publicar al proyecto"}
         >
-          {tpl.visibility === "project" ? (
-            <EyeOff className="h-3 w-3" />
-          ) : (
-            <Eye className="h-3 w-3" />
-          )}
+          <Icono nombre={tpl.visibility === "project" ? "eye-off" : "eye"} size={13} />
         </button>
       )}
       {owned && onDelete && (
         <button
           type="button"
           onClick={onDelete}
-          className="rounded p-0.5 text-red-500 hover:bg-red-50 hover:text-red-700"
+          className="rounded-[var(--radius-sm)] p-0.5 text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-bg)]"
           title="Borrar"
         >
-          <Trash2 className="h-3 w-3" />
+          <Icono nombre="bin" size={13} />
         </button>
       )}
     </div>
