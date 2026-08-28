@@ -84,6 +84,13 @@ jobs:
       - name: Encabezado documental (DOC-01)
         run: python scripts/check_docs.py
 
+      # CTX-07 — el índice del conocimiento se genera y no se edita a mano.
+      # Va en este job por el mismo criterio que DOC-01: lee texto, tarda
+      # segundos y no depende de qué código cambió. Sin este paso el índice
+      # envejece en silencio, que es la única forma en que un índice hace daño.
+      - name: Índice del conocimiento al día (CTX-07)
+        run: python scripts/indexar.py --verificar
+
       # MCS INF-02 — la paridad de versiones declarada se respeta de verdad.
       #
       # Va aquí y no en un trabajo propio porque lee dos archivos de texto y

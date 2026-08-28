@@ -56,11 +56,10 @@ Reglas blandas (no anulan 1 US = 1 commit ni la revisión del owner):
 - **Amenazas y controles**: `docs/architecture/modelo-amenazas.md`. Ruta sin
   autenticación o destino externo nuevo → primero el modelo, después el código.
 - **Lo irreversible se bloquea** (MCA AUT-01): `scripts/guard_irreversible.py`,
-  hook `PreToolUse`. Bloquea `--force` sin lease, `--no-verify`, push a `main`,
-  `alembic upgrade`/`downgrade`, `DROP`/`TRUNCATE`, `rm -rf`,
-  `reset --hard`/`clean -f` y `branch -D`. Pregunta ante `--force-with-lease`,
-  `gh issue close` y `commit --amend`. Un `ask` no frena con permisos
-  relajados; un `deny` sí. Trinquete: `apps/api/tests/test_mca_aut01_guard.py`.
+  hook `PreToolUse`. Borrados, migraciones, push a `main`, historia reescrita:
+  el patrón exacto vive en el script. Un `deny` frena con permisos relajados;
+  un `ask`, no. Ante un bloqueo se **reformula el comando**, no se relaja el
+  patrón. Trinquete: `apps/api/tests/test_mca_aut01_guard.py`.
 
 ## 1. Qué se carga siempre, y qué bajo demanda
 
@@ -77,16 +76,22 @@ Reglas blandas (no anulan 1 US = 1 commit ni la revisión del owner):
 | Se abre | Cuándo |
 |---|---|
 | `docs/epics/EP0XX-*.md` | Al tocar ese epic; el índice dice cuál |
-| `docs/project-management/SPRINT-BACKLOG.md` | Al planear, no al ejecutar |
-| `docs/epics/DECISIONS.md` | Ante duda arquitectónica |
-| `docs/epics/DB-CHANGES.md` | Si el cambio toca esquema |
-| Skill `verificar` | Al comprobar que algo funciona |
+| `docs/epics/DECISIONS.md` · `DB-CHANGES.md` | Duda arquitectónica · cambio de esquema |
+| `docs/architecture/mapa-{backend,frontend}.md` | Al tocar `apps/{api,web}` — sin re-explorar |
 | `docs/architecture/modelo-amenazas.md` | Si se cruza una frontera de confianza |
-| `docs/architecture/mapa-backend.md` | Al tocar `apps/api` — tablas, routers, scoping, sin re-explorar |
-| `docs/architecture/mapa-frontend.md` | Al tocar `apps/web` — rutas, componentes, tokens, sin re-explorar |
+| Skill `verificar` | Al comprobar que algo funciona |
 
-No se explora fuera de estas listas: el contexto es finito y el CI hace cumplir
-el techo (MCA CTX-04; mediciones fechadas en `conformidad.yaml`).
+**Lo demás se busca, no se explora** (CTX-07). Son 91 vivos; solo estos ocho
+tienen ruta desde aquí:
+
+```bash
+python scripts/estado.py                       # rama, migraciones, frescura
+python scripts/indexar.py buscar "<términos>"  # → archivo + rango de líneas
+```
+
+`buscar` da la sección y su `sed -n`, no el documento entero; `docs/INDICE.md`
+es el mapa legible. Abrir el archivo completo teniendo el rango gasta contexto
+que el CI mide (MCA CTX-04; mediciones en `conformidad.yaml`).
 
 ## 2. Numeración de identificadores
 
@@ -183,10 +188,10 @@ Paralelizar solo lanes sin migraciones ni schemas compartidos.
 
 ## 9. Cuando dudar
 
+Los dos frenos duros están en §3 y no se repiten. Al planear, además:
+
 - Item que no calza en BUG/ENH/US → **preguntar**.
 - Sin bloque activo razonable → **proponer** «Bloque X+1» y esperar.
-- Schema sin migración clara → **parar**; `DB-CHANGES.md` + `DECISIONS.md`.
-- Fix de más de 10 archivos → **parar** y validar con el owner.
 
 ## 10. Memoria y contexto
 
