@@ -2,7 +2,7 @@
 tipo: gestion
 responsable: propietario
 estado: vigente
-revisado: 2026-08-19
+revisado: 2026-08-28
 revisar_cada: 30d
 ---
 
@@ -15,13 +15,16 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Sin US activa.** **Revamp v2 terminado** (2026-08-27, batch del owner;
-detalle en `SPRINT-DONE-HISTORY.md`). Lo pendiente:
-`docs/epics/drafts/plan-post-revamp.md` (US desde 227).
+**Revamp v2 — el styling está, el diseño no** (owner, 2026-08-28). Sigue
+abierto: QA de vista web (el owner levanta la lista → BUG-093+), **mobile sin
+revisar**, y los **diseños de dashboards y de reportes**, que faltan. Los dos
+últimos bloquean el bloque G del plan post-revamp: un renderer determinista
+necesita el diseño antes que el código.
 
-**Fase 2 mergeada** (PR #595, US-203–US-222, mig. `0112`–`0115`). Falta
-**desplegar `0105`–`0115`** leyendo el registro (abajo). EP021: las cuatro
-preguntas contestadas (DEC-033) — desbloquea **US-223 a US-226**.
+**Fase 2 mergeada** (PR #595, US-203–US-222). Falta **desplegar `0105`–`0115`**
+leyendo el registro (abajo). EP021: **US-224 entregada**; quedan US-223, US-225
+y US-226. **US-243 entregada**: el conocimiento se busca por sección y el
+estado se deriva (`CLAUDE.md` §1).
 
 > Próximo ID libre: `python scripts/proximo_id.py`, contra `origin/main`
 > actualizado. Se deriva, no se almacena (MCA CTX-03).
@@ -32,36 +35,31 @@ preguntas contestadas (DEC-033) — desbloquea **US-223 a US-226**.
 
 ### Reestructura de plataforma — lo que queda
 
-Planeación en `docs/epics/drafts/reestructura-*.md`; mapas en
-`docs/architecture/mapa-{backend,frontend}.md`. W1 y Fase 2 cerradas. Queda **W3**
-RLS de Postgres y **W8** el `drop` de `business_units`/`departments` cuando el
-contador de compat lo confirme.
+W1 y Fase 2 cerradas. Queda **W3** RLS de Postgres (#599–#601) y **W8** el
+`drop` de `business_units`/`departments` cuando el contador de compat lo
+confirme. Planeación en `docs/epics/drafts/reestructura-*.md`.
 
 ### Producto — abierto
 
-- [ ] **QA revamp (iPad/PC)** — el owner está levantando bugs visuales;
-  al llegar la lista: BUG-093+ vía triage. Sospechosos y US-239 (clave de
-  proyecto en URL): `plan-post-revamp-especificaciones.md`.
+- [ ] **US-239** — clave de proyecto estilo Jira en la URL (mig. 0120).
+- [ ] **Cerrar #588–#592** (US-198–202): mergeadas desde el 2026-08-19 con
+  `status:ready` intacta. Las cierra el owner al verificar (§3).
+- [ ] **Decidir cómo se traza un batch.** US-203–222 se mergearon sin issues:
+  o se crean al cerrar el lote, o se escribe que el lote se traza por commit y
+  `SPRINT-DONE-HISTORY.md` es su registro. Hoy no está escrito ninguna.
 
-- [ ] **Desplegar `0105`–`0115`** (#584/#585, #594 y Fase 2). `0105`–`0107`
-  cierran **todas las sesiones vivas** (ADR-033) y el panel pasa a dos pasos
-  (ADR-035): ten acceso a tu correo. Mirar el registro: `0110` lista los
-  `projects.type` sin traducir, `0111` los inquilinos con `org_label` y `0115`
-  cuántas membresías sembró.
+- [ ] **Desplegar `0105`–`0115`.** `0105`–`0107` cierran **todas las sesiones
+  vivas** (ADR-033) y el panel pasa a dos pasos (ADR-035): ten acceso a tu
+  correo. Registro a mirar: `0110` los `projects.type` sin traducir, `0111` los
+  inquilinos con `org_label`, `0115` cuántas membresías sembró.
 - [ ] **Hueco antes de cerrar ventanas de compat.** `GET /projects` mete `phase`
   y `type` crudos en el `IN (...)` sin normalizar ni registrar: el contador no ve
   a quien filtra con el nombre viejo. Ver `core/compatibilidad.py`.
-- [ ] **Decidir los nueve follow-ups del PR #594**, listados ahí con su evidencia.
-- [ ] **Contrastar los umbrales de D-4 contra cartera real.** Los de US-196 son
-  razonados, no medidos; se ajustan en `settings`.
-- [ ] **`design-system/tokens.md`** describe una paleta previa a D-7 y ADR-023.
-  Marcado `reemplazado`; reescribirlo es trabajo de diseño.
-- [ ] **Las cuatro preguntas de `EP021-catalogo-de-ia.md`.** Son definiciones, no
-  aprobaciones; la cuarta decide si hay un segundo sistema de autorización.
+- [ ] **Los nueve follow-ups del PR #594**, listados ahí con su evidencia.
+- [ ] **Umbrales de D-4 contra cartera real** (US-196: razonados, no medidos).
+- [ ] **`design-system/tokens.md`**: paleta previa a D-7/ADR-023, marcado
+  `reemplazado`. Reescribirlo es trabajo de diseño.
 - [ ] **DCMA 14-point.** La línea base que lo bloqueaba ya está (US-212).
-
-- 2026-08-07 — **Conformidad cerrada** (ADR-036): `docs/conformidad/asvs-l1.md`.
-  Vuelve solo con un requisito contractual o un incidente.
 
 ---
 

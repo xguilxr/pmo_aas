@@ -32,7 +32,7 @@ revisar_cada: nunca
 | [`project-management/LESSONS.md`](project-management/LESSONS.md) | Lecciones vivas | 2026-08-12 | 26 |
 | [`project-management/SPRINT-BACKLOG.md`](project-management/SPRINT-BACKLOG.md) | ⏸️ Deferred — re-evaluación post EP020 · ✅ DONE · 📋 Backlog v2.0 (post-v1.x) | 2026-08-12 | 120 |
 | [`project-management/SPRINT-DONE-HISTORY.md`](project-management/SPRINT-DONE-HISTORY.md) | Ronda 2026-08-27 — Revamp de diseño v2 (batch del owner, sin US) · Ronda 2026-08-06 — Ola 2, `SEG-04` y ver… | 2026-08-12 | 609 |
-| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · 📥 INBOX / TRIAGE · 📦 Deferred, DONE y Backlog v2.0 | 2026-08-19 | 72 |
+| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · 📥 INBOX / TRIAGE · 📦 Deferred, DONE y Backlog v2.0 | 2026-08-28 | 70 |
 
 ## epica
 
