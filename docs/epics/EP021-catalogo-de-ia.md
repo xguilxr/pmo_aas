@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-20
+revisado: 2026-08-28
 revisar_cada: 30d
 ---
 
@@ -171,7 +171,7 @@ Orden por lo que desbloquea, y cada bloque es una US:
 |---|---|---|
 | **US-222** ✅ | Consumo de IA por inquilino: trabajos, tokens y reparto por modelo, seis meses. `GET /admin/ai/usage` + panel en `/admin/ai`. **Sin dinero, a propósito** (ver abajo) | Nada — `AIJob` ya lo tenía |
 | **US-223** | Catálogo de **contexto** por inquilino: bloques de vocabulario que se añaden al prompt del sistema sin tocar el contrato de salida | ✅ P1 = (b) |
-| **US-224** | Catálogo de **plantillas de operación** (las variantes que el producto trae), de solo lectura con selección | ✅ P1 = (c) |
+| **US-224** ✅ | Catálogo de **plantillas de operación** (las variantes que el producto trae), de solo lectura con selección | ✅ P1 = (c) |
 | **US-225** | Roles de agente como **personalidad + techo**, actuando en nombre de una persona | ✅ P4 = en nombre de una persona (DEC-033) |
 | **US-226** | Herramientas de **lectura** invocables, con la frontera de AM-04 delante | ✅ P2 = solo leen |
 
@@ -223,6 +223,58 @@ cruzando el año; un mes sin trabajos con ceros; suma por mes; un trabajo sin
 tokens; el reparto por modelo ordenado y acotado al mes en curso; un modelo nulo;
 los fallidos junto al total; **que la respuesta no contenga dinero**; aislamiento
 por inquilino; lo anterior a la ventana no entra.
+
+### US-224 — entregada el 2026-08-28
+
+`apps/api/app/services/ai/catalogo.py` con **diez plantillas** en cinco
+categorías (proyecto, cartera, gobernanza, plan, calidad), y dos rutas:
+`GET /ai/plantillas` (filtrada por el modo del inquilino) y
+`POST /ai/plantillas/{id}/ejecutar`.
+
+Cada plantilla declara `entradas` —qué datos necesita, validado **antes** de
+gastar una llamada al proveedor— y `claves_salida`, el contrato que el producto
+va a leer, validado **después**. Entre las dos, un fallo del modelo se detecta
+en el borde y no tres capas más arriba, donde ya se parece a un bug del
+producto.
+
+**Decisiones que quedaron en el código:**
+
+- **La API no devuelve el texto del prompt.** `plantilla_publica()` omite
+  `sistema` a propósito: un prompt renderizado en una pantalla de
+  administración se lee como un campo, y un campo invita a editarlo. La
+  primera petición después de mostrarlo sería la opción (a) que P1 descartó.
+  Se expone lo que sirve para elegir —propósito, entradas, contrato, modo— y
+  nada que sugiera edición.
+- **El modo se declara por plantilla, no se descubre al fallar.** Groq de
+  plataforma se limita a minutas (DEC-017), así que las siete que redactan
+  narrativa exigen `byo` y el catálogo las oculta a quien está en `platform`.
+  Ofrecer lo que va a dar 409 al pulsar convierte un límite conocido en una
+  llamada de soporte. Las tres que sí corren en plataforma —lección aprendida,
+  explicación de indicador y extracción de RAID desde texto— son las que
+  reestructuran texto que ya existe.
+- **Media respuesta es un fallo, no un resultado.** Si al JSON le falta una
+  clave del contrato, la ruta devuelve `AI_CONTRATO_INCUMPLIDO` en vez de lo
+  que llegó. Media respuesta se pinta en la pantalla como si estuviera
+  completa, y el hueco lo descubre quien firma el documento.
+- **Todo `datos` entra envuelto como contenido no confiable.** La mayor parte
+  sale de campos que llenó un usuario —descripciones de cambio, notas de
+  cierre, nombres de tarea de un `.mpp`—, que es exactamente AM-03.
+- **Ninguna plantilla escribe** (P2). La salida es una propuesta que una
+  persona confirma, como el flujo minuta→RAID que ya existe.
+- **Una clave de más no rompe el contrato.** El contrato dice qué se lee, no
+  qué está prohibido traer; fallar por un `comentario_del_modelo` extra sería
+  frágil sin ganar nada.
+
+**Tests (`tests/test_us224_catalogo_plantillas.py`, 48):** que cada plantilla
+declare categoría, modo y contrato; que **el prompt pida literalmente las
+claves que el contrato promete** —la divergencia entre los dos es el fallo que
+nadie ve—; que ninguna pida una escritura; que la vista pública no filtre el
+prompt; el filtrado por modo; entradas vacías tratadas como ausentes; media
+respuesta detectada; y que el router no tenga ruta de alta, edición ni borrado.
+
+**Lo que falta para cerrar la fila del artboard:** la pantalla. Hoy el catálogo
+se consume por API; `/admin/ai` todavía no lo lista ni deja elegir. Es trabajo
+de frontend sin decisiones pendientes.
 
 ## Lo que sigue sin hacerse, y ahora por decisión escrita
 

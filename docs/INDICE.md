@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-91 documentos vivos · 61 archivados · 2633 secciones indexadas.
+91 documentos vivos · 61 archivados · 2635 secciones indexadas.
 
 ## gestion
 
@@ -54,7 +54,7 @@ revisar_cada: nunca
 | [`epics/EP018-documents-artifacts.md`](epics/EP018-documents-artifacts.md) | Objetivo de negocio · Decisiones arquitectónicas asociadas (a registrar en DECISIONS.md) · US iniciales (Sp… | 2026-08-12 | 57 |
 | [`epics/EP019-changes-approval.md`](epics/EP019-changes-approval.md) | Objetivo de negocio · Decisiones arquitectónicas asociadas · US iniciales · Migraciones Alembic previstas | 2026-08-12 | 51 |
 | [`epics/EP020-report-builder.md`](epics/EP020-report-builder.md) | Cambios recientes (2026-05-23) · Objetivo de negocio · Decisiones arquitectónicas (registradas en DECISIONS… | 2026-08-12 | 471 |
-| [`epics/EP021-catalogo-de-ia.md`](epics/EP021-catalogo-de-ia.md) | Por qué esto es una epic y no la US-220 · Lo que ya existe, y por eso no hay que rehacerlo · Las cuatro pre… | 2026-08-20 | 263 |
+| [`epics/EP021-catalogo-de-ia.md`](epics/EP021-catalogo-de-ia.md) | Por qué esto es una epic y no la US-220 · Lo que ya existe, y por eso no hay que rehacerlo · Las cuatro pre… | 2026-08-28 | 315 |
 | [`epics/README.md`](epics/README.md) | Índice de épicas · Lo que no se repite aquí · Archivos de soporte | 2026-08-12 | 70 |
 | [`epics/drafts/EP020-secciones-atomicas.md`](epics/drafts/EP020-secciones-atomicas.md) | Convenciones · Categorías · Parámetros transversales (aplican a casi toda sección operativa) · Modos de com… | 2026-05-22 | 1408 |
 | [`epics/drafts/auto-wbs-position.md`](epics/drafts/auto-wbs-position.md) | 1. Problema · 2. Propuesta (recomendada) · 3. Decisiones abiertas (para el owner) · 4. Riesgos / costo | 2026-06-29 | 80 |
@@ -101,7 +101,7 @@ revisar_cada: nunca
 |---|---|---|---|
 | [`00-overview.md`](00-overview.md) | 1. Misión · 2. Problemas que resolvemos · 3. Personas / Roles · 4. Alcance MVP vs Futuro | 2026-08-12 | 112 |
 | [`ai/README.md`](ai/README.md) | Archivos activos · Runbooks de operación · Arquitectura vigente · Historial y diseño superseded | 2026-08-12 | 63 |
-| [`ai/prompts-catalog.md`](ai/prompts-catalog.md) | 1. Catálogo central — `apps/api/app/services/ai/prompts.py` · 2. Prompts inline (vivos en su endpoint) · 3.… | 2026-08-12 | 208 |
+| [`ai/prompts-catalog.md`](ai/prompts-catalog.md) | 0. Los dos catálogos, y por qué son dos · 1. Catálogo central — `apps/api/app/services/ai/prompts.py` · 2. … | 2026-08-28 | 226 |
 | [`dominio/04-GUIA-ESTILO.md`](dominio/04-GUIA-ESTILO.md) | 1. Tratamiento personal · 2. Anglicismos · 3. Números · 4. Fechas y horas | 2026-08-12 | 172 |
 | [`testing/README.md`](testing/README.md) | Pirámide · Cobertura objetivo · Convenciones · CI/CD gates | 2026-08-12 | 99 |
 | [`testing/multi-tenant-isolation.md`](testing/multi-tenant-isolation.md) | Setup de fixtures · TC-MT-001 — Reads de proyectos · TC-MT-002 — Reads cross-módulo · TC-MT-003 — Escritura… | 2026-08-12 | 245 |

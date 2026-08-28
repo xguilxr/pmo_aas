@@ -2,7 +2,7 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-28
 revisar_cada: 180d
 ---
 
@@ -14,6 +14,24 @@ revisar_cada: 180d
 Inventario real de prompts del sistema, ubicación exacta en código, y reglas de cambio.
 
 > **Política:** cambiar un prompt en producción tiene blast radius alto (cambia output que el usuario edita). Va por PR como cualquier otro código. Cuando un prompt cambia, anótalo abajo con commit/fecha.
+
+---
+
+## 0. Los dos catálogos, y por qué son dos
+
+Desde US-224 hay **dos** sitios con prompts, y la diferencia no es de
+organización sino de contrato:
+
+| | `services/ai/prompts.py` | `services/ai/catalogo.py` |
+|---|---|---|
+| Qué contiene | Los prompts de las funciones fijas (minuta, reporte, tweak, memoria) | Las **plantillas de operación** que el usuario elige (US-224) |
+| Quién lo invoca | El worker o un endpoint concreto, siempre el mismo | El usuario, desde el catálogo, eligiendo cuál |
+| Contrato de salida | En el docstring y en el validador de cada consumidor | Declarado en el dato (`claves_salida`) y validado en el borde |
+| Se ve por API | No | Sí, **sin el texto del prompt** — ver EP021 |
+
+Un prompt nuevo va a `catalogo.py` si el usuario elige cuándo usarlo, y a
+`prompts.py` si lo dispara una función del producto. La política de cambio de
+abajo aplica a los dos por igual.
 
 ---
 
