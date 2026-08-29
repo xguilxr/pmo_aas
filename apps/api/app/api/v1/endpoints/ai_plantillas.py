@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -74,7 +73,7 @@ class EjecutarResponse(BaseModel):
     resultado: dict[str, Any]
 
 
-def _tenant(cu: CurrentUser) -> UUID:
+def _tenant(cu: CurrentUser) -> str:
     tenant_id = cu.effective_tenant_id
     if tenant_id is None:
         raise AppError(403, "NO_TENANT", "La sesión no tiene inquilino activo")

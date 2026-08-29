@@ -49,6 +49,7 @@ lo que tiene envejeció.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 # Modos de IA del inquilino en los que una plantilla puede correr.
 #
@@ -598,7 +599,7 @@ def obtener(plantilla_id: str) -> Plantilla | None:
     return CATALOGO.get(plantilla_id)
 
 
-def plantilla_publica(p: Plantilla) -> dict:
+def plantilla_publica(p: Plantilla) -> dict[str, Any]:
     """La vista que sale por la API. **Sin `sistema`** — ver el encabezado."""
     return {
         "id": p.id,
@@ -612,7 +613,7 @@ def plantilla_publica(p: Plantilla) -> dict:
     }
 
 
-def validar_entradas(p: Plantilla, datos: dict) -> list[str]:
+def validar_entradas(p: Plantilla, datos: dict[str, Any]) -> list[str]:
     """Qué entradas declaradas faltan. Lista vacía = se puede llamar al modelo."""
     return [
         campo
@@ -621,7 +622,7 @@ def validar_entradas(p: Plantilla, datos: dict) -> list[str]:
     ]
 
 
-def validar_salida(p: Plantilla, salida: dict | None) -> list[str]:
+def validar_salida(p: Plantilla, salida: dict[str, Any] | None) -> list[str]:
     """Qué claves del contrato faltan en la respuesta del modelo.
 
     Se comprueba la presencia, no el tipo: el contrato dice qué claves lee el
