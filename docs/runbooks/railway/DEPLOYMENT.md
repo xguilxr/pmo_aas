@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
@@ -131,19 +131,27 @@ numReplicas = 2
 
 ## 3. Migraciones de base de datos
 
-### 3.1 Alembic en build step
+### 3.1 Alembic en el arranque del contenedor, no en el build
 
-Alembic corre automático en el `buildCommand` del servicio `api`:
+`apps/api/railway.toml` usa `builder = "DOCKERFILE"` y no declara
+`buildCommand` — Alembic corre en el `CMD` del `Dockerfile`, al **arrancar**
+el contenedor, no al construir la imagen:
 
-```bash
-buildCommand = "pip install -r requirements.txt && alembic upgrade head"
+```dockerfile
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]
 ```
 
 **Flujo:**
-1. Build job starts → `pip install`.
-2. **Alembic runs** → aplica migraciones pending en `apps/api/alembic/versions/`.
-3. Si success → servicio arranca.
-4. Si error → build falla, deploy se cancela, versión anterior sigue live.
+1. La imagen se construye (sin tocar la base de datos).
+2. Railway arranca el contenedor → **primero corre `alembic upgrade head`**
+   contra la base real.
+3. Si success → arranca `uvicorn` y el servicio queda vivo.
+4. Si error → el contenedor no llega a levantar `uvicorn`; el healthcheck
+   falla y Railway no promueve el deploy (la versión anterior sigue live).
+
+Esto implica que **cada redeploy del servicio `api` aplica las migraciones
+pendientes**, sin un paso manual aparte. No hay un `buildCommand` con Alembic
+en ningún archivo de este repo — si ves esa idea en otro lugar, está mal.
 
 ### 3.2 Crear una migración
 
@@ -178,14 +186,17 @@ Considera un backup antes de una migración destructiva.
 
 ### 3.4 Migraciones largas
 
-Para migraciones que toman > 30s, no usar `buildCommand`:
+Como Alembic corre en el `CMD` (§3.1), una migración de más de unos segundos
+retrasa el arranque del contenedor entero — el healthcheck no responde hasta
+que `alembic upgrade head` termina. Para una migración que se sepa larga
+(> 30s), aplícala primero como job suelto para que el redeploy normal la
+encuentre ya hecha y pase de largo:
 
 ```bash
-# En cambio, ejecutar antes de release como one-off job
 railway run --service api alembic upgrade head
 
-# Luego: mergea la rama con .py de migración
-# Railway detecta el cambio pero no re-runea Alembic (ya ejecutado)
+# Luego mergea la rama con el .py de la migración: el CMD la vuelve a
+# invocar, pero `alembic upgrade head` no hace nada si ya está aplicada.
 ```
 
 ---

@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
@@ -117,7 +117,6 @@ servicios para reflejarlos (ver [`docs/runbooks/railway/SETUP.md`](../railway/SE
 
 - `api` → `ALLOWED_ORIGINS` = `https://app.pmo-aas.com,https://www.pmo-aas.com`
 - `web` → `NEXT_PUBLIC_API_URL` = `https://api.pmo-aas.com`
-- `web` → `NEXTAUTH_URL` = `https://app.pmo-aas.com`
 
 Dispara el redeploy de `api` y `web` al guardar.
 
@@ -246,8 +245,8 @@ curl -I https://pmo-aas.com/login
       Railway; CNAME en Cloudflare (DNS only).
 - [ ] `https://app.pmo-aas.com/api/health` y `https://api.pmo-aas.com/health`
       devuelven 200 con cert Let's Encrypt válido.
-- [ ] `ALLOWED_ORIGINS`, `NEXT_PUBLIC_API_URL`, `NEXTAUTH_URL` en
-      Railway actualizados y servicios redeployados.
+- [ ] `ALLOWED_ORIGINS` y `NEXT_PUBLIC_API_URL` en Railway actualizados y
+      servicios redeployados (no hay `NEXTAUTH_URL`: no se usa NextAuth).
 - [ ] CNAME `www` apuntando a HostGator con proxy Cloudflare (naranja)
       + Full (strict).
 - [ ] Redirect Rule apex → `app.pmo-aas.com` (301) funcionando.
