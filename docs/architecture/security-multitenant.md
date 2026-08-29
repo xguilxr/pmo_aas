@@ -2,14 +2,14 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
 # Seguridad y Multi-Tenant
 
 **ID:** `DOC-ARCH-SEC`
-**Última verificación contra código:** 2026-05-23.
+**Última verificación contra código:** 2026-08-29.
 
 ---
 
@@ -50,7 +50,10 @@ sequenceDiagram
     U->>W: POST /login {username|email, password}
     W->>A: POST /api/v1/auth/login
     A->>D: SELECT user WHERE (username=? OR email=?)
-    alt credenciales OK
+    alt locked_until > now (en retardo, AM-10)
+        A->>D: INSERT audit_log action='login_failed' (reason=backoff)
+        A-->>W: 403 ACCOUNT_LOCKED {segundos de espera restantes}
+    else credenciales OK
         A->>A: verify_password (bcrypt)
         A->>D: UPDATE users last_login=now(), failed_login_attempts=0
         A->>D: INSERT refresh_tokens (jti, user_id, expires_at)
@@ -58,10 +61,11 @@ sequenceDiagram
         A-->>W: {access_token, user, tenants[], active_tenant_id} + refresh cookie
     else credenciales inválidas
         A->>D: UPDATE users failed_login_attempts += 1
-        A->>D: INSERT audit_log action='login_failed'
-        alt intentos >= 5
-            A->>D: UPDATE users locked_until = now() + 15 min
+        alt fallos > umbral (MAX_FAILED_LOGIN_ATTEMPTS=5)
+            A->>D: UPDATE users locked_until = now() + espera (backoff exponencial, tope LOGIN_BACKOFF_MAX_SECONDS)
+            A->>D: INSERT audit_log action='login_backoff'
         end
+        A->>D: INSERT audit_log action='login_failed'
         A-->>W: 401 (mensaje genérico)
     end
 ```
@@ -91,7 +95,25 @@ Rate limiting de `/forgot-password` y `/reset` vía Redis (`services/rate_limit.
 
 ### 2.3 Cambio de tenant activo
 
-Un usuario puede pertenecer a varios tenants (típico: consultor PMO externo). Endpoint real:
+Un usuario puede pertenecer a varios tenants (típico: consultor PMO externo).
+Desde **US-214 / AM-16** la autorización va contra la tabla de membresías
+`user_tenant_memberships` (`apps/api/app/models/user_tenant_membership.py`),
+**no** contra el claim `tenant_ids` del JWT — el claim solo pinta el
+desplegable. Se verifica en dos puntos, ambos vía `tiene_membresia()`
+(`services/membresia.py`):
+
+- **En cada request autenticado**: `deps.py` (~líneas 215-219) comprueba la
+  membresía contra el `active_tenant_id` del token. Si se revocó, el request
+  falla con `403 TENANT_MEMBERSHIP_REVOKED` aunque el token siga vigente —
+  antes de US-214 seguía siendo válido hasta que expirara (hasta 1 h).
+- **Al cambiar de tenant**: `switch_tenant` (`auth.py` ~líneas 625-674) exige
+  membresía viva antes de reemitir el access token; los `tenant_ids` del nuevo
+  token se rearman desde la tabla, no se copian del token anterior.
+
+El superadministrador queda fuera de esta comprobación: su acceso a un tenant
+viene de `join-as-admin` (§4), no de una membresía.
+
+Endpoint real:
 
 ```http
 POST /api/v1/auth/switch-tenant
@@ -100,11 +122,24 @@ Body: { "tenant_id": "uuid" }
 → 200 { ...nuevo access con active_tenant_id actualizado }
 ```
 
-### 2.4 Bloqueo por intentos
+### 2.4 Retardo creciente por intentos (AM-10, 2026-08-05)
 
-- **5 intentos fallidos consecutivos** → `locked_until = now() + 15 min`.
+El bloqueo duro (5 fallos → `locked_until = now() + 15 min`) se **retiró**:
+permitía a quien conociera un username dejar esa cuenta inutilizable un cuarto
+de hora, y con una lista de usuarios, al inquilino entero. Hoy es un
+**retardo creciente sin bloqueo duro**, en `auth.py::espera_tras_fallos`:
+
+- Hasta `MAX_FAILED_LOGIN_ATTEMPTS` (5) fallos, sin espera.
+- Pasado el umbral, cada intento espera el doble que el anterior —
+  `LOGIN_BACKOFF_BASE_SECONDS × 2^exceso` (base 2 s)—, con tope
+  `LOGIN_BACKOFF_MAX_SECONDS` (300 s = 5 min). `locked_until` se conserva como
+  columna pero pasa a significar "no antes de", no "bloqueada hasta".
+- La cuenta **nunca queda inaccesible**: quien tecleó mal espera segundos;
+  quien sufre el ataque espera, como mucho, el tope.
 - Login exitoso resetea `failed_login_attempts` a 0.
 - Mensaje genérico "Credenciales inválidas" (no revela si el user existe).
+
+Detalle de la amenaza en [`modelo-amenazas.md`](./modelo-amenazas.md) §AM-10.
 
 ### 2.5 Política de contraseñas (real — `core/security.py`)
 
@@ -209,16 +244,26 @@ Un superadmin puede conceder o revocar capabilities específicas a roles dentro 
 
 Los `TC-MT-*` viven en `tests/` (backend) y se ejecutan en CI. Detalle en [`../testing/multi-tenant-isolation.md`](../testing/multi-tenant-isolation.md).
 
-| ID | Qué verifica |
-|---|---|
-| TC-MT-001 | Tenant A no puede leer proyectos de B (GET 404/403) |
-| TC-MT-002 | No lee risks / issues / changes / docs / lessons / minutes de B |
-| TC-MT-003 | No puede editar/borrar recursos de B |
-| TC-MT-004 | No accede a reports / scheduled reports de B |
-| TC-MT-005 | Admin de A no resetea password de user en B |
-| TC-MT-006 | Audit log filtra estrictamente por `tenant_id` |
-| TC-MT-007 | Uploads van al prefijo correcto del tenant (local volume o R2) |
-| TC-MT-008 | Jobs de IA no procesan archivos de otro tenant |
+**Suites de referencia reales:** `apps/api/tests/test_seg08_aislamiento_tenants.py`
+(aislamiento general orgs/proyectos — evidencia de AM-02 en `modelo-amenazas.md`)
+y `apps/api/tests/test_us214_multi_tenant.py` (membresía y switch de tenant —
+evidencia de AM-16).
+
+| ID | Qué verifica | Dónde |
+|---|---|---|
+| TC-MT-001 | Tenant A no puede leer proyectos de B (GET 404/403) | `tests/test_ep002_orgs.py` |
+| TC-MT-002 | No lee risks / issues / changes / docs / lessons / minutes de B | sin referencia literal `TC-MT-002` hoy |
+| TC-MT-003 | No puede editar/borrar recursos de B | sin referencia literal `TC-MT-003` hoy |
+| TC-MT-004 | No accede a reports / scheduled reports de B | sin referencia literal `TC-MT-004` hoy |
+| TC-MT-005 | Admin de A no resetea password de user en B | `tests/test_ep001_auth.py` |
+| TC-MT-006 | Audit log filtra estrictamente por `tenant_id` | `tests/test_ep007_admin.py` |
+| TC-MT-007 | Uploads van al prefijo correcto del tenant (local volume o R2) | sin referencia literal `TC-MT-007` hoy |
+| TC-MT-008 | Jobs de IA no procesan archivos de otro tenant | sin referencia literal `TC-MT-008` hoy |
+
+> Las filas sin referencia literal no tienen un test etiquetado `TC-MT-XXX`
+> localizable por grep en `apps/api/tests/` al 2026-08-29; puede que el
+> escenario esté cubierto bajo otro nombre (p. ej. dentro de `test_seg08_*`) o
+> que falte. Confirmarlo es decisión del owner — no se borraron filas.
 
 > Sin RLS en DB, estos tests son la única red de protección. **Cualquier endpoint nuevo debe acompañarse de su TC-MT correspondiente.**
 
@@ -242,7 +287,7 @@ Estado real:
 |---|---|---|
 | Rate limit en `/auth/forgot-password` y `/auth/reset` | **Activo** | Counter por IP en Redis, ventana fija. Fail-open si Redis cae. |
 | Rate limit global por IP / tenant (100/1000 req/min) | **NO implementado** | `slowapi` está en `requirements.txt` pero no está wired up. |
-| Bruteforce login (5 fails → 15 min lock) | **Activo** | Lógica en `auth.py:login`. |
+| Bruteforce login (retardo creciente, sin bloqueo duro — AM-10) | **Activo** | `auth.py::espera_tras_fallos`; tope `LOGIN_BACKOFF_MAX_SECONDS` (300 s). Ya no hay `locked_until = +15 min`; ver §2.4. |
 | Tamaño máximo uploads | Configurado en endpoint (no global) | Revisar por endpoint en `app/api/v1/endpoints/`. |
 | Whitelist MIME en uploads | Por endpoint | `documents`, `project_artifacts` validan en su lugar. |
 | Antivirus (ClamAV) | **No instalado** | Sigue como post-MVP. |
