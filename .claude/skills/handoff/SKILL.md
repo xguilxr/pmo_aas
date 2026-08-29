@@ -1,249 +1,144 @@
 ---
 name: handoff
-description: Reescribe HANDOFF.md con el estado de la sesión y limpia SPRINT.md archivando lo cerrado a SPRINT-DONE-HISTORY.md. Úsala al cerrar la sesión.
+description: Reescribe HANDOFF.md con lo que no se puede derivar y deja SPRINT.md solo con lo activo, archivando el resto. Úsala al cerrar la sesión.
 ---
 
-# /handoff — Cierre de sesión + bridge para la próxima
+# /handoff — cierre de sesión
 
-Cuando el usuario invoca `/handoff`, ejecuta en orden las siguientes
-acciones. Si algún paso no aplica (ej. no hubo cambios), anótalo y
-sigue al siguiente. Todo el trabajo debe terminar con un commit + push
-sobre la branch activa.
+## La regla que manda todo lo demás
 
----
+**`HANDOFF.md` lleva solo lo que no se puede derivar.** Todo lo que git,
+GitHub, `SPRINT.md` o un epic ya saben se **referencia**, no se copia.
 
-## Paso 1 — Recopila el contexto de la sesión
+Un handoff que repite lo derivable no es más completo: es más frágil. Lo copiado
+envejece —el 2026-08-19 este documento declaraba el PR #594 abierto y esperando
+verificación, y siguió diciéndolo después de que #594, #595 y #598 se mergearan—
+y la sesión siguiente arranca decidiendo sobre una premisa falsa, sin nada que la
+contradiga porque el sello dice «vigente».
 
-Antes de escribir nada, junta esta información:
-
-- **Branch activa** (`git branch --show-current`).
-- **Commits de la sesión** (`git log --oneline origin/main..HEAD` o
-  equivalente para la branch activa).
-- **Estado de PRs abiertos** que se tocaron en la sesión (numero,
-  título, CI status). Usa `mcp__github__list_pull_requests` o
-  `mcp__github__pull_request_read` cuando aplique.
-- **SPRINT.md actual** — qué quedó en IN-PROGRESS, qué pasó a DONE,
-  qué nuevos items entraron a INBOX.
-- **Decisiones / pivotes** importantes que el owner tomó esta sesión.
-- **Errores o gotchas** detectados (CI rojo, dependencias rotas,
-  collisions de migraciones, etc.).
-
-## Paso 1.5 — Verificar epic docs pendientes de actualización (§0.2)
-
-Antes del cleanup, repasa los commits de la sesión y pregúntate:
-- ¿Algún commit cambió comportamiento descrito en `docs/epics/EP0XX-*.md`?
-- ¿Algún schema, endpoint o flow cambió y la epic todavía describe el
-  comportamiento viejo?
-
-Si SÍ → **delega a sub-agente Haiku** para actualizar el epic doc antes
-de cerrar la sesión (ver CLAUDE.md §10 patrón). El HANDOFF.md final
-debe poder afirmar que no quedan epics desactualizadas.
-
-Si NO aplica → continúa al paso 2.
-
-## Paso 2 — Limpieza obligatoria de SPRINT.md
-
-### Estructura esperada del archivo
-
-`docs/project-management/SPRINT.md`:
-
-```
-🔴 IN-PROGRESS    (la US/bloque que Claude está tocando ahora,
-                   o "Sin US activa" + próximo paso accionable)
-📥 INBOX / TRIAGE (issues recién creados + sprints planeados con
-                   sus bloques en orden de ejecución)
-📦 puntero a SPRINT-BACKLOG.md
-```
-
-**Separación por frecuencia de uso** (2026-08-04, presupuesto de contexto):
-`SPRINT.md` lleva solo lo que se mira cada día — sprint actual e INBOX.
-`SPRINT-BACKLOG.md` lleva Deferred, la tabla DONE y el backlog v2.0, que se
-abren **al planear, no al ejecutar**. `SPRINT-DONE-HISTORY.md` sigue llevando el
-detalle narrativo de los bloques cerrados.
-
-Al cerrar sesión, lo que se archiva va a `SPRINT-BACKLOG.md`, no a `SPRINT.md`:
-devolverlo ahí rompería el techo de contexto que el CI hace cumplir.
-
-**Flujo de un item:** al crear issue → INBOX · al arrancar implementación →
-IN-PROGRESS · al cerrar bloque → DONE (tabla resumen), con el detalle a
-SPRINT-DONE-HISTORY.md.
-
-### Cuándo se actualiza SPRINT.md (decisión owner 2026-05-22)
-
-| Evento | ¿Actualizar? |
+| Se deriva → se referencia | Con qué |
 |---|---|
-| Cada commit individual | NO (sobrecarga) |
-| Al crear ≥ 1 issue nuevo | SÍ (entra a INBOX) |
-| Al cerrar BLOQUE completo | SÍ (items pasan a DONE) |
-| Al cerrar SPRINT | SÍ + cleanup obligatorio |
-| Al cerrar SESIÓN (`/handoff`) | SÍ siempre — lo hace esta skill |
+| Rama, commits, migraciones, frescura | `python scripts/estado.py` |
+| PRs y su CI | GitHub |
+| Issues y su estado | GitHub |
+| Qué se hizo, en detalle | `git log` · `SPRINT-DONE-HISTORY.md` |
+| Qué sigue | INBOX de `SPRINT.md` |
+| Si una epic está al día | La epic misma — se actualiza en el mismo bloque (§0.2) |
 
-> Cuanto más actualizado, mejor para que otra sesión lo retome sin sorpresas,
-> pero **no a costa de detenerse en cada commit**. El equilibrio: actualizar en
-> segmentos grandes (bloque, sprint, sesión).
+Queda **lo que solo vive en la cabeza de quien cerró la sesión**: qué se estaba
+intentando, dónde retomar, y qué va a morder a la siguiente sesión.
 
-### Cleanup al cierre de sprint
+---
 
-Cuando un sprint termina y el owner confirma el cierre, antes de arrancar el
-siguiente:
+## Paso 1 — Reúne lo derivado
 
-1. **Mover** las secciones `🗂️ Sprint N (vX.Y) — CERRADO` y el contexto
-   IN-PROGRESS narrativo a `SPRINT-DONE-HISTORY.md`, preservando bloques, SHAs,
-   migraciones y diferidos.
-2. **Reemplazar** la sección DONE por una tabla resumen
-   `Sprint | Versión | Cerrado | Items`, una fila por sprint.
-3. **Limpiar** IN-PROGRESS para que apunte solo al sprint activo.
-4. **Truncar** «Notas y cambios» a las entradas del sprint actual + la del cierre.
-5. **Commit** `docs(sprint): cierre Sprint N — archiva a SPRINT-DONE-HISTORY.md`.
+```bash
+python scripts/estado.py
+git log --oneline origin/main..HEAD
+```
 
-### Antes de redactar el handoff
+Y el estado de los PR que tocó la sesión (`mcp__github__list_pull_requests`).
+Esto **no se copia al documento**: se usa para escribir los cuatro apartados del
+paso 3 y para detectar lo que falta.
 
-1. Mueve a `docs/project-management/SPRINT-DONE-HISTORY.md` cualquier
-   sprint / bloque completado que aún viva en `SPRINT.md`. Preserva
-   commits SHA, migraciones agregadas y diferidos.
-2. La sección DONE de `SPRINT.md` queda como **tabla resumen**
-   (`Sprint | Versión | Cerrado | Items`), no como listado largo.
-3. La sección `IN-PROGRESS` debe apuntar **solo** a la US/bloque
-   activa (o "Sin US activa" si recién arranca).
-4. La sección `Notas y cambios recientes` se trunca a las entradas
-   del sprint actual + la entrada del cierre. Lo viejo migra al
-   archivo histórico.
-5. **Objetivo:** `SPRINT.md` nunca pasa de ~250 líneas. Si crece más,
-   sigue limpiando.
+## Paso 2 — Deja `SPRINT.md` solo con lo activo
 
-## Paso 3 — Genera / actualiza `docs/project-management/HANDOFF.md`
+`SPRINT.md` se mira cada día, así que solo lleva lo que se mira cada día:
 
-Sobreescribe el archivo con esta estructura (en español, conciso):
+```
+🔴 IN-PROGRESS   La US/bloque en curso, o «Sin US activa» + el siguiente paso.
+⏳ ESPERANDO     Lo bloqueado por el owner o por un tercero, con quién lo destraba.
+📥 INBOX         Lo próximo que se va a ejecutar. Con issue, un enlace basta.
+📦 puntero       → SPRINT-BACKLOG.md
+```
+
+**Un item sale de `SPRINT.md`** en cuanto deja de ser una de esas tres cosas:
+
+- terminado → `SPRINT-DONE-HISTORY.md` (el detalle narrativo)
+- sin fecha ni dueño → `SPRINT-BACKLOG.md`
+- con issue y sin trabajo esta semana → solo el issue; el INBOX no lo repite
+
+Si un item lleva tres cierres de sesión sin moverse, **no está activo**: va al
+backlog. Un INBOX que acumula es un backlog disfrazado, y se deja de leer.
+
+Techo: **60 líneas**. El CI acota el total (`check_contexto.py`), pero el techo
+real es que quepa en una pantalla — si no cabe, nadie distingue lo urgente.
+
+## Paso 3 — Reescribe `HANDOFF.md`
+
+Cuatro apartados, **1 500 caracteres o menos**. Si algo no aplica, se omite el
+apartado entero; un apartado vacío enseña a saltárselos todos.
 
 ```markdown
-# HANDOFF.md — Estado para la próxima sesión
-
-**Última actualización:** YYYY-MM-DD HH:MM
-**Branch activa:** `claude/...`
-**Generado por:** /handoff
-
+---
+tipo: gestion
+responsable: propietario
+estado: vigente
+revisado: AAAA-MM-DD
+revisar_cada: 30d
 ---
 
-## 🎯 Dónde estamos parados
+# HANDOFF.md — puente a la próxima sesión
 
-<2-4 oraciones que resumen el estado del proyecto AHORA. Foco en
-qué está corriendo en CI, qué está mergeado a main, qué queda
-abierto y bloqueando.>
+**AAAA-MM-DD** · rama `claude/...` · lo derivado: `python scripts/estado.py`
 
-## 📍 Dónde retomar (próximo paso accionable)
+## Qué se estaba haciendo, y por qué
 
-<Bullet único o muy corto con la primera acción concreta que
-debería tomar la próxima sesión. Ej. "Verificar CI verde de PR
-#408 y mergear", "Arrancar US-123 sobre branch nueva", etc.>
+<2-4 oraciones. La intención, no la lista de commits. Por qué se eligió este
+camino y qué se descartó. Es lo único de este archivo que no está en ningún
+otro sitio.>
 
-## ✅ Hecho en esta sesión
+## Dónde retomar
 
-- <bullet 1: cambio + commit SHA + branch>
-- <bullet 2: cambio + commit SHA + branch>
-- ...
+<Una acción concreta. «Verificar #XXX y mergear», «arrancar US-YYY sobre rama
+nueva». Si hay un blocker, aquí va y se dice quién lo destraba.>
 
-Si la sesión cerró sprints, lista cuáles e indica que ya están
-archivados en SPRINT-DONE-HISTORY.md.
+## Qué va a morder
 
-## 🔄 PRs abiertos o en flight
+<Solo lo que sorprendería a alguien que lee el código y los docs. Un gotcha que
+ya esté escrito en una epic, un ADR o LESSONS.md **no va aquí**: va su
+referencia. Si no hay ninguno, se omite el apartado.>
 
-| # | Branch | Estado CI | Acción pendiente |
-|---|---|---|---|
-| #XXX | claude/... | green / failing / pending | merge / fix / wait |
+## Decisiones del owner de esta sesión
 
-## ⚠️ Gotchas y decisiones recientes
-
-- <gotcha 1: ej. "alembic puede colisionar revision IDs si dos lanes
-  paralelos tocan migraciones; lección: secuencial puro">
-- <decisión 1: ej. "snapshots históricos fuera de scope v1.0">
-
-## 📋 Lo que sigue (resumen ejecutivo del backlog activo)
-
-Referenciar la sección INBOX de SPRINT.md sin duplicar. 3-5 bullets
-máximo. Detalle completo en SPRINT.md.
-
-- Sprint N Bloque M: <items + foco>
-- Sprint N+1: <items + foco>
-- ...
-
-## 📚 Estado de las epics docs
-
-Lista de epics que la sesión tocó (commits con cambios funcionales) y
-si están sincronizadas con el código:
-
-| Epic | Sincronizada | Notas |
-|---|---|---|
-| EP0XX | sí / pendiente | <razón si pendiente> |
-
-Si alguna queda pendiente, anotarlo como acción para la próxima
-sesión.
-
-## 🧹 Cleanup técnico pendiente
-
-Items que el owner debería hacer fuera de Claude (UI de GitHub,
-panel de Railway, decisiones de negocio, etc.). Marcar con `- [ ]`
-para que sirvan de checklist.
-
-- [ ] <acción 1>
-- [ ] <acción 2>
-
-## 🔮 Para sesiones futuras (sin issue todavía)
-
-Items que el owner mencionó tangencialmente y vale la pena no
-perder. No son INBOX porque no tienen issue creado.
-
-- <idea 1: ej. "sesión de revisión completa de diseño y navegación
-  cuando termine EP020">
-- ...
-
----
-
-## Cómo retomar
-
-Para la próxima sesión:
-
-1. Lee este `HANDOFF.md` primero.
-2. Luego `CLAUDE.md` + `docs/project-management/SPRINT.md` + el
-   epic en flight referenciado.
-3. Continúa desde el "próximo paso accionable" arriba.
+<Solo las que se tomaron hablando y todavía no están en DECISIONS.md, un ADR o
+una epic. Si ya se escribieron ahí, esto se omite: el sitio correcto es aquel.>
 ```
 
-## Paso 4 — Commit + push
+**Lo que ya no lleva**, y a dónde se fue: la tabla de PR (GitHub), la lista de
+commits (`git log`), el resumen del backlog (INBOX), la tabla de epics
+sincronizadas (§0.2 obliga a actualizarlas en el mismo bloque, así que una tabla
+que lo repita solo puede mentir), el cleanup pendiente del owner (issues o
+INBOX), y las ideas sueltas (`SPRINT-BACKLOG.md`).
 
-Un solo commit con header:
+## Paso 4 — Antes de cerrar, comprueba §0.2
+
+Repasa los commits de la sesión: ¿alguno cambió comportamiento, esquema o
+endpoints que una epic describe? Si sí, **la epic se actualiza ahora**, no se
+anota como pendiente en el handoff. Redáctalo con un sub-agente Haiku (skill
+`delegar`). Un cambio interno —refactor, typo— no actualiza nada.
+
+## Paso 5 — Commit + push
 
 ```
-docs(handoff): <YYYY-MM-DD> — <resumen 1 línea de la sesión>
+docs(handoff): AAAA-MM-DD — <una línea>
 ```
 
-Body breve con bullets de lo que cambió en SPRINT.md / SPRINT-DONE-HISTORY.md / HANDOFF.md.
+Push a la rama activa. **Nunca** a `main`, y **nunca** abriendo un PR.
 
-Push a la branch activa (no a main directamente).
+## Paso 6 — Resumen al owner
 
-## Paso 5 — Resumen al owner
-
-Termina con el resumen estándar de CLAUDE.md sección 11. Bullets:
-
-- Hecho: actualicé HANDOFF.md + limpié SPRINT.md (de X a Y líneas) +
-  archivé sprints cerrados.
-- Próximo paso accionable: <copia el bullet "dónde retomar">.
-- PRs en flight (si los hay): tabla compacta.
-- Acciones externas para el owner: solo las nuevas; las que ya
-  estaban antes apuntar a HANDOFF.md.
+Skill `resumen-ronda`. Añade: cuánto encogió `SPRINT.md` y qué se archivó.
 
 ---
 
 ## Reglas duras
 
-- **No inventes** lo que se hizo en la sesión. Si no estás seguro,
-  consulta `git log`, `gh pr view`, o pregunta al owner antes de
-  escribir.
-- **No dejes** SPRINT.md sin limpiar. Aunque el handoff parezca
-  rápido, el cleanup es obligatorio.
-- **No crees PR** ni mergeas; solo commit + push de la branch
-  activa.
-- **No borres** HANDOFF.md previo — sobreescribe completo. Cada
-  sesión deja su versión propia.
-- Si la sesión NO produjo commits ni cambios, igual genera HANDOFF.md
-  con un breve "sesión de discusión/planeación, sin código" y deja
-  registrado el plan que se discutió.
+- **No inventes.** Si no estás seguro de qué se hizo, míralo en `git log` o
+  pregunta. Un handoff con un dato inventado es peor que uno corto.
+- **No copies lo derivable.** Ante la duda de si un apartado va: si un comando o
+  un enlace lo responde, no va.
+- **Sesión sin commits.** Igual se escribe: qué se discutió y qué se decidió.
+  Es cuando el handoff más vale, porque no hay `git log` que lo cuente.
+- **Un handoff que crece es una señal**, no un logro. Si no baja de 1 500
+  caracteres, casi siempre es que algo debía ser un issue.

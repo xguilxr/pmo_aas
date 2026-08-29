@@ -374,15 +374,32 @@ mediciones:
 limites:
   # CLAUDE.md §6 y §12 lo declaran dos veces como «regla dura» y estaba en 521.
   # Nadie lo ejecutaba: era una instrucción, no un control (MCA FLU-03).
-  sprint_md_max_lineas: 250              # objetivo — CLAUDE.md §6
-  sprint_md_techo_ci_lineas: 250         # alcanzado 2026-08-03: 218 líneas.
-                                         # Techo = objetivo. Ya no hay trinquete
-                                         # que aflojar aquí.
+  sprint_md_max_lineas: 250              # objetivo histórico — CLAUDE.md §6
+  # 2026-08-28: el techo baja de 250 a 60 (owner). 250 nunca frenó nada —el
+  # documento llevaba meses entre 70 y 100 líneas y aun así acumulaba items que
+  # no estaban activos: la lista de compat, los umbrales sin medir, «las cuatro
+  # preguntas de EP021» que llevaban ocho días contestadas. Un techo que no se
+  # toca no es un control, es decoración.
+  #
+  # 60 líneas es lo que cabe en una pantalla, y ese es el criterio real: si no
+  # cabe, nadie distingue lo urgente de lo que lleva un mes ahí. Lo que no es
+  # IN-PROGRESS, ESPERANDO o INBOX inmediato se va al backlog o a un issue.
+  sprint_md_techo_ci_lineas: 60
   # 2026-08-04: tope propio para el puente entre sesiones. El techo total ya lo
   # acota, pero sin un límite suyo el HANDOFF se come el presupuesto de los
   # demás — es el archivo que más crece, porque cada sesión quiere contarlo todo.
-  # El detalle va a docs/conformidad/plan.md, que no se carga siempre.
-  handoff_max_chars: 7000
+  #
+  # 2026-08-28: baja de 7000 a 1500 (owner). 7000 permitía justo lo que el
+  # documento hacía mal: copiar lo derivable. La versión del 2026-08-19 tenía
+  # 4029 caracteres, una tabla de PR, una tabla de epics y una lista de commits
+  # — y declaró el PR #594 abierto durante nueve días después de mergearse,
+  # porque lo copiado envejece y nada lo contradice.
+  #
+  # El skill `handoff` reescrito deja cuatro apartados con lo que NO se deriva:
+  # intención, dónde retomar, qué va a morder, y las decisiones habladas. El
+  # resto se referencia (`scripts/estado.py`, GitHub, SPRINT.md, la epic). 1500
+  # es lo que eso ocupa; si no cabe, casi siempre es que algo debía ser un issue.
+  handoff_max_chars: 1500
 
 # ─────────────────────────────────────────────────────────────────────────────
 # NO CONFORMIDADES ABIERTAS  (auditoría 2026-08-03)

@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-91 documentos vivos · 61 archivados · 2635 secciones indexadas.
+91 documentos vivos · 61 archivados · 2629 secciones indexadas.
 
 ## gestion
 
@@ -28,11 +28,11 @@ revisar_cada: nunca
 | [`epics/drafts/reestructura-navegacion.md`](epics/drafts/reestructura-navegacion.md) | 1. Contexto activo (header) · 2. Sidebar objetivo · 3. Vistas nuevas / reestructuradas · 4. Principios de d… | 2026-08-19 | 163 |
 | [`epics/drafts/reestructura-plan.md`](epics/drafts/reestructura-plan.md) | Estado (2026-08-19) — planeación CERRADA, lista para construir · Norte · Fase 0 — Inventario de reutilizaci… | 2026-08-18 | 184 |
 | [`project-management/CRITERIOS-DE-ACEPTACION.md`](project-management/CRITERIOS-DE-ACEPTACION.md) | El hueco que había · La regla · Lo que este control NO comprueba · Para el trabajo de producto que no toca … | 2026-08-07 | 107 |
-| [`project-management/HANDOFF.md`](project-management/HANDOFF.md) | 🎯 Dónde estamos parados · 📍 Dónde retomar · ✅ Hecho en esta sesión · 🔄 PRs abiertos | 2026-08-19 | 108 |
+| [`project-management/HANDOFF.md`](project-management/HANDOFF.md) | Qué se estaba haciendo, y por qué · Dónde retomar · Qué va a morder · Decisiones del owner | 2026-08-28 | 42 |
 | [`project-management/LESSONS.md`](project-management/LESSONS.md) | Lecciones vivas | 2026-08-12 | 26 |
-| [`project-management/SPRINT-BACKLOG.md`](project-management/SPRINT-BACKLOG.md) | ⏸️ Deferred — re-evaluación post EP020 · ✅ DONE · 📋 Backlog v2.0 (post-v1.x) | 2026-08-12 | 120 |
+| [`project-management/SPRINT-BACKLOG.md`](project-management/SPRINT-BACKLOG.md) | 📤 Salido de SPRINT.md el 2026-08-28 · ⏸️ Deferred — re-evaluación post EP020 · ✅ DONE · 📋 Backlog v2.0 (pos… | 2026-08-28 | 152 |
 | [`project-management/SPRINT-DONE-HISTORY.md`](project-management/SPRINT-DONE-HISTORY.md) | Ronda 2026-08-27 — Revamp de diseño v2 (batch del owner, sin US) · Ronda 2026-08-06 — Ola 2, `SEG-04` y ver… | 2026-08-12 | 609 |
-| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · 📥 INBOX / TRIAGE · 📦 Deferred, DONE y Backlog v2.0 | 2026-08-28 | 70 |
+| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · ⏳ ESPERANDO al owner · 📥 INBOX · 📦 Lo demás | 2026-08-28 | 61 |
 
 ## epica
 

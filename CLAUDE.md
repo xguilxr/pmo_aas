@@ -162,10 +162,12 @@ owner por chat) no se empieza. La transición `triage → ready` es del owner.
 
 ## 6. SPRINT.md
 
-Vive en `docs/project-management/SPRINT.md`. Secciones: IN-PROGRESS ·
-INBOX/TRIAGE · Deferred · DONE · Backlog v2.0. El detalle de lo cerrado va a
-`SPRINT-DONE-HISTORY.md`. Se actualiza al crear issues y al cerrar bloque,
-sprint o sesión — no en cada commit. Techo de líneas: §0.3. Estructura y
+Vive en `docs/project-management/SPRINT.md` y lleva **solo lo activo**:
+IN-PROGRESS · ESPERANDO (bloqueado por el owner o un tercero) · INBOX
+inmediato. Lo que no es una de las tres se va a `SPRINT-BACKLOG.md`, a un issue
+o —si está cerrado— a `SPRINT-DONE-HISTORY.md`. Se actualiza al crear issues y
+al cerrar bloque, sprint o sesión, no en cada commit. Techo: 60 líneas, lo que
+cabe en una pantalla; por encima, nadie distingue lo urgente. Estructura y
 cleanup: skill **`handoff`**.
 
 ## 7. Regla sagrada: 1 US = 1 commit

@@ -2,7 +2,7 @@
 tipo: gestion
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-28
 revisar_cada: 30d
 ---
 
@@ -13,6 +13,38 @@ revisar_cada: 30d
 toda sesión para consultarse al cerrar un sprint.
 
 `SPRINT.md` conserva lo que sí se mira cada día: IN-PROGRESS e INBOX.
+
+---
+
+## 📤 Salido de SPRINT.md el 2026-08-28
+
+Cuando el techo de `SPRINT.md` bajó a 60 líneas (owner), estos items dejaron de
+ser «activos» y bajaron aquí. Ninguno tiene fecha ni dueño hoy; suben a
+`SPRINT.md` cuando se vayan a ejecutar.
+
+- [ ] **W8 — retirar `business_units` / `departments`.** Las tablas siguen en el
+  esquema sin lectores, a propósito: un `drop` es irreversible y no se paga en
+  la misma oleada. Se hace cuando el contador de compat confirme que nadie las
+  usa.
+- [ ] **Los nueve follow-ups del PR #594**, listados ahí con su evidencia:
+  superficie de API sin pantalla, cadena de permisos muerta, rutas sin enlace.
+- [ ] **Contrastar los umbrales de D-4 contra cartera real.** Los de US-196 son
+  razonados, no medidos. Hasta que se calibren, `health_source = 'manual'` con
+  su razón es la salida honesta. Se ajustan en `settings`.
+- [ ] **Reescribir `design-system/tokens.md`.** Describe una paleta previa a D-7
+  y ADR-023; está marcado `reemplazado` y sigue siendo el único documento de
+  tokens que existe. Es trabajo de diseño, no de documentación.
+- [ ] **DCMA 14-point.** La línea base que lo bloqueaba ya está (US-212).
+- [ ] **Re-sellar los 40 documentos con deriva** (cambiados después de su
+  `revisado`). No es un gate: `check_docs.py` define ese campo como declaración
+  humana. Se leen y se re-sellan, o se dejan como están a sabiendas.
+- [ ] **Poblar `claves:` en el frontmatter** de los 92 documentos vivos.
+  `indexar.py` ya lee el campo y lo pondera por encima del cuerpo; ninguno lo
+  declara todavía. Mecánico y delegable.
+
+**Nota (2026-08-07) — conformidad cerrada** (ADR-036):
+`docs/conformidad/asvs-l1.md`. Vuelve solo con un requisito contractual o un
+incidente.
 
 ---
 
