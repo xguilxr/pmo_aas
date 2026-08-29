@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -292,7 +292,10 @@ o el que entra por importación masiva.
 **Criterios de aceptación:**
 - [ ] `GET /api/v1/projects/{id}/export?format=pdf|json`.
 - [ ] PDF: plantilla con header, KPIs, últimas minutas, riesgos top 5.
-- [ ] Generación PDF: **WeasyPrint** (backend) o Chromium headless (Puppeteer en worker).
+- [ ] Generación PDF: **MVP actual — texto plano** devuelto con
+      `Content-Type: application/pdf` (no es un PDF real). **WeasyPrint
+      pendiente de integrar** en este endpoint (`app/api/v1/endpoints/projects.py`,
+      `export_project`) — ya se usa en otros flujos del backend (charters, reports).
 - [ ] JSON: todos los campos + relaciones necesarias para re-importar.
 
 **Test Cases:**

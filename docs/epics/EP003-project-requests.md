@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -49,19 +49,33 @@ El proceso de solicitud de nuevos proyectos se estandariza: formulario con datos
 | `organization_id` | uuid | ✅ | org del tenant |
 | `business_unit` | text | ✅ | |
 | `department` | text | ✅ | |
+| `portfolio_id` | uuid | opcional | Clasificación en la jerarquía; con `program_id`, se autocompleta con el suyo (US-199) |
+| `program_id` | uuid | opcional | Clasificación en la jerarquía (US-199) |
 | `sponsor` | text | ✅ | |
+| `sponsor_email` | email | ✅ | Validado como email (US-011) |
 | `benefits` | text | ✅ | |
 | `budget` | numeric(14,2) | ✅ | MXN, formato `$X,XXX.XX` |
+| `currency` | enum | opcional | `MXN`\|`USD`\|`EUR`, moneda del `budget` (BUG-092) |
 | `scope` | text | ✅ | |
+| `entregables` | text | opcional | (US-011) |
+| `key_people` | text | opcional | Personas clave (US-011) |
+| `if_not_done` | text | opcional | Qué pasa si no se hace (US-011) |
+| `observations` | text | opcional | (US-011) |
+| `requester_name` | text | opcional | Default `user.full_name` si no viene (US-011) |
+| `requester_email` | email | opcional | Default `user.email` si no viene (US-011) |
+| `delivery_constraint_date` | date | opcional | Fecha de restricción de entrega (ENH-038) |
 | `attachments` | file[] | opcional | PDF/XLSX/DOCX/PPTX/PNG/JPG, ≤ 25 MB c/u |
 
 **Criterios de aceptación:**
-- [ ] `POST /api/v1/project-requests` (multipart).
+- [ ] `POST /api/v1/project-requests` (JSON, no multipart — ver nota de
+      attachments abajo).
 - [ ] Validación en Pydantic; error 400 con `fields` detallado.
 - [ ] Folio se genera atómicamente (secuencia tenant+año).
 - [ ] `status` inicial = `in_review`.
 - [ ] Audita `project_request.create`.
-- [ ] Attachments guardados en `/data/uploads/tenants/{slug}/requests/{id}/…`.
+- [ ] `attachments` no son archivos subidos: el solicitante escribe pares
+      nombre/URL (`AttachmentsEditor`) y el campo se guarda como JSON. No hay
+      almacenamiento propio ni ruta `/data/uploads/...` para este módulo.
 
 **Test Cases:**
 - `TC-042` (unit) — Validación de formato moneda.
@@ -80,7 +94,7 @@ El proceso de solicitud de nuevos proyectos se estandariza: formulario con datos
 
 **Criterios de aceptación:**
 - [ ] `GET /api/v1/project-requests?status=&organization_id=&q=&page=&limit=`.
-- [ ] `GET /api/v1/project-requests/{id}` — detalle con todos los campos, solicitante, attachments (con URLs firmadas).
+- [ ] `GET /api/v1/project-requests/{id}` — detalle con todos los campos, solicitante, attachments (enlaces que el solicitante escribió, no archivos subidos).
 - [ ] Vista "Bandeja de solicitudes" con tabs: En revisión, Pendiente info, Aprobadas, Rechazadas.
 - [ ] Columnas: folio, título, solicitante, fecha, presupuesto, estado.
 
@@ -162,7 +176,10 @@ El proceso de solicitud de nuevos proyectos se estandariza: formulario con datos
 
 - Folios: secuencia Postgres por `(tenant_id, prefix='SOL', year)`.
 - Notificaciones: tabla `notifications` + email vía Resend.
-- Tokens firmados para descargar attachments (TTL 1 h).
+- Attachments no son archivos subidos al backend: son enlaces (URL) que aporta
+  el solicitante desde el formulario (`Attachment{filename,url,size,mime}` en
+  `schemas/project_request.py`), servidos directo desde su `url` — no hay
+  endpoint de descarga ni token firmado.
 
 ### Endpoints
 ```
@@ -173,7 +190,6 @@ PATCH  /api/v1/project-requests/{id}
 POST   /api/v1/project-requests/{id}/review
 POST   /api/v1/project-requests/{id}/resubmit
 POST   /api/v1/project-requests/{id}/create-project
-GET    /api/v1/project-requests/{id}/attachments/{attId}/download
 ```
 
 ---

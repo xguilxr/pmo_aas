@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -96,21 +96,24 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el único bloque de 
 
 **Test cases:** TC-200 catálogo seed completo; TC-201 endpoint filtrable; TC-202 función registrada por id.
 
-### # PENDING — US-121 — Servicio de cálculo configurable por tenant
+### # DONE (Sprint 26) — US-121 — Servicio de cálculo configurable por tenant
 
 **Como** plataforma
 **Quiero** que el cálculo del % avance respete el método configurado por el tenant
 **Para** que la misma sección S-06 dé el número correcto según convención del PMO.
 
 **Criterios de aceptación:**
-- [ ] Service `app/services/reports/progress.py` con tres implementaciones: `weighted_duration`, `weighted_effort`, `simple_count`.
-- [ ] Lee `tenants.progress_calculation_method` y dispatcha.
-- [ ] Validaciones: `weighted_effort` warning si hay tareas sin horas estimadas.
-- [ ] Reusado por S-06, S-08, KPI-01, KPI-02, S-35.
+- [x] Service `app/services/progress_calculator.py` (ruta real — no `app/services/reports/progress.py`) con tres implementaciones: `by_task_count` (default), `by_duration`, `by_effort`.
+- [x] Lee `tenant.settings.report_builder.progress_calculation_method` (vía `get_progress_calculation_method`, ENH-098) y dispatcha.
+- [x] Validaciones: `by_effort` cae a `by_task_count` con `fallback="hours_unavailable"` mientras `tasks.hours_estimated` no exista (US-087 fase 2).
+- [x] Reusado por `dashboard.py`, `projects.py`, `services/reports/engine.py` y `services/analytics/snapshots.py`.
 
-**Dependencia:** ENH-098 (config tenant) debe entregarse antes o en paralelo.
+**Dependencia:** ENH-098 (config tenant) — entregada.
 
 **Test cases:** TC-203 los 3 métodos dan el mismo resultado con data uniforme; TC-204 weighted_effort warning con horas faltantes; TC-205 dispatch desde setting.
+
+**Implementación:** ver DEC-028 en `DECISIONS.md` (nombres de método y
+firma reales del servicio) y `apps/api/app/services/progress_calculator.py`.
 
 ### # PENDING — US-122 — Modelo de plantillas + plantillas seed v1.0
 
@@ -120,11 +123,10 @@ Las 22 secciones atómicas (catálogo cerrado en draft) son el único bloque de 
 
 **Criterios de aceptación:**
 - [ ] Tabla `report_templates` con campos: `id`, `name`, `level` (1/2/3/4), `composition_mode` ('by_section'|'by_area'), `sections` JSONB (lista ordenada con sus params), `is_seed` BOOL, `owner_id` (NULL si seed/PMO/Org), `project_id` (NULL si privada o pública), `visibility` ('private'|'project'|'tenant').
-- [ ] Plantillas seed cargadas:
+- [x] Plantillas seed cargadas. **Actualizado 2026-08-29 — la lista original (mayo 2026) incluía L1-PORTAFOLIO y L2-ORG; la migración `20260525_0078_builder_seeds_project_only.py` (BUG-063, 2026-05-25) las borró por decisión del owner: "el Report Builder es exclusivamente nivel proyecto". Los reportes L1/L2 siguen disponibles, pero desde los tabs dedicados de `/pmo/reports` (PMO / Organizaciones / Programas), no desde el builder ni sus seeds.** Plantillas seed reales (nivel 3, proyecto):
   - **L3-AVANCE** — modo A — S-01, S-02, S-03, S-04, S-06, S-08, S-19, S-09, S-16, S-17, S-18, S-14, S-11, S-13, S-12
   - **L3-SEGUIMIENTO** — modo B — S-01, S-02, S-03, S-04 + por área: S-20, S-21, S-09, S-16, S-17, S-18, S-14, S-11, S-13, S-12
-  - **L1-PORTAFOLIO** — modo A — S-01, S-35, S-36, S-33, S-34
-  - **L2-ORG** — modo A — S-01, S-02, S-04, S-33, S-35, S-36, S-34
+  - **L3-LOOKAHEAD** — modo A — S-01, S-02, S-18, S-09, S-16, S-14 (agregada por la misma migración)
 - [ ] Endpoint CRUD `/report-templates` con permisos por visibility.
 - [ ] Migración Alembic.
 
@@ -460,7 +462,7 @@ Se abren como issues separados con label del epic afectado. **Deben entregarse a
 ## Definition of Done de la épica
 
 - [ ] Las 22 secciones del catálogo cargan, calculan y renderizan correctamente (HTML + PDF).
-- [ ] 4 plantillas seed (L3-AVANCE, L3-SEGUIMIENTO, L1-PORTAFOLIO, L2-ORG) generan reportes funcionales.
+- [ ] 3 plantillas seed de proyecto (L3-AVANCE, L3-SEGUIMIENTO, L3-LOOKAHEAD) generan reportes funcionales. **(Actualizado 2026-08-29 — L1-PORTAFOLIO/L2-ORG se retiraron del builder en la migración 0078; L1/L2 se generan desde los tabs dedicados de `/pmo/reports`.)**
 - [ ] Canvas Nivel 4 permite construir reporte custom + guardar plantilla privada + publicar al proyecto.
 - [ ] Chat IA construye reporte vía tool calls.
 - [ ] Suscripciones programan emisión recurrente.

@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -41,7 +41,7 @@ Elimina el ping-pong de archivos MS Project entre PMs. Importa `.xml`, `.xlsx` y
 | Visualización | **SVG propio** (`components/gantt-view.tsx`) | frappe-gantt fue descartado; el wrapper SVG manual cumple para el alcance actual y evita una dependencia extra |
 | Formatos aceptados | `.xlsx`, `.csv`, `.mpp`, `.xml` (MSPDI), `.mpx` | Todos integrados (US-069 agregó `.mpp` nativo) |
 | Java runtime | **Embebido en el Dockerfile** (JRE 21 + MPXJ pinned) | Ya está en producción; ver `runbooks/infra/mpp-import.md` |
-| Backend de parsing | **Worker job** (Celery) | Parsing puede tardar >30 s en proyectos grandes |
+| Backend de parsing | **Síncrono en el handler**, no worker Celery | `import_ms_project` / `import_confirm` (`endpoints/tasks.py`, ~835-886) llaman `parse_mpp`/`parse_xlsx` directo dentro de la request; sin `@shared_task`, `.delay()` ni `apply_async` |
 
 ---
 

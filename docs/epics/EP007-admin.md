@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -43,13 +43,29 @@ Un panel único centraliza la gestión de usuarios, roles, organizaciones y proy
 
 ---
 
-## US-038 — Panel de administración de roles
+## US-038 — Panel de administración de roles ⛔ RETIRADA (DEC-024 / US-077)
+
+> **Reemplazada por el modelo de capabilities.** El editor de rol con matriz
+> de permisos vivió en `/admin/roles/*` (`admin_roles.py`) hasta que **US-077**
+> lo borró junto con esa UI (DEC-024): los permisos pasaron a 5 capabilities
+> estáticas en código (`tenant.manage`, `ai.configure`, `users.manage`,
+> `organizations.delete`, `audit.read`). `Role.permissions` se ignora desde
+> US-076; las tablas `roles`/`user_roles` quedan solo como compat (ver
+> `apps/api/app/models/role.py`).
+>
+> **Lo que hay hoy:** `/admin/permissions` (US-078) — página **de solo
+> lectura** que lista las 5 capabilities y si admin/user las tiene. La
+> excepción puntual por tenant no se edita ahí: la crea el superadmin en
+> `/superadmin/tenants/[id]/permissions` (DEC-021 / US-073), sobre la tabla
+> `tenant_role_permission_overrides` (modelo `TenantRolePermissionOverride`).
+>
+> Los AC de abajo se conservan como registro de lo que se entregó y luego se retiró.
 
 **Como** Administrador
 **Quiero** definir roles con matriz de permisos (checkboxes por módulo × acción)
 **Para** controlar acceso granular.
 
-**Criterios de aceptación:**
+**Criterios de aceptación (histórico):**
 - [ ] Tabla de roles con `name`, `description`, `user_count`, acciones.
 - [ ] Editor de rol: matriz visual 12×8 (módulos × acciones) con checkboxes.
 - [ ] Toggle "seleccionar todos" por fila y por columna.
@@ -305,15 +321,20 @@ la vista del inquilino. Y el paywall, que el artboard excluye explícitamente.
 - Logs de auditoría usan cursor pagination por performance (tabla grande).
 
 ### Endpoints
+
+> Corregido 2026-08-29: `admin_users.py` no tiene `bulk` ni `impersonate` (no
+> hay impersonate en ningún endpoint de `admin`). Los bulk reales viven en
+> `admin_panel.py`. `GET`/`POST /admin/roles` (CRUD) no existen — se borraron
+> en US-077 (ver US-038) —; `duplicate`/`impact` siguen en el backend pero sin
+> UI que los llame.
+
 ```
 GET    /api/v1/admin/users
-POST   /api/v1/admin/users/bulk
-POST   /api/v1/admin/users/{id}/impersonate      (superadmin only)
+POST   /api/v1/admin/users/bulk/assign-role      (admin_panel.py, ~línea 42)
+POST   /api/v1/admin/users/bulk/deactivate       (admin_panel.py, ~línea 86)
 
-GET    /api/v1/admin/roles
-POST   /api/v1/admin/roles
-POST   /api/v1/admin/roles/{id}/duplicate
-GET    /api/v1/admin/roles/{id}/impact           (preview de afectados)
+POST   /api/v1/admin/roles/{id}/duplicate        (admin_panel.py; sin UI que lo llame)
+GET    /api/v1/admin/roles/{id}/impact           (ídem; preview de afectados)
 
 GET    /api/v1/admin/organizations
 GET    /api/v1/admin/projects                    (bypass member filter)

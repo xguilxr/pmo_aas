@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -249,6 +249,121 @@ tablas viven solo por compat, hasta validar Sprint 6 en producción.
 (no se reconstruye la matriz JSON de permisos eliminada). Programado
 para Sprint 7 tras 1-2 sprints de validación productiva del modelo
 capability-based.
+
+---
+
+## EP018 — Documentos / Artefactos por proyecto (2026-05-08)
+
+### Migración **0055** — `project_artifacts` (US-106)
+
+Catálogo **estricto** de artefactos vivos por proyecto: solo 4 tipos
+pueden existir. Tabla `project_artifacts`:
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `tenant_id` | `VARCHAR(36)` FK `tenants.id` CASCADE | |
+| `project_id` | `VARCHAR(36)` FK `projects.id` CASCADE | |
+| `type` | `VARCHAR(32)` | `CHECK ck_artifact_type_whitelist`: `'charter'\|'plan'\|'raid'\|'organigrama'` |
+| `source_format` | `VARCHAR(16)` NULL | formato detectado al subir (`.mpp`/`.xlsx`/`.csv`) |
+| `storage_url` | `VARCHAR(500)` NULL | |
+| `content_hash` | `VARCHAR(64)` NULL | |
+| `size_bytes` | `INTEGER` NULL | |
+| `filename` | `VARCHAR(255)` NULL | |
+| `created_by` | `VARCHAR(36)` FK `users.id` NULL | |
+
+`UNIQUE(project_id, type)` (`uq_artifact_project_type`) — 1 fila por
+(proyecto, tipo); sin histórico de versiones (solo la última vive;
+versionado completo queda fuera de alcance del epic). Índice
+`(tenant_id, project_id)`.
+
+El **Charter** sigue viviendo en `project_charters` (tabla rica con
+secciones, EP003/DEC-008); `project_artifacts` no lo duplica, solo deja
+que el módulo Documentos exponga los 4 tabs (Charter/Plan/RAID/Organigrama)
+de forma uniforme. Endpoints en
+`apps/api/app/api/v1/endpoints/project_artifacts.py`.
+
+---
+
+## EP019 — Cambios / Approval workflow (2026-05-09)
+
+### Migración **0060** — `change_approvers` + `approval_tokens` (US-112 + US-113)
+
+**`change_approvers`** (US-112) — registro multi-actor de aprobadores
+por `change_request`:
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `change_id` | `VARCHAR(36)` FK `change_requests.id` CASCADE | |
+| `actor_id` | `VARCHAR(36)` FK `actors.id` CASCADE | |
+| `role` | `VARCHAR(16)` default `primary` | `primary`\|`secondary` |
+| `status` | `VARCHAR(16)` default `pending` | |
+| `decided_at` | `TIMESTAMPTZ` NULL | |
+| `decision_note` | `VARCHAR(2000)` NULL | |
+
+`UNIQUE(change_id, actor_id)` (`uq_change_approvers_change_actor`).
+
+**`approval_tokens`** (US-113) — tokens JWT firmados para la landing
+pública; se almacena solo el **hash**, nunca el JWT en claro:
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `change_id` | `VARCHAR(36)` FK `change_requests.id` CASCADE | |
+| `actor_id` | `VARCHAR(36)` FK `actors.id` CASCADE | |
+| `token_hash` | `VARCHAR(128)` UNIQUE | |
+| `expires_at` | `TIMESTAMPTZ` | default 30 días |
+| `consumed_at` | `TIMESTAMPTZ` NULL | token de un solo uso |
+| `action_taken` | `VARCHAR(16)` NULL | |
+
+Landing pública sin auth: `GET`/`POST /public/approve/{jwt_str}`
+(prefijo `/public`, `apps/api/app/api/v1/endpoints/change_approvals.py`).
+`POST /change-requests/{id}/submit-for-approval` genera un token por
+aprobador y dispara los emails; un rechazo invalida los tokens previos
+(CASCADE) y el reenvío genera unos nuevos (CA11).
+
+---
+
+## EP017 — Directorio de Proyecto (2026-05-10)
+
+### Migración **0061** — `project_roles` + `project_participations` + `actors` enriquecido (US-114)
+
+**Additiva — sin drops.** El propio archivo lo documenta: NO dropea
+`actors.team_id`, `actors.is_lead`, `teams.area_id`, ni
+`tasks/risks/issues.area_id` en esta migración — coexisten hasta un
+cleanup futuro, sin US asignada todavía (el plan original los
+nombraba `US-119`, que no existe como issue real).
+
+**`project_roles`** — catálogo tenant editable (PM, Sponsor, SME, Key
+User, Tech Lead, Member — seed por tenant con proyectos):
+`id`, `tenant_id`, `name`, `description`, `is_active`. `UNIQUE(tenant_id, name)`.
+
+**`project_participations`** — N filas por (`project_id`, `actor_id`):
+una persona puede tener varios equipos/roles en el mismo proyecto.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `project_id` | `VARCHAR(36)` FK `projects.id` CASCADE | |
+| `actor_id` | `VARCHAR(36)` FK `actors.id` CASCADE | |
+| `operational_team_id` | `VARCHAR(36)` FK `teams.id` SET NULL | opcional |
+| `project_role_id` | `VARCHAR(36)` FK `project_roles.id` SET NULL | opcional |
+| `functional_area_id` | `VARCHAR(36)` FK `areas.id` SET NULL | opcional |
+| `is_area_lead` | `BOOLEAN` default false | |
+| `is_primary` | `BOOLEAN` default false | única `true` por (`project_id`, `actor_id`) — `UNIQUE INDEX` parcial en Postgres |
+| `start_date`, `end_date` | `DATE` NULL | |
+| `is_active` | `BOOLEAN` default true | |
+
+`actors` gana `company`, `job_title`, `manager_actor_id` (autoref,
+SET NULL) — additivo, sin quitar columnas existentes.
+
+**Backfill:** cada `project_member` → 1 participation (crea `Actor` si
+el user no tiene uno vinculado); actores con asignaciones en
+tasks/risks/issues → participation garantizada; `actor.is_lead=true` →
+`is_area_lead=true` en sus participations; 1 fila marcada `is_primary`
+por (proyecto, actor).
+
+**Extendida después por US-182/US-183** (migraciones `0092`/`0093`,
+2026-07-08) — ver esas secciones más abajo para las columnas de
+capacidad (`allocation_pct`, `status`, etc.) agregadas sobre esta misma
+tabla.
 
 ---
 

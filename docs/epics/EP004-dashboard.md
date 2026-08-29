@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-19
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -145,8 +145,10 @@ y de las instantáneas. Lo que cambió es qué se pinta en el tablero.
 ## Notas técnicas
 
 - **Agregaciones** en queries SQL dedicadas (no cargar todo en memoria).
-- **Redis cache** con key `dashboard:kpis:{tenant_id}:{user_id}`, TTL 300.
-- **Invalidación**: al crear/editar/borrar projects, risks, issues, changes → `DEL` de las keys del tenant (pattern delete).
+- **Redis cache** con key `dashboard:kpis:{tenant_id}:{user_id}`, TTL 300 —
+  **diseño, no implementado** (`dashboard.py` no usa Redis hoy; US-020 lo deja
+  como AC pendiente `[ ]`).
+- **Invalidación**: al crear/editar/borrar projects, risks, issues, changes → `DEL` de las keys del tenant (pattern delete) — mismo estado: diseño, no implementado.
 
 ### Endpoints
 
@@ -227,8 +229,10 @@ una organización específica
   `dashboard.py`: devuelve lista de project_ids visibles o `None` si
   admin-equivalente.
 - [x] Admin / Senior PMO: sin restricción (via `is_admin_equivalent`).
-- [x] Project Manager y otros roles: proyectos donde es `pm_id` o está en
-  `project_members`.
+- [x] Project Manager y otros roles no admin-equivalentes: proyectos visibles
+  vía `scoped_project_ids` → `get_user_visibility`, que resuelve
+  `UserScopeAssignment` (org→programa→proyecto, con herencia hacia abajo;
+  US-168).
 - [x] Aplica a `/dashboard/kpis`, `/dashboard/charts` y
   `/dashboard/plan-vs-actual`.
 - [x] Solicitudes (in_review) para no-admin: sólo las que el usuario creó.
@@ -236,15 +240,9 @@ una organización específica
 
 **Test Cases:**
 - Admin ve todo ✅
-- PM ve sólo proyectos donde es pm_id ✅
-- PM ve sólo proyectos donde es miembro ✅
+- PM ve sólo proyectos visibles vía `UserScopeAssignment` (org/programa/proyecto) ✅
 - Usuario sin asignaciones → 0 ✅
 - Charts y Plan-vs-Real respetan scoping ✅
-
-**Notas:**
-- La granularidad "Program Manager ve su programa + PMs bajo él" queda
-  pendiente para una US posterior. Requiere modelar ownership de
-  programas; hoy no existe en el schema.
 
 **Estado de integración:** DONE (US-015).
 
