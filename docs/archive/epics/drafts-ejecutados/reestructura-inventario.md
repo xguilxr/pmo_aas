@@ -1,9 +1,9 @@
 ---
-tipo: gestion
+tipo: archivo
 responsable: propietario
-estado: borrador
-revisado: 2026-08-19
-revisar_cada: 30d
+estado: archivado
+revisado: 2026-08-29
+revisar_cada: nunca
 ---
 
 # Reestructura — Fase 0: Inventario de reutilización

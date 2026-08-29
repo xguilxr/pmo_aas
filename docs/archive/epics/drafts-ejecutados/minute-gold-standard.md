@@ -1,9 +1,9 @@
 ---
-tipo: epica
+tipo: archivo
 responsable: propietario
-estado: vigente
-revisado: 2026-05-22
-revisar_cada: 90d
+estado: archivado
+revisado: 2026-08-29
+revisar_cada: nunca
 ---
 
 # Minuta — Gold Standard de referencia (Sprint 26 Bloque 0)

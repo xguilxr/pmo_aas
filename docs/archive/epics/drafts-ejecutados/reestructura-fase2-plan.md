@@ -1,9 +1,9 @@
 ---
-tipo: gestion
+tipo: archivo
 responsable: propietario
-estado: vigente
-revisado: 2026-08-19
-revisar_cada: 30d
+estado: archivado
+revisado: 2026-08-29
+revisar_cada: nunca
 ---
 
 # Fase 2 — Navegación y diseño: desglose de construcción

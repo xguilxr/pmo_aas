@@ -1,9 +1,9 @@
 ---
-tipo: epica
+tipo: archivo
 responsable: propietario
-estado: vigente
-revisado: 2026-05-22
-revisar_cada: 90d
+estado: archivado
+revisado: 2026-08-29
+revisar_cada: nunca
 ---
 
 # EP020 — Catálogo de Secciones Atómicas (DRAFT / WIP)
