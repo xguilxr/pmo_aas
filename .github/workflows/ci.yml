@@ -303,6 +303,14 @@ jobs:
           git fetch --no-tags origin "${{ github.base_ref }}"
           python scripts/check_commits.py --rango "origin/${{ github.base_ref }}..HEAD"
 
+      # DOC-06 — la ausencia de impacto documental DEBE declararse, no darse
+      # por hecho. Informativo, nunca falla (mismo argumento que DOC-07): va
+      # en este job porque ya tiene la historia completa y la base fetcheada
+      # que Conventional Commits necesitó un paso antes.
+      - name: Impacto documental del PR (DOC-06)
+        run: |
+          python scripts/check_impacto_documental.py --rango "origin/${{ github.base_ref }}...HEAD"
+
   # Auditoría MCS 2026-08-03 — cierra DEV-04 («el análisis estático y la
   # verificación de tipos DEBEN ejecutarse en modo estricto»). `ruff` cubría lo
   # primero y `tsc --noEmit` lo segundo en el frontend; en Python no había

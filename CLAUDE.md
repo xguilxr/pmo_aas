@@ -28,7 +28,8 @@ Si un commit cambia comportamiento, schema o endpoints descritos en una epic,
 actualiza la epic **en el mismo bloque**. Schema: además `DB-CHANGES.md`.
 Decisión arquitectónica: además `DECISIONS.md`. Redacta la edición con un
 sub-agente Haiku (skill `delegar`). Un cambio interno (refactor, typo) no
-actualiza nada.
+actualiza nada. `python scripts/check_impacto_documental.py` (DOC-06) avisa —
+no falla— si un PR tocó una zona mapeada sin tocar su epic.
 
 Reglas blandas (no anulan 1 US = 1 commit ni la revisión del owner):
 
