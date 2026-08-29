@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -14,7 +14,7 @@ revisar_cada: 90d
 | **Prioridad** | Alta — Sprint 18 |
 | **Dependencias** | EP005 (projects), EP006 (project modules), EP009 (MS Project import), EP017 (Áreas/Actores) |
 | **Módulo** | `projects.artifacts`, `plan.master`, `charter`, `raid.export`, `org.chart` |
-| **Estado** | # PENDING |
+| **Estado** | Entregada (v1.3) — whitelist de 4 artefactos (charter/plan/raid/organigrama) en producción desde migración 0055 (2026-05-08); ver índice |
 | **Versión objetivo** | v1.17 |
 
 ## Objetivo de negocio
@@ -44,10 +44,10 @@ Cierra el catálogo de documentos vivos por proyecto. Hoy los usuarios pueden su
 - **US-105** — Import Plan/Excel: matching wizard a Actor existente o auto-crear (post-import, no bloquea carga). Postergada 2026-05-08: depende del shape final del catálogo Actores que salga de la redefinición pendiente.
 - ~~**US-106 — Tab Organigrama (parte funcional)**~~ — entregado en US-150 (2026-05-26): export Excel de Áreas/Equipos/Roles/Recursos.
 
-## Migraciones Alembic previstas
+## Migraciones Alembic aplicadas
 
-- `project_artifacts` (project_id, type, source_format, content/storage_url, created_by, updated_at) — 1 fila por (project_id, type) único.
-- `charters` — backfill stub para proyectos sin solicitud previa.
+- `project_artifacts` (migración `20260508_0055_project_artifacts.py`, 2026-05-08) — `project_id`, `type` (whitelist `charter`\|`plan`\|`raid`\|`organigrama`, `CHECK ck_artifact_type_whitelist`), `source_format`, `storage_url`, `content_hash`, `size_bytes`, `filename`, `created_by`, `updated_at` — 1 fila por (`project_id`, `type`) único (`uq_artifact_project_type`).
+- `charters` — backfill stub para proyectos sin solicitud previa (`project_charters`, EP003/DEC-008).
 
 ## Out of scope EP018
 

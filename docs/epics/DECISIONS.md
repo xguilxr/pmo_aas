@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -84,11 +84,11 @@ revisar_cada: 90d
 **Rationale:** Permite editar campos, generar PDF on-demand, y actualizar datos de gestión sin regenerar documento.  
 **PDF del charter:** se genera on-demand desde los datos de la tabla, no se guarda como archivo estático.
 
-## DEC-009 — Áreas/Organigrama del proyecto: sin acceso a plataforma
-**Fecha:** 2026-04-20  
-**Decisión:** `project_areas` registra actores y áreas solo como referencia (nombre, contacto). No son usuarios del sistema.  
-**Uso:** Se referencian en asignación de tareas, RAIDs y minutas como texto, no como FK a `users`.  
-**Rationale:** Muchos stakeholders no tendrán cuenta en la plataforma.
+## DEC-009 — ❌ SUPERSEDED por EP017 (US-103)
+**Fecha original:** 2026-04-20
+**Revocada:** 2026-05-07 (ver EP017, US-103).
+**Decisión original:** `project_areas` registra actores y áreas solo como referencia (nombre, contacto). No son usuarios del sistema. Se referencian en asignación de tareas, RAIDs y minutas como texto, no como FK a `users`. Rationale: muchos stakeholders no tendrán cuenta en la plataforma.
+**Estado actual:** `project_areas` se deprecó y se dropeó en la migración `20260507_0048_areas_consolidate_catalog.py` (US-103), reemplazada por el catálogo tenant `areas`/`teams`/`actors`. Hoy `Actor.user_id` (`apps/api/app/models/area.py`) es una FK real y opcional a `users` — un actor puede o no tener cuenta, pero cuando la tiene, la relación es una FK, no texto libre. Ver `EP017-project-directory.md`.
 
 ## DEC-010 — Reportes automáticos: módulo dentro del proyecto (EP006), generación IA en EP008
 **Fecha:** 2026-04-20  

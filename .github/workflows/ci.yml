@@ -84,6 +84,13 @@ jobs:
       - name: Encabezado documental (DOC-01)
         run: python scripts/check_docs.py
 
+      # CTX-07 — el índice del conocimiento se genera y no se edita a mano.
+      # Va en este job por el mismo criterio que DOC-01: lee texto, tarda
+      # segundos y no depende de qué código cambió. Sin este paso el índice
+      # envejece en silencio, que es la única forma en que un índice hace daño.
+      - name: Índice del conocimiento al día (CTX-07)
+        run: python scripts/indexar.py --verificar
+
       # MCS INF-02 — la paridad de versiones declarada se respeta de verdad.
       #
       # Va aquí y no en un trabajo propio porque lee dos archivos de texto y
@@ -295,6 +302,14 @@ jobs:
         run: |
           git fetch --no-tags origin "${{ github.base_ref }}"
           python scripts/check_commits.py --rango "origin/${{ github.base_ref }}..HEAD"
+
+      # DOC-06 — la ausencia de impacto documental DEBE declararse, no darse
+      # por hecho. Informativo, nunca falla (mismo argumento que DOC-07): va
+      # en este job porque ya tiene la historia completa y la base fetcheada
+      # que Conventional Commits necesitó un paso antes.
+      - name: Impacto documental del PR (DOC-06)
+        run: |
+          python scripts/check_impacto_documental.py --rango "origin/${{ github.base_ref }}...HEAD"
 
   # Auditoría MCS 2026-08-03 — cierra DEV-04 («el análisis estático y la
   # verificación de tipos DEBEN ejecutarse en modo estricto»). `ruff` cubría lo

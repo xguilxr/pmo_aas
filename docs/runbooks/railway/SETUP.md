@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
@@ -24,7 +24,8 @@ Railway. Incluye todas las variables de entorno necesarias para v1.0.
    - **web**: root `apps/web`, detecta Next.js automático.
    - **api**: root `apps/api`, detecta Python/FastAPI.
    - **worker**: root `apps/api`, start command distinto (Celery).
-4. Agregar plugins **Postgres 16** y **Redis 7**.
+4. Agregar plugins **Postgres 15** y **Redis 7** (versión fijada en
+   `servicios-datos.yml`; el CI corre contra `postgres:15-alpine` — no 16).
 
 **Resultado esperado:**
 ```
@@ -32,7 +33,7 @@ pmo-aas/
 ├── web (Next.js 15)
 ├── api (FastAPI)
 ├── worker (Celery)
-├── postgres (Railway Plugin v16)
+├── postgres (Railway Plugin v15)
 └── redis (Railway Plugin v7)
 ```
 
@@ -126,7 +127,7 @@ Hereda `NODE_ENV` + estas específicas:
 
 > **No usamos NextAuth.** El frontend habla directo con `/api/v1/auth/*` del backend. Si ves `NEXTAUTH_URL` o `NEXTAUTH_SECRET` en Railway, son legacy de versiones viejas del doc: elimínalas.
 >
-> **GlitchTip / Sentry**: `sentry-sdk` no está instalado en `apps/api/requirements.txt`. La variable `NEXT_PUBLIC_GLITCHTIP_DSN` (o equivalente) hoy no se usa. Agrégala aquí si se reintegra observabilidad APM.
+> **GlitchTip / Sentry**: `sentry-sdk[fastapi]` sí está instalado y wireado en `app/core/observabilidad.py` (API y worker), pero queda **inerte sin `SENTRY_DSN`** en el entorno de Railway — no hay nada que instrumentar del lado de `web`. La variable `NEXT_PUBLIC_GLITCHTIP_DSN` (o equivalente) hoy no se usa; agrégala aquí si se integra observabilidad del frontend.
 
 ---
 
@@ -189,24 +190,39 @@ Cada servicio tiene su archivo de configuración. Ya existen en el repo:
 - `apps/web/railway.toml` → servicio `web`
 
 Railway los lee automáticamente al detectar la app. **No necesitas editarlos**
-para v1.0, pero revisa que `startCommand` y `healthcheckPath` sean correctos:
+para v1.0 — lo que hay hoy (2026-08-29):
 
 ```toml
-# apps/api/railway.toml
+# apps/api/railway.toml — sin startCommand: usa el CMD del Dockerfile
+# (alembic upgrade head && uvicorn ..., ver railway/DEPLOYMENT.md §3.1)
+[build]
+builder = "DOCKERFILE"
 [deploy]
-startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2"
 healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
 
-# apps/api/worker.railway.toml
+# apps/api/worker.railway.toml — mismo Dockerfile, startCommand propio;
+# --beat embebido: la única instancia hace de worker y de scheduler
+[build]
+builder = "DOCKERFILE"
 [deploy]
-startCommand = "celery -A app.workers.celery_app worker --loglevel=info --concurrency=2"
-healthcheckPath = ""  # worker no expone HTTP
-numReplicas = 1
+startCommand = "celery -A app.workers.celery_app worker --beat --loglevel=info --concurrency=2"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
 
-# apps/web/railway.toml
+# apps/web/railway.toml — build propio con NIXPACKS + npm, no Dockerfile
+# ni pnpm (el resto del monorepo usa pnpm; este servicio es la excepción)
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm install && npm run build"
 [deploy]
-startCommand = "pnpm --filter web start -p $PORT"
+startCommand = "npm start"
 healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
 ```
 
 ---
@@ -277,14 +293,16 @@ manuales (revisa settings).
 ## 10. Checklist de configuración
 
 - [ ] Proyecto `pmo-aas` creado con 3 servicios (api, worker, web).
-- [ ] Plugins Postgres 16 + Redis 7 agregados.
+- [ ] Plugins Postgres 15 + Redis 7 agregados (versión fijada en
+      `servicios-datos.yml`; el CI corre contra `postgres:15-alpine`).
 - [ ] `DATABASE_URL` + `REDIS_URL` auto-inyectados (verificar en servicio settings).
 - [ ] `JWT_SECRET` + `JWT_REFRESH_SECRET` generados y guardados en Railway `api`.
 - [ ] `ALLOWED_ORIGINS` configurado a `https://app.pmo-aas.com,https://www.pmo-aas.com`.
 - [ ] `AI_SECRETS_FERNET_KEY` configurado (cifra la Groq key + BYO).
 - [ ] `GROQ_API_KEY` cargada vía `/superadmin/ai` (no se setea en env directamente).
 - [ ] `RESEND_API_KEY` + `RESEND_FROM` + `APP_BASE_URL` en `worker`.
-- [ ] `NEXTAUTH_URL` + `NEXTAUTH_SECRET` + `NEXT_PUBLIC_API_URL` en `web`.
+- [ ] `NEXT_PUBLIC_API_URL` en `web` (no hace falta `NEXTAUTH_*`: no se usa
+      NextAuth, ver §3.4).
 - [ ] Bucket Cloudflare R2 `pmo-aas-uploads` creado + API token + env vars (ver `infra/uploads-storage.md`).
 - [ ] Auto-deploy ON en rama `main`.
 - [ ] Health checks respondiendo: `api /health`, `web /api/health`.

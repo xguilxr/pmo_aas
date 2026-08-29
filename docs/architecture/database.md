@@ -2,14 +2,14 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-19
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
 # Modelo de datos — PostgreSQL 16
 
 **ID:** `DOC-ARCH-DB`
-**Última verificación contra código:** 2026-05-23.
+**Última verificación contra código:** 2026-08-29.
 
 > Refleja el estado real en `apps/api/app/models/` y `apps/api/alembic/versions/`. El conteo de tablas no se escribe aquí: se deriva del modelo en [`er-generado.md`](er-generado.md) (MCA CTX-03). La app es portable a SQLite para tests. Eso condiciona varias decisiones de tipos.
 
@@ -382,7 +382,7 @@ async def list_projects(
 
 ## Migraciones
 
-- Tool: **Alembic**. Convención: `YYYYMMDD_NNNN_slug.py` (74 migraciones al 2026-05-25; ver `apps/api/alembic/versions/`).
+- Tool: **Alembic**. Convención: `YYYYMMDD_NNNN_slug.py`; los archivos viven en `apps/api/alembic/versions/`, ordenados por fecha en el propio nombre — no citamos aquí un conteo fijo porque queda desactualizado en cuestión de días (115 archivos al 2026-08-29, solo como orden de magnitud).
 - **1 PR = 1 migración** preferible. Migraciones grandes se dividen.
 - **`DROP COLUMN` en 2 pasos:** primero deprecar en código, luego drop en migración siguiente. Ver `DB-CHANGES.md` para el log.
 - `alembic downgrade` debe funcionar siempre. Lo valida CI.

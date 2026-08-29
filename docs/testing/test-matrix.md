@@ -1,14 +1,31 @@
 ---
 tipo: guia
 responsable: propietario
-estado: vigente
-revisado: 2026-08-12
-revisar_cada: 180d
+estado: reemplazado
+revisado: 2026-08-29
+revisar_cada: nunca
 ---
 
 # Matriz de Trazabilidad Épica ↔ US ↔ TC
 
 **ID:** `DOC-TEST-MATRIX`
+
+> **Reemplazado (2026-08-29).** Las ~174 filas de abajo usan una numeración
+> secuencial global (`TC-001`…`TC-166`) que **nunca fue la convención real**:
+> el código usa `TC-<US/BUG/ENH>.<n>` (p. ej. `TC-213.1` en
+> `test_us213_cortes.py`, `TC-097.1` en `test_enh097_is_critical.py`) — el ID
+> nombra la US que prueba, no una posición en una lista. La propia nota del
+> 2026-05-23 al final del documento ya admitía que esto era «lo
+> planeado/documentado», nunca lo real; con la convención real ya asentada
+> en 217 archivos, mantener esta matriz en paralelo no añade trazabilidad,
+> la duplica mal.
+>
+> **Cómo encontrar los tests de una US hoy:** el archivo se llama
+> `test_us<NNN>_*.py` (o `test_bug<NNN>_*.py` / `test_enh<NNN>_*.py`), y
+> dentro los casos llevan `TC-<NNN>.<n>` en el nombre o en un comentario.
+> `ls apps/api/tests/test_us213*` encuentra los de US-213 sin necesitar este
+> documento. No hay una matriz agregada — no hizo falta una vez que el
+> nombre del archivo ya es el índice.
 
 Esta matriz es **la fuente de la verdad** para saber qué cubre qué. Debe mantenerse alineada con los archivos de épicas. Cada fila corresponde a un Test Case único.
 

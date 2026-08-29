@@ -8,7 +8,7 @@ acuerde no es un control (MCA-CORE §6.1). Esta suite es la segunda mitad.
 Lo que vigila, y por qué justo esto:
 
 1. **Rutas que no exigen identidad** (§1). Es el cambio más significativo
-   posible en la frontera con internet. Hoy son siete y cada una está declarada
+   posible en la frontera con internet. Hoy son nueve y cada una está declarada
    con su motivo en `docs/architecture/amenazas.yaml`.
 2. **Destinos externos** (§2). Un egreso nuevo saca datos del proyecto de
    nuestra infraestructura; un destino nuevo cualquiera amplía la superficie.

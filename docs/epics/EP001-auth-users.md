@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -30,6 +30,7 @@ revisar_cada: 90d
 | `role_type` | Descripción |
 |---|---|
 | `admin` | Tiene 5 capabilities adicionales sobre `user`. |
+| `pm_sr` | Equivalente a `admin` en capabilities vía `_ADMIN_EQUIVALENT_ROLES` (`core/permissions.py`); sin el constraint de unicidad que sí aplica a `admin`. |
 | `user`  | Default. Hace casi todo en el tenant. |
 
 `viewer` se **eliminó** en Sprint 6 (migración 0028). Los registros
@@ -58,7 +59,7 @@ autenticado del tenant. No hay granularidad CRUD por módulo.
 ```
 request → get_current_user → CurrentUser
                                   │
-              role_type ∈ {admin,user} + is_superadmin
+              role_type ∈ {admin,pm_sr,user} + is_superadmin
                                   │
                                   ▼
        require_capability("X")  →  cu.has_capability("X")
@@ -96,7 +97,9 @@ en el mapping). El marker `pytest -m permissions` corre aislado.
 
 ### Modelo de datos efectivo
 
-- `users.role_type: VARCHAR(16)` ∈ {`admin`, `user`}.
+- `users.role_type: VARCHAR(16)` ∈ {`admin`, `pm_sr`, `user`} — `pm_sr` es
+  equivalente a `admin` para efectos de capacidades
+  (`_ADMIN_EQUIVALENT_ROLES`, `core/permissions.py`).
 - `tenant_role_permission_overrides` (US-073, DEC-021): vocabulario
   de overrides ahora es `capability` en `module` y `"grant"` en
   `action`. Solo el superadmin escribe aquí.
@@ -130,7 +133,7 @@ sabe quién hizo qué.
 **Criterios de aceptación:**
 - [ ] Campos obligatorios: `full_name`, `username`, `email`, `password`, `role_ids[]`.
 - [ ] `username` y `email` son únicos por tenant (`citext`).
-- [x] `password` cumple política (`core/security.py:validate_password_policy`): **min 8 chars**, 1 mayúscula, 1 dígito, 1 símbolo (set fijo). Sin requisito de lowercase ni blocklist de comunes (la política agresiva de docs viejos quedó como deuda).
+- [x] `password` cumple política (`core/security.py:validate_password_policy`): **min 8 chars**, 1 mayúscula, 1 dígito, 1 símbolo (set fijo), y no está en la blocklist de contraseñas filtradas (~23,000 entradas vía `esta_filtrada`, ASVS 2.1.7). Sin requisito de lowercase.
 - [ ] Hash `bcrypt rounds=12` al guardar.
 - [ ] La response no expone `password_hash`.
 - [ ] Crea registro `audit_log` con `action='user.create'`.
@@ -362,7 +365,6 @@ Detalle en [`../architecture/database.md`](../architecture/database.md).
 
 ```
 POST   /api/v1/auth/login
-POST   /api/v1/auth/refresh
 POST   /api/v1/auth/logout
 POST   /api/v1/auth/change-password
 POST   /api/v1/auth/switch-tenant
@@ -374,12 +376,6 @@ PATCH  /api/v1/admin/users/{id}
 DELETE /api/v1/admin/users/{id}                      (soft)
 POST   /api/v1/admin/users/{id}/reset-password
 POST   /api/v1/admin/users/{id}/unlock
-
-GET    /api/v1/admin/roles
-POST   /api/v1/admin/roles
-GET    /api/v1/admin/roles/{id}
-PATCH  /api/v1/admin/roles/{id}
-DELETE /api/v1/admin/roles/{id}                      (si no is_system)
 ```
 
 ### Dependencias de librerías

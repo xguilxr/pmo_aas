@@ -2,14 +2,14 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-19
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
 # Navegación de la web app
 
 **ID:** `DOC-ARCH-NAV`
-**Fecha:** 2026-05-23
+**Fecha:** 2026-08-29
 **Scope:** `apps/web` (Next.js 15, App Router)
 
 Este documento describe el árbol de rutas y el propósito de cada
@@ -188,6 +188,7 @@ flowchart LR
         N2["Portafolio<br/>/pmo<br/>(vista maestra)"]
         N2b["Board<br/>/pmo/board"]
         N3["Proyectos<br/>/pmo/projects"]
+        N3b["Importar<br/>/pmo/imports"]
         N4["Solicitudes<br/>/pmo/requests"]
         N5["Recursos<br/>/pmo/resources"]
         N6["Reportes<br/>/pmo/reports"]
@@ -207,6 +208,7 @@ flowchart LR
         A3["/admin/organizations"]
         A4["/admin/users"]
         A5["/admin/permissions"]
+        A5b["/admin/plan"]
         A6["/admin/audit-logs"]
     end
 
@@ -262,7 +264,7 @@ del sidebar admin + un panel adicional para Áreas:
 
 ## 3. Inventario de páginas
 
-Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
+Total: **77 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08) + `/admin/plan` (US-221) + `/pmo/imports` (US-216). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
 
 ### 3.1 Rutas públicas (5)
 
@@ -282,7 +284,7 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/account` | Perfil, password, preferencias de notificación. |
 | `/notifications` | Centro de notificaciones (filtros por tipo). |
 
-### 3.3 `/pmo/**` — portal de proyectos (35)
+### 3.3 `/pmo/**` — portal de proyectos (40)
 
 **Navegación / listados**
 
@@ -297,6 +299,7 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/pmo/projects` | Listado de proyectos (filtros: fase, salud, búsqueda). |
 | `/pmo/projects/new` | Crear proyecto. |
 | `/pmo/projects/[id]` | Hub del proyecto: header, KPIs, links a módulos. Sub-tabs internos: `Resumen` · `Equipo` · `Avance` · `Presupuesto` · `Actividad` · `Stakeholders` (este último solo si el charter tiene sponsor / líder de negocio / líder técnico). |
+| `/pmo/imports` | US-216: importación masiva de proyectos y recursos a nivel organización — sube Excel/CSV, mapea columnas, preview (no escribe) → confirm. |
 | `/pmo/requests` | Listado de solicitudes de proyecto. |
 | `/pmo/requests/new` | Nueva solicitud. |
 | `/pmo/requests/[id]` | Detalle de solicitud + aprobación → crea proyecto. |
@@ -333,7 +336,7 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/reports/builder` | Wizard de reporte. | Botón en `/reports` |
 | `/reports/tweak` | Ajustes finos del último reporte. | Botón en `/reports` |
 
-### 3.4 `/admin/**` — admin del tenant (13)
+### 3.4 `/admin/**` — admin del tenant (14)
 
 | URL | Propósito | Acceso |
 |---|---|---|
@@ -348,6 +351,7 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/admin/users/new` | Nuevo usuario. | Botón |
 | `/admin/users/[id]` | Detalle usuario, roles, reset pwd. | Click en row |
 | `/admin/permissions` | Matriz roles × permisos. | Sidebar + panel |
+| `/admin/plan` | US-221: plan de suscripción del inquilino — límites y consumo, solo lectura (escribir el tier es de superadmin). | Sidebar + panel |
 | `/admin/areas` | Directorio de áreas/equipos/actores. | Panel del landing |
 | `/admin/audit-logs` | Bitácora con filtros + export CSV. | Sidebar + panel |
 
@@ -413,8 +417,6 @@ flowchart LR
     F -->|botón| G["/gantt"]
 ```
 
-Alternativa: el sidebar tiene `OrgTreeNav` que permite saltar de `/dashboard` directamente a cualquier `/pmo/projects/[id]` sin pasar por la landing.
-
 ### 4.4 Generación de minuta con IA
 
 ```mermaid
@@ -455,7 +457,6 @@ flowchart LR
 | `Reportes → Portfolio` | Admin (flag `adminOnly`) |
 | `ADMIN_NAV` + `/admin/**` | Admin del tenant (rol con permisos admin) |
 | `SUPERADMIN_NAV` + `/superadmin/**` | `is_superadmin === true` |
-| `OrgTreeNav` (org → portafolio ⊃ programa → proyecto, con los cajones «Sin programa» y «Sin clasificar») | Cualquier usuario; el backend filtra por `tenant_id` y por exclusiones en `organization_user_exclusions` lo que el usuario puede ver. |
 
 La decisión la toma `app-shell.tsx` usando el hook
 `useMyPermissions()` (devuelve `roleType: "admin" | "user"`) + el flag
@@ -535,5 +536,5 @@ No son huérfanas. Su único punto de entrada es no-obvio:
 
 ---
 
-**Última actualización:** 2026-05-23 (Sprint 26).
+**Última actualización:** 2026-08-29 (auditoría de documentación — ver §3.3/§3.4 y §4.3/§5).
 **Owner:** Claude Code.

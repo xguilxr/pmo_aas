@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-07-09
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -13,6 +13,26 @@ revisar_cada: 90d
 > Se itera con el owner antes de convertirse en issues/epics.
 > Incluye además: (2) plan de consistencia UI/UX de tablas y (3) evaluación
 > de "memoria de proyecto" para IA.
+
+> **Estado real (2026-08-29), verificado contra código:** la mayor parte de
+> este draft ya se construyó, y por el camino que aquí mismo se recomendaba
+> — §3 pedía extender `actors` en vez de crear `resource_pool`/
+> `project_resource_assignment` nuevas, y eso fue exactamente lo que pasó
+> (US-215/217, `services/capacity.py`). La capa 1 (vista ejecutiva) es
+> `/pmo` y `/dashboard` (US-206/207); la capa 2 (drill-down) es
+> `HealthWhyPanel`; la capa 3, la clasificación de recurso que este draft
+> pedía —`resource_type`, `seniority`, `scarcity_level`, `skills_tags`—
+> **sí está en `actors`** y en `TenantActorsPanel.tsx`/`/pmo/resources`, no
+> quedó pendiente; la capa 4 (gobernanza) es el heatmap de `/pmo/resources`.
+> §7 (memoria de proyecto para IA) es `project_ai_context.py`, vivo.
+>
+> **Lo que sí sigue sin construir**: §2.1 daba por sentado que
+> «`Organization` cumple el rol de portafolio, no hace falta la entidad» —
+> ADR-037 (2026-08-19) decidió lo contrario y creó `Portfolio` como entidad
+> real; leer esa sección con ese ajuste. §6 (extraer `ColumnsDropdown` como
+> componente genérico reutilizable fuera de la tabla de Plan) sigue sin
+> hacerse — es la única pieza de consistencia UI/UX de este draft que queda
+> abierta.
 
 ---
 

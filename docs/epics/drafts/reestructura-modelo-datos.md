@@ -2,18 +2,36 @@
 tipo: gestion
 responsable: propietario
 estado: borrador
-revisado: 2026-08-19
+revisado: 2026-08-29
 revisar_cada: 30d
 ---
 
 # Reestructura — Fase 1: Modelo de datos objetivo y migración
 
-> Diseño, no ejecución: aquí no hay migraciones corridas. Cada oleada, al
-> implementarse, registra su cambio en `DB-CHANGES.md` y sus decisiones en
-> `DECISIONS.md`/ADR como manda `CLAUDE.md` §0.2. Base: el árbol de
-> `reestructura-conceptos.md` y los hallazgos de `reestructura-inventario.md`.
-> Convenciones heredadas: IDs `String(36)` UUID, `TimestampMixin`,
+> Diseño original del 2026-08-19. Cada oleada, al implementarse, registra su
+> cambio en `DB-CHANGES.md` y sus decisiones en `DECISIONS.md`/ADR como manda
+> `CLAUDE.md` §0.2. Base: el árbol de `reestructura-conceptos.md` y los
+> hallazgos de `reestructura-inventario.md` (archivado — su propósito ya se
+> cumplió). Convenciones heredadas: IDs `String(36)` UUID, `TimestampMixin`,
 > `tenant_id` indexado, soft-delete con `deleted_at` donde ya existe.
+
+## Estado real, oleada por oleada (verificado contra código, 2026-08-29)
+
+| Oleada | Estado | Nota |
+|---|---|---|
+| **W1** | ✅ Hecho | `portfolios`, FKs, enum `type`, fases en español — ADR-037/038, migraciones 0108-0111 |
+| **W2** | 🟡 Parcial | `user_tenant_memberships` + email global sí (US-214, mig. 0115). `active_organization_id` en el JWT y el endpoint `switch-context` **no se construyeron así**: el contexto de organización activa vive del lado del cliente (`organizacion-activa.tsx`), no como claim de sesión |
+| **W3 — RLS** | ⛔ No hecho | Cero `CREATE POLICY` en todas las migraciones. Tiene issues abiertos: #599, #600, #601 (US-240/241/242) |
+| **W4** | 🟡 Parcial | Costo-snapshot en participaciones sí (US-215, mig. 0114). `actors.organization_id` **sigue nullable** — el endurecimiento a NOT NULL no se hizo |
+| **W5** | 🟡 Parcial | `metric_snapshots` sigue en cadencia semanal, no bi-semanal; sin confirmar el scope `portfolio` explícito. La salud explicable y `HealthWhyPanel` sí están vivos |
+| **W6** | 🟡 Parcial | `plan_baselines` (US-212) y `project_dependencies` (US-218) sí. La campaña de RLS de este dominio depende de W3 |
+| **W7** | ⛔ Superado, no construido | Ninguna de las cuatro tablas (`ai_agent_roles`, `ai_skills`, `tenant_ai_providers`, `subscription_plans`) existe. Y **la parte de roles de IA no se va a construir así**: el owner decidió lo contrario en EP021 (DEC-033, 2026-08-20) — el agente actúa siempre en nombre de una persona, con las capacidades y el alcance de esa persona; «roles con permisos propios» habría sido un segundo sistema de autorización, y se descartó por eso, no por falta de tiempo. La parte de suscripción se resolvió distinto también: US-221 lee los topes de `tenants.settings.plan` (JSON), no de una tabla `subscription_plans`, y es de solo lectura — sin el enforcement que este documento daba por sentado |
+| **W8** | ⛔ No hecho | `business_units`/`departments` siguen en el schema, a propósito: esperan a que el contador de compat confirme que nadie las usa |
+
+El resto de este documento es el diseño original de 2026-08-19, sin editar —
+sigue siendo la referencia técnica para W3, el resto de W5 y W8 cuando se
+retomen. **La sección 6 sobre roles de IA (W7) es la excepción: no se
+construya tal cual está escrita** — ver la fila de arriba.
 
 ## 1. Jerarquía organizacional
 
@@ -172,6 +190,13 @@ lo omita:
   dentro del snapshot bi-semanal para tendencia. Sin tabla propia.
 
 ## 6. IA y suscripción
+
+> **La parte de roles de IA de esta sección NO se construyó así, por
+> decisión explícita del owner (DEC-033, EP021, 2026-08-20): el agente actúa
+> siempre en nombre de una persona, con sus capacidades y su alcance — nunca
+> con permisos propios. `allowed_capabilities JSON` de abajo habría sido
+> exactamente el segundo sistema de autorización que esa decisión descarta.
+> Se conserva el texto original por trazabilidad, no como diseño vigente.**
 
 - Catálogo IA (scope plataforma/tenant/org por columna `scope` + FK
   nullable):

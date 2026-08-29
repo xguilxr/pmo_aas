@@ -1,9 +1,9 @@
 ---
-tipo: epica
+tipo: archivo
 responsable: propietario
-estado: vigente
-revisado: 2026-06-29
-revisar_cada: 90d
+estado: archivado
+revisado: 2026-08-29
+revisar_cada: nunca
 ---
 
 # Draft — Auto-WBS con orden manual estable (`tasks.position`)

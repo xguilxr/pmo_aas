@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
@@ -60,7 +60,7 @@ flowchart LR
         W[Next.js<br/>token en localStorage]
     end
     subgraph railway[Railway — red privada]
-        A[FastAPI<br/>332 rutas con identidad<br/>7 abiertas]
+        A[FastAPI<br/>355 rutas con identidad<br/>9 abiertas]
         K[Worker Celery]
         P[(Postgres<br/>tenant_id por fila)]
         R[(Redis<br/>cola + rate limit)]
@@ -88,7 +88,7 @@ flowchart LR
 
 | # | Frontera | Qué la cruza |
 |---|---|---|
-| **FC-1** | Internet → API | Peticiones sin identidad (7 rutas) |
+| **FC-1** | Internet → API | Peticiones sin identidad (9 rutas) |
 | **FC-2** | Usuario autenticado → datos de **su** inquilino | Todo endpoint de negocio; el cambio de inquilino activo (US-214) |
 | **FC-3** | Administrador de inquilino → **nuestra** infraestructura | Configuración BYO, `base_url` |
 | **FC-4** | Superadministrador → todos los inquilinos | `join-as-admin`, paneles de plataforma |

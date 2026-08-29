@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -42,7 +42,9 @@ Implementación: `apps/api/app/services/ai/`:
 - `byo_catalog.py` — catálogo de providers que ve el wizard de `/admin/ai`.
 - `platform_config.py` — resuelve la key Groq para modo `platform` (env o `platform_ai_settings.groq_api_key_encrypted` desencriptado con Fernet).
 - `tenant_ai.py` — carga el modo + config efectiva del tenant.
-- `ai_secrets.py` — cifra/descifra API keys con Fernet (key en env `AI_SECRETS_FERNET_KEY`).
+
+Cifrado de API keys: `apps/api/app/services/ai_secrets.py` — **fuera** del
+paquete `ai/`, cifra/descifra con Fernet (key en env `AI_SECRETS_FERNET_KEY`).
 
 > **BUG-053 (2026-05-08):** se eliminó `OllamaProvider` y toda la cascada legacy `Ollama → Gemini → Claude`. Cualquier mención a Ollama en docs viejos es obsoleta. Setup actual: [`../runbooks/ai/groq-setup.md`](../runbooks/ai/groq-setup.md) y [`../runbooks/ai/byo-setup.md`](../runbooks/ai/byo-setup.md).
 
@@ -370,7 +372,7 @@ mismo usuario del mismo inquilino, pero no lo tratamos como secreto.
 Además del draft IA, hay un **Report Builder** con catálogo de secciones atómicas (US-101+):
 
 - `/pmo/projects/[id]/reports/builder` — wizard donde el PM compone un reporte agregando "secciones" (cards de un catálogo cerrado).
-- Soporte de chat IA: `POST /api/v1/report-builder-chat/...` usa el `SYSTEM_PROMPT` que convierte instrucciones del usuario en acciones sobre el canvas (`add_section`, `remove_section`, `reorder_section`, `update_section_params`).
+- Soporte de chat IA: `POST /api/v1/report-builder/ai-chat` (`endpoints/report_builder_chat.py`) usa el `SYSTEM_PROMPT` que convierte instrucciones del usuario en acciones sobre el canvas (`add_section`, `remove_section`, `reorder_section`, `update_section_params`).
 
 ### Criterios de aceptación
 
@@ -454,6 +456,27 @@ nuestra red.
 
 - [ ] Listado de jobs por tenant en `/admin/ai` (filtros por kind / status / fecha).
 - [ ] Costo estimado por job (requiere tabla de precios por modelo).
+
+---
+
+## US-224 — Catálogo de plantillas de operación (EP021, entregada 2026-08-28)
+
+No es un prompt editable por el tenant: es un **catálogo de solo lectura** de
+diez plantillas de operación (`apps/api/app/services/ai/catalogo.py`) en cinco
+categorías (proyecto, cartera, gobernanza, plan, calidad). El inquilino elige
+una y la ejecuta contra sus propios datos; ninguna plantilla escribe, la
+salida es una propuesta que una persona confirma.
+
+- `GET /ai/plantillas` — catálogo filtrado por el modo de IA del tenant (`apps/api/app/api/v1/endpoints/ai_plantillas.py`, registrado en `router.py`).
+- `POST /ai/plantillas/{id}/ejecutar` — corre una plantilla sobre `datos` y devuelve el JSON del contrato declarado (`claves_salida`).
+
+**Siete de las diez exigen modo `byo`**: Groq de plataforma se limita a
+minutas (DEC-017), así que solo las tres que reestructuran texto ya existente
+(lección aprendida, explicación de indicador, RAID desde texto) corren en
+`platform`.
+
+Detalle completo (decisiones, tests, lo que falta para exponerlo en
+`/admin/ai`): [EP021 — Catálogo de IA y roles de agente](EP021-catalogo-de-ia.md).
 
 ---
 

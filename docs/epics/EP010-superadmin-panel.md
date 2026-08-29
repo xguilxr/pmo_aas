@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -204,6 +204,13 @@ configuración global.
 
 ### US-059 — Baja de tenant guiada
 
+> **Flujo real (verificado 2026-08-29):** borrado directo, sin ventana de
+> arrepentimiento. `DELETE /api/v1/superadmin/tenants/{id}` (soft) y
+> `DELETE /api/v1/superadmin/tenants/{id}/permanent?confirm_slug=` (hard,
+> ejecuta de inmediato) — `superadmin.py` ~líneas 369 y 389. No hay
+> `schedule-delete`/`cancel-delete`; los AC de abajo describen el diseño
+> original, no lo entregado.
+
 **Como** Super Admin
 **Quiero** desactivar o eliminar un tenant con un flujo seguro
 **Para** evitar borrados accidentales.
@@ -213,23 +220,15 @@ configuración global.
       (hard).
 - [ ] **Desactivar**: confirmación simple con motivo; usuarios no pueden
       login, datos quedan en BD.
-- [ ] **Eliminar permanente** (runbook de 4 pasos):
-  1. Exportar tenant (obligatorio; descargar ZIP con `tenant_export_*.zip`
-     firmado + SHA256).
-  2. Confirmación tipeando el slug exacto.
-  3. Ventana de "arrepentimiento" 24h (scheduled job, no inmediato).
-  4. Ejecución efectiva (delete rows + archivos + cache invalidation).
-- [ ] Super Admin puede cancelar en la ventana 24h.
-- [ ] Audit log con secuencia `tenant.export → tenant.delete_scheduled →
-      tenant.delete_executed`.
+- [x] **Eliminar permanente**: confirmación tipeando el slug exacto
+      (`confirm_slug`) + ejecución **inmediata** (cascade delete). Sin export
+      previo obligatorio, sin ventana de espera, sin job programado.
+- [x] Audit log: `tenant.soft_delete` / `tenant.hard_delete` (no la secuencia
+      export → scheduled → executed que describían los AC originales).
 
 **Test Cases:**
-- `TC-158` (integration) — Slug mal escrito → 400, no programa delete.
-- `TC-159` (integration) — Cancelar dentro de 24h → job cancelado, tenant
-      intacto.
+- `TC-158` (integration) — Slug mal escrito → error, no ejecuta el delete.
 - `TC-160` (integration) — Tras ejecutar, queries de ese tenant devuelven 0.
-- `TC-161` (E2E) — Export ZIP contiene `tenant.json`, `users.csv`,
-      `projects/{folio}/*.json`, etc.
 
 ---
 
@@ -266,6 +265,13 @@ configuración global.
 ---
 
 ### US-061 — Configuración global de plataforma
+
+> **No entregada** (verificado 2026-08-29): no existe `/superadmin/settings`
+> en `apps/web/app/(app)/superadmin/` ni `GET`/`PATCH /api/v1/superadmin/settings`
+> en `superadmin.py`/`superadmin_panel.py`. Consistente con "Notas técnicas"
+> abajo: no hay tabla `platform_settings`; lo que existe es `tenants.settings`
+> JSONB por tenant, no una configuración global de plataforma. Los AC de esta
+> US describen el diseño original, no lo entregado.
 
 **Como** Super Admin
 **Quiero** ajustar parámetros platform-wide
@@ -318,21 +324,24 @@ alcance** en v1.0:
 Estas tablas se reabren si aparece necesidad real post-MVP.
 
 ### Endpoints nuevos (complementan los de EP002)
+
+> Corregido 2026-08-29 contra `superadmin.py` / `superadmin_panel.py`: no
+> existen `provision-wizard`, `audit-logs(/stream)`, `impersonate(/end)` ni
+> `schedule-delete`/`cancel-delete`. Ver notas por US arriba.
+
 ```
 GET    /api/v1/superadmin/dashboard              (US-053)
 GET    /api/v1/superadmin/tenants                (US-054, extiende EP002)
 GET    /api/v1/superadmin/tenants/{id}/detail    (US-055, extiende EP002 con include=)
-POST   /api/v1/superadmin/tenants/provision-wizard (US-056 — wrapper del POST de EP002)
-GET    /api/v1/superadmin/audit-logs             (US-057)
-GET    /api/v1/superadmin/audit-logs/stream      (SSE)
-POST   /api/v1/superadmin/tenants/{id}/impersonate (US-058, evoluciona join-as-admin)
-POST   /api/v1/superadmin/tenants/{id}/impersonate/end
-POST   /api/v1/superadmin/tenants/{id}/schedule-delete (US-059)
-POST   /api/v1/superadmin/tenants/{id}/cancel-delete
+POST   /api/v1/superadmin/provision              (US-056; el endpoint real, sin wrapper "provision-wizard")
+GET    /api/v1/superadmin/logs/platform          (US-057; sin SSE. Ruta web: /superadmin/logs, no /superadmin/audit-logs)
+POST   /api/v1/superadmin/tenants/{id}/join-as-admin        (US-058; sin endpoint /impersonate ni /impersonate/end)
+DELETE /api/v1/superadmin/tenants/{id}                      (US-059, soft, inmediato)
+DELETE /api/v1/superadmin/tenants/{id}/permanent?confirm_slug= (US-059, hard, inmediato)
 GET    /api/v1/superadmin/health                 (US-060)
-GET    /api/v1/superadmin/settings               (US-061)
-PATCH  /api/v1/superadmin/settings
 ```
+
+US-061 no tiene endpoints: `/superadmin/settings` (GET/PATCH) no existe.
 
 ### Seguridad adicional
 - Ruta `/superadmin` requiere sesión con `is_superadmin=true` y 2FA verificado

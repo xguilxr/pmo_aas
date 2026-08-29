@@ -2,14 +2,14 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
 # Stack tecnológico
 
 **ID:** `DOC-ARCH-STACK`
-**Última verificación contra código:** 2026-05-23.
+**Última verificación contra código:** 2026-08-29.
 
 Decisiones de tecnología por capa, con justificación explícita. Cada decisión debería tener un ADR en [`../adr/`](../adr/).
 
@@ -78,7 +78,8 @@ sqlalchemy==2.0.35
 alembic==1.13.3
 asyncpg==0.29.0
 psycopg[binary]==3.2.3
-python-jose[cryptography]==3.3.0
+PyJWT==2.13.0                # sustituye a python-jose (SEG-01, 2026-08-05 — 5 CVE)
+cryptography==50.0.0         # explícita: la usa ai_secrets.py (Fernet)
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.12
@@ -111,7 +112,7 @@ openpyxl==3.1.5             # lectura .xlsx en imports
 
 **Qué NO está en el repo (decisión consciente):**
 - ❌ `google-generativeai`, `anthropic`, `openai` SDKs — se llaman las APIs vía `httpx` directo. Evita dependencia transitiva pesada y permite cubrirlas con un solo mocking layer en tests.
-- ❌ `sentry-sdk` — sin observabilidad APM hoy. Logs centralizados vía Railway + structlog. Se evaluará reintroducir cuando haya tráfico que lo justifique.
+- `sentry-sdk[fastapi]` **sí está** (ver tabla de Observabilidad más abajo) — no es un "qué no está": está instalado y wireado, solo inactivo sin `SENTRY_DSN`.
 
 **Convenciones:**
 - Rutas tenant-scoped bajo `/api/v1/…` con dependencia `get_current_tenant`.
@@ -221,7 +222,7 @@ Estado real hoy:
 | **Railway Logs** | Activo | `structlog` formatea JSON en prod, texto en dev. |
 | **Railway Metrics** | Activo (built-in) | CPU, memoria, red por servicio. |
 | **Audit log** (tabla `audit_log`) | Activo | Forense y compliance; ver `database.md`. |
-| **Sentry / GlitchTip** | **No integrado.** | El `sentry-sdk` se removió de `requirements.txt`. Pendiente decidir si reintroducir cuando crezca el tráfico. |
+| **Sentry / GlitchTip** | Instalado y wireado; **inactivo sin `SENTRY_DSN`**. | `sentry-sdk[fastapi]==2.19.2` en `requirements.txt`; `core/observabilidad.py::iniciar_captura_de_errores` se llama desde `main.py` (API) y `workers/celery_app.py` (worker). Sin la variable en Railway queda apagado a propósito; `/health` publica `error_capture: "ok"/"disabled"`. |
 | **UptimeRobot** | No configurado en repo | Si se contrata, apuntar a `/api/health`. |
 | **OpenTelemetry / tracing** | Descartado por ahora | Sin necesidad en MVP. |
 

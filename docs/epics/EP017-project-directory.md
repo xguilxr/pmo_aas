@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -14,7 +14,7 @@ revisar_cada: 90d
 | **Prioridad** | Alta — Sprint 25 |
 | **Dependencias** | EP002 (org hierarchy), EP005 (projects), EP006 (project modules), US-097/098/103 (áreas catálogo) |
 | **Módulo** | `areas`, `actors`, `teams`, `project_participations` |
-| **Estado** | # PENDING |
+| **Estado** | Entregada (v1.2) — Bloques A–D (US-114 a US-117) funcionales; Bloque E (US-118) sigue post-MVP; Bloque F (US-182 a US-217, pool de recursos y capacidad) extiende el modelo, 2026-07-08 a 2026-08-20 |
 | **Versión objetivo** | v1.24 |
 | **Issue origen** | Feedback owner 2026-05-10 (rediseño de modelo de áreas/recursos) |
 
@@ -38,10 +38,11 @@ actors (catálogo tenant — personas)
   ├─ functional_area_id  → areas       (1:1 estable)
   ├─ manager_actor_id    → actors      (autoref)
   ├─ user_id             → users       (opc.)
-  └─ company, job_title
+  ├─ company, job_title
+  └─ team_id, is_lead     (legacy — coexisten hasta un cleanup futuro, sin US asignada todavía)
 
 areas (catálogo tenant plano — áreas funcionales)
-teams (catálogo tenant plano — equipos operativos; SIN area_id)
+teams (catálogo tenant plano — equipos operativos; area_id coexiste hasta un cleanup futuro, sin US asignada todavía)
 project_roles (catálogo tenant — PM, SME, Key User…)
 
 project_participations (N por (project_id, actor_id))
@@ -56,6 +57,12 @@ project_participations (N por (project_id, actor_id))
 ```
 
 ## DEC a registrar en DECISIONS.md al cierre del bloque
+
+> **Pendiente (2026-08-29):** el bloque (US-114 a US-117) ya cerró
+> funcionalmente (mayo–jun 2026) y estas 4 decisiones nunca se
+> registraron en `DECISIONS.md`. La nota se queda hasta que el owner
+> las registre con ID real — no se asignan IDs aquí.
+<!-- TODO owner: asignar IDs reales o retirar la nota si ya no aplica -->
 
 - **DEC-XXX** — Área funcional vive en la persona (1 FK). Equipo operativo y rol viven en `project_participations`. Una persona puede tener N participations en un proyecto (varios equipos/roles); una se marca `is_primary` para agrupadores.
 - **DEC-XXX** — Catálogo de equipos operativos (`teams`) queda **plano** (drop `teams.area_id`). Catálogo de roles de proyecto pasa a tabla editable `project_roles`.
@@ -77,7 +84,7 @@ US-097 (#240 áreas jerarquía), US-098 (#241 plan area), US-103 (#263 áreas ca
 
 ---
 
-## # PENDING — US-114 — Schema directorio de proyecto
+## # DONE (migración 0061, 2026-05-10) — US-114 — Schema directorio de proyecto
 
 **Como** sistema PMO
 **Quiero** un schema que separe área funcional / equipo operativo / rol proyecto / participación temporal
@@ -91,13 +98,19 @@ US-097 (#240 áreas jerarquía), US-098 (#241 plan area), US-103 (#263 áreas ca
 - `tasks`, `risks`, `issues`: drop `area_id` con snapshot a `legacy_area_id`.
 - Backfill: cada `actor.team_id` activo → genera participation por proyecto donde el actor tiene tareas/RAID. `project_member` → genera participation con `project_role_id` resuelto contra `project_roles`. `actor.is_lead=true` → `is_area_lead=true` en participations correspondientes. `actor.user_id` se crea si no existe vinculación.
 
+**Nota (2026-08-29):** los drops listados arriba (`team_id`/`is_lead` en
+`actors`, `area_id` en `teams`/`tasks`/`risks`/`issues`) **no se
+ejecutaron** en la migración 0061 — el propio archivo lo documenta
+("viven en US-119, cleanup"). Coexisten hasta un cleanup futuro, sin US
+asignada todavía (ver "Modelo conceptual").
+
 **Criterios de aceptación:**
-- [ ] Migración Alembic `0061_project_directory.py` upgrade + downgrade ambos verdes.
-- [ ] Backfill no pierde asignaciones de tareas/RAID existentes.
-- [ ] Tests: smoke contra cada drop (`tasks.area_id` no existe, `tasks.legacy_area_id` sí).
-- [ ] Tests: backfill genera al menos 1 participation por (proyecto, actor con tareas).
-- [ ] DECISIONS.md actualizado con los 4 DEC del epic.
-- [ ] DB-CHANGES.md actualizado.
+- [x] Migración Alembic `0061_project_directory.py` upgrade + downgrade ambos verdes.
+- [x] Backfill no pierde asignaciones de tareas/RAID existentes.
+- [ ] Tests: smoke contra cada drop (`tasks.area_id` no existe, `tasks.legacy_area_id` sí). **(Diferido — los drops no se ejecutaron en 0061, ver nota arriba; no aplica hasta el cleanup futuro.)**
+- [x] Tests: backfill genera al menos 1 participation por (proyecto, actor con tareas).
+- [ ] DECISIONS.md actualizado con los 4 DEC del epic. **(Pendiente — ver sección "DEC a registrar" arriba.)**
+- [x] DB-CHANGES.md actualizado.
 
 **Test Cases:**
 - TC-114-1: migración upgrade limpia + downgrade.
@@ -108,7 +121,7 @@ US-097 (#240 áreas jerarquía), US-098 (#241 plan area), US-103 (#263 áreas ca
 
 ---
 
-## # PENDING — US-115 — API directorio de proyecto
+## # DONE — US-115 — API directorio de proyecto
 
 **Como** frontend
 **Quiero** endpoints REST de participations + project_roles + actors enriquecidos
@@ -126,10 +139,10 @@ US-097 (#240 áreas jerarquía), US-098 (#241 plan area), US-103 (#263 áreas ca
 - Tasks/risks/issues responses: agregar bloque `derived = { functional_area, operational_team, project_role, is_area_lead }` calculado vía join con primary participation.
 
 **Criterios de aceptación:**
-- [ ] OpenAPI actualizada y publicada.
-- [ ] Tests por endpoint con factories.
-- [ ] Performance: `GET /projects/{id}/participations` < 200ms con 100 participations.
-- [ ] Endpoint `/actors` legacy con `team_id` → 422 con mensaje claro de migración.
+- [x] OpenAPI actualizada y publicada.
+- [x] Tests por endpoint con factories.
+- [ ] Performance: `GET /projects/{id}/participations` < 200ms con 100 participations. **(No re-medido en esta corrección — no bloqueante.)**
+- [ ] Endpoint `/actors` legacy con `team_id` → 422 con mensaje claro de migración. **(No aplica: `team_id` sigue siendo un campo vigente de `/actors`, no legacy — ver nota de US-114.)**
 
 **Test Cases:**
 - TC-115-1: CRUD participation completo.
@@ -140,7 +153,7 @@ US-097 (#240 áreas jerarquía), US-098 (#241 plan area), US-103 (#263 áreas ca
 
 ---
 
-## # PENDING — US-116 — UI rediseño /pmo/projects/[id]/areas + /admin/areas
+## # DONE — US-116 — UI rediseño /pmo/projects/[id]/areas + /admin/areas
 
 **Como** PM
 **Quiero** una página de Áreas con dos toggles (directorio del proyecto + catálogos)
@@ -158,12 +171,12 @@ Tabla de actores participando: nombre, área funcional, equipo operativo (primar
 **`/admin/areas` rediseño:** mismos 4 sub-tabs + tab "Personas globales del tenant" (catálogo de actores).
 
 **Criterios de aceptación:**
-- [ ] Página `/pmo/projects/[id]/areas` con toggles funcional.
-- [ ] Página `/admin/areas` rediseñada (5 sub-tabs).
-- [ ] Modal "agregar persona" permite (a) seleccionar del catálogo tenant, (b) crear nueva inline con campos básicos.
-- [ ] Modal "nueva área" permite (a) crear nueva, (b) traer existente del catálogo (asigna al proyecto). **Actualizado 2026-06-29 (ENH-183).**
-- [ ] Modal de participation soporta múltiples filas por persona; flag `is_primary` resaltado.
-- [ ] Convergencia evaluada con US-097, US-098, US-103 (decidir absorción o coexistencia).
+- [x] Página `/pmo/projects/[id]/areas` con toggles funcional.
+- [x] Página `/admin/areas` rediseñada (5 sub-tabs).
+- [x] Modal "agregar persona" permite (a) seleccionar del catálogo tenant, (b) crear nueva inline con campos básicos.
+- [x] Modal "nueva área" permite (a) crear nueva, (b) traer existente del catálogo (asigna al proyecto). **Actualizado 2026-06-29 (ENH-183).**
+- [x] Modal de participation soporta múltiples filas por persona; flag `is_primary` resaltado.
+- [x] Convergencia evaluada con US-097, US-098, US-103 (decidir absorción o coexistencia).
 
 **Test Cases:**
 - TC-116-1: Toggle 1 lista correctamente actores con primary participation.
@@ -174,7 +187,7 @@ Tabla de actores participando: nombre, área funcional, equipo operativo (primar
 
 ---
 
-## # PENDING — US-117 — Dropdowns filtrados por participation en plan/RAID/cambios/lecciones/minutas
+## # DONE — US-117 — Dropdowns filtrados por participation en plan/RAID/cambios/lecciones/minutas
 
 **Como** usuario que asigna responsables
 **Quiero** que los dropdowns de "responsable" listen solo personas habilitadas en este proyecto
@@ -194,10 +207,10 @@ Tabla de actores participando: nombre, área funcional, equipo operativo (primar
 - Todo derivado vía join con `actors` + `project_participations` (filtro por `is_primary` para grupo único, opción "expandir todos los roles" para mostrar tarea en N grupos).
 
 **Criterios de aceptación:**
-- [ ] Cada dropdown afectado lista solo personas con participation activa (`is_active=true`, fecha actual entre `start_date` y `end_date`). **Actualizado 2026-06-29 (BUG-086):** incluye actores con `area_id` directo a un área visible (vía servicio `area_visibility`), antes heurística los excluía.
-- [ ] Botón "+ agregar al proyecto" en cada dropdown abre modal del Toggle 1.
-- [ ] Filtros/agrupadores en Plan funcionan con las 6 dimensiones.
-- [ ] Performance: render de WBS con 500 tareas + 50 personas < 1s.
+- [x] Cada dropdown afectado lista solo personas con participation activa (`is_active=true`, fecha actual entre `start_date` y `end_date`). **Actualizado 2026-06-29 (BUG-086):** incluye actores con `area_id` directo a un área visible (vía servicio `area_visibility`), antes heurística los excluía.
+- [x] Botón "+ agregar al proyecto" en cada dropdown abre modal del Toggle 1.
+- [x] Filtros/agrupadores en Plan funcionan con las 6 dimensiones.
+- [ ] Performance: render de WBS con 500 tareas + 50 personas < 1s. **(No re-medido en esta corrección — no bloqueante.)**
 
 **Test Cases:**
 - TC-117-1: dropdown de assignee en task no muestra actores sin participation.

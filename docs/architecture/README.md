@@ -2,14 +2,14 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
 # Arquitectura PMO-aaS
 
 **ID:** `DOC-ARCH`
-**Última verificación contra código:** 2026-05-23.
+**Última verificación contra código:** 2026-08-29.
 
 Índice de la documentación arquitectónica. Cada archivo puede leerse independientemente.
 
@@ -100,7 +100,7 @@ flowchart TB
 
 ## C4 Nivel 3 — Componentes del API
 
-37 routers en `apps/api/app/api/v1/endpoints/`. Vista por dominio:
+43 routers en `apps/api/app/api/v1/endpoints/`. Vista por dominio:
 
 ```mermaid
 flowchart LR
@@ -116,6 +116,10 @@ flowchart LR
         AREAS["areas.py"]
         DIR["project_directory.py"]
         DASH["dashboard.py"]
+        CAP["capacity.py"]
+        ORGCH["organigrama.py"]
+        IMP["importacion.py"]
+        STAKE["stakeholders.py"]
     end
 
     subgraph Projects
@@ -131,6 +135,9 @@ flowchart LR
 
     subgraph AI_Reports
         AI["ai.py<br/>(jobs minutes/reports)"]
+        AICTX["ai_context.py<br/>(memoria de proyecto)"]
+        AIPLANT["ai_plantillas.py"]
+        ASSIST["assistant.py"]
         SCHED_R["scheduled_reports.py"]
         SCHED_M["scheduled_minutes.py"]
         RPT["reports.py"]
@@ -147,6 +154,8 @@ flowchart LR
         NOTIF["notifications.py"]
         PERM["permission_requests.py"]
         ENTHIST["entity_history.py"]
+        PLAN["plan.py"]
+        TXCROSS["tenant_cross.py"]
     end
 
     subgraph SuperAdmin
@@ -271,7 +280,8 @@ flowchart TB
 | RLS en Postgres con `app.tenant_id` | No. Filtrado en app. |
 | Roles Postgres `app_user` / `app_admin` con `BYPASSRLS` | No. Un solo rol. |
 | Ollama como provider de IA | Eliminado en BUG-053. |
-| Servicio Railway `glitchtip` + `sentry-sdk` | No instalado. |
+| Servicio Railway `glitchtip` (APM hosteado) | No existe. |
+| `sentry-sdk` (librería) | Instalado y wireado en `observabilidad.py`; inactivo sin `SENTRY_DSN`. Ver `stack.md`. |
 | Header `X-Tenant-ID` | No. Tenant viene del JWT. |
 | Header `Idempotency-Key` enforced | No implementado. |
 | `slowapi` global por IP/tenant | Solo en endpoints de reset/forgot. |

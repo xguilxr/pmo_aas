@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -14,7 +14,7 @@ revisar_cada: 90d
 | **Prioridad** | Alta — Sprint 22 |
 | **Dependencias** | EP006 (RAID/Cambios), EP011 (notifications), EP017 (Áreas/Actores) |
 | **Módulo** | `raid.changes`, `approvals`, `notifications.email`, `public.approval-landing` |
-| **Estado** | # PENDING |
+| **Estado** | Entregada (v1.4) — JWT firmado + landing pública + submit-for-approval + email en producción desde migración 0060 (2026-05-09); ver índice |
 | **Versión objetivo** | v1.21 |
 
 ## Objetivo de negocio
@@ -29,7 +29,7 @@ Convierte los **Cambios** (ChangeRequests dentro del módulo RAID) en un flujo d
 ## Decisiones arquitectónicas asociadas
 
 - **DEC-Approval-token** — JWT firmado con expiry (default 30 días) + scope `change_id + approver_id + action`. Token de un solo uso (consumido al actuar).
-- **DEC-Approval-landing** — Landing pública servida desde el dominio principal de la plataforma en una ruta `/approve/[token]` (no requiere subdominio separado en MVP).
+- **DEC-Approval-landing** — Landing pública servida desde el dominio principal de la plataforma en una ruta `/approve/[token]` (no requiere subdominio separado en MVP). **Implementación (2026-08-29):** el router del backend expone `GET`/`POST /public/approve/{jwt_str}` (prefijo `/public`, `apps/api/app/api/v1/endpoints/change_approvals.py`).
 - **DEC-Approval-rejected-retrigger** — Al rechazar, el cambio vuelve a status `draft`; el PM edita y al reenviar se invalidan los tokens previos y se generan nuevos.
 
 ## US iniciales
@@ -37,10 +37,10 @@ Convierte los **Cambios** (ChangeRequests dentro del módulo RAID) en un flujo d
 - **US-112** — Cambios: registrar responsables de aprobación (FK multi a actors + UI de gestión en el ticket).
 - **US-113** — Cambios: workflow email — token firmado, landing pública, registrar acción, rechazo retriggera.
 
-## Migraciones Alembic previstas
+## Migraciones Alembic aplicadas
 
-- `change_approvers` (change_id, actor_id, role, status, decided_at, decision_note).
-- `approval_tokens` (token_hash, change_id, actor_id, action, expires_at, consumed_at).
+- `change_approvers` (migración `20260509_0060_change_approvers_tokens.py`, 2026-05-09) — `change_id`, `actor_id`, `role`, `status`, `decided_at`, `decision_note`.
+- `approval_tokens` (misma migración) — `token_hash`, `change_id`, `actor_id`, `action_taken`, `expires_at`, `consumed_at`.
 
 ## Out of scope EP019
 

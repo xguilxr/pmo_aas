@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -172,7 +172,7 @@ Una sola card con dos secciones internas separadas por gap (ENH-070):
 - IDs y timestamps: **JetBrains Mono**.
 
 ### Colores
-- Topbar: azul oscuro `oklch(42% 0.13 255)`, texto claro.
+- Topbar: superficie clara `--chrome-bg` (`#FAFAF9`, Revamp v2), texto `--chrome-text` (`#4A4F57`).
 - Cards: blanco, border `1px solid oklch(92.5% 0.005 80)`, radio 12px.
 - Header de card: padding `14px 16px`, border-bottom suave, font-size
   13px weight 600.

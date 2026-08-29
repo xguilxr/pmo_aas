@@ -2,7 +2,7 @@
 tipo: runbook
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
@@ -36,7 +36,8 @@ producción cuando los 5 bloques están ✅**.
 
 **Tareas:**
 - [ ] Crear proyecto `pmo-aas` en Railway con 3 servicios (api, worker, web)
-- [ ] Plugin Postgres 16 + Plugin Redis 7 creados
+- [ ] Plugin Postgres 15 + Plugin Redis 7 creados (versión fijada en
+      `servicios-datos.yml`, no 16)
 - [ ] Variables de entorno configuradas (JWT secrets, Gemini key, Anthropic key, etc.)
 - [ ] Auto-deploy ON en rama `main`
 - [ ] Health checks respondiendo: `/health` en api, `/api/health` en web
@@ -97,9 +98,11 @@ Ollama tailnet, Gemini como fallback, Claude como fallback premium.
 - [ ] Cuenta Groq creada + `GROQ_API_KEY` pegada en `/superadmin/ai` → Guardar.
 - [ ] Modelo Groq = `llama-3.3-70b-versatile` (3.1 deprecado).
 - [ ] "Probar conexión" en `/superadmin/ai` devuelve OK.
-- [ ] `AI_BYO_ENABLED=1` en Railway **sólo cuando** quieras habilitar el wizard BYO
-      para los tenants. Default off (DEC-019).
 - [ ] Smoke test: tenant en modo `platform` genera minuta IA sin error.
+
+> El flag `AI_BYO_ENABLED` de versiones viejas de este checklist **no
+> existe** en código: BYO está siempre disponible, sin variable que
+> encenderlo (ver `ai/byo-setup.md`).
 
 **Checkpoint:** `/superadmin/ai` muestra `Groq · Configurado` y dashboard de uso > 0 requests.
 
@@ -203,7 +206,6 @@ Ollama tailnet, Gemini como fallback, Claude como fallback premium.
 
 **P:** Un tenant en modo `byo` no puede conectar su proveedor.
 **R:** Ver [`ai/byo-setup.md`](./ai/byo-setup.md) §8.
-- Confirma que el owner encendió `AI_BYO_ENABLED=1` en Railway.
 - Revisa la API key en la consola del proveedor (billing/quota/region).
 
 ---

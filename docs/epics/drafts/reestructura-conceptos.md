@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: borrador
-revisado: 2026-08-18
+revisado: 2026-08-29
 revisar_cada: 30d
 ---
 
@@ -12,7 +12,20 @@ revisar_cada: 30d
 > árbol de conceptos, módulos e información que el sistema debe recopilar y
 > mantener en la v2 de la plataforma. Complementado (no redefinido) con el
 > feedback de un cliente prospecto que arranca con 23 proyectos de portafolio
-> (§ Anexo). El plan de ejecución vive en `reestructura-plan.md`.
+> (§ Anexo). El plan de ejecución vivía en `reestructura-plan.md`, ahora
+> recortado a lo que queda por construir.
+
+> **Estado real (2026-08-29):** el árbol de conceptos —jerarquía, módulos,
+> vocabulario— ya es la plataforma (ADR-037/038, `EP002-org-hierarchy.md` y
+> las epics de módulo). Dos piezas que este documento da por construidas
+> **todavía no lo están**: el **RLS en Postgres** que la §1 (Tenant) describe
+> como «existente» sigue sin implementarse (issues #599-#601), y el claim de
+> sesión `active_organization_id` no se construyó — el contexto de
+> organización activa vive del lado del cliente, no en el JWT. La sección de
+> IA (§1.3) describe roles de agente con permisos propios; el owner decidió
+> lo contrario después (DEC-033, EP021): el agente actúa siempre en nombre
+> de una persona. El resto —incluida la jerarquía y el árbol de módulos— es
+> una descripción razonablemente fiel de lo que hay hoy.
 
 ## Definiciones
 

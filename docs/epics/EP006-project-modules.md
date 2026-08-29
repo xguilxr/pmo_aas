@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -250,9 +250,19 @@ GET    /api/v1/projects/{project_id}/{module}
 POST   /api/v1/projects/{project_id}/{module}
 GET    /api/v1/{module}/{id}
 PATCH  /api/v1/{module}/{id}
-DELETE /api/v1/{module}/{id}                 (soft)
-GET    /api/v1/{module}/{id}/history         (audit_log filtrado)
+DELETE /api/v1/{module}/{id}                 (soft; documents es la excepción, ver abajo)
 ```
+
+> **Historial: no es por módulo** (verificado 2026-08-29). No existe
+> `GET /api/v1/{module}/{id}/history`. Hay un único endpoint genérico —
+> `GET /api/v1/history?entity_type=&entity_id=` (`entity_history.py`
+> ~líneas 26-39) — cuyo `entity_type` solo acepta `risk | issue | charter |
+> project`. `change_request`, `document`, `lesson` y `meeting_minute` **no**
+> tienen historial vía este endpoint hoy.
+
+> **Documentos no tiene DELETE.** El router de documentos (`modules.py`,
+> ~líneas 1116-1421) solo expone create / upload / list / patch / download;
+> no hay `DELETE /api/v1/documents/{id}` (ni soft ni hard).
 
 Específicos:
 ```
@@ -270,7 +280,17 @@ GET  /api/v1/projects/{id}/lessons/export
 
 ---
 
-## Implementación recomendada
+## Implementación recomendada — propuesta no adoptada
+
+> **No es lo que hay** (verificado 2026-08-29). No existe `packages/modules-core`
+> ni ningún paquete compartido; `modules.py` define routers explícitos por
+> módulo (`risks_router`, `issues_router`, `chg_router`, `docs_router`,
+> `lessons_router`, `minutes_router`), no una factory genérica — no hay
+> `TenantScopedModel` ni `module_router(...)` en el backend. Del lado
+> frontend, `<ModuleShell>` sí se construyó (`components/module-shell.tsx`,
+> componente plano, no parte de un paquete); `<ModuleDrawer>` y los hooks
+> `useModuleList`/`useModuleRecord` no. Se conserva abajo como contexto
+> histórico de la propuesta original, no como lo entregado.
 
 **Un paquete compartido** `packages/modules-core` (frontend) agrupa:
 - `<ModuleShell>` componente que renderiza header + filtros + tabla + paginación.

@@ -1,9 +1,9 @@
 ---
-tipo: epica
+tipo: archivo
 responsable: propietario
-estado: vigente
-revisado: 2026-07-18
-revisar_cada: 90d
+estado: archivado
+revisado: 2026-08-29
+revisar_cada: nunca
 ---
 
 # Draft — Plan de mejoras: feedback cliente 16-jul-2026

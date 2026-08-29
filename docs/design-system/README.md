@@ -1,14 +1,41 @@
 ---
 tipo: referencia
 responsable: propietario
-estado: vigente
-revisado: 2026-08-12
-revisar_cada: 90d
+estado: reemplazado
+revisado: 2026-08-29
+revisar_cada: nunca
 ---
 
 # Design System — PMO-aaS
 
 **ID:** `DOC-DS`
+
+> **Reemplazado (2026-08-29).** Este documento describe una visión —
+> shadcn/ui, Radix, Framer Motion, lucide + Phosphor, Cmd+K con `cmdk`,
+> blur/vibrancy estilo macOS, dark mode obligatorio, tests con
+> `@axe-core/playwright`— que **nunca se construyó así**: ninguna de esas
+> dependencias existe en `apps/web/package.json`, y no hay una sola regla
+> `prefers-color-scheme` en `apps/web/app/globals.css`. No es que el código
+> se haya desviado de este plan; es que la plataforma se construyó por un
+> camino distinto desde el principio, y este documento se quedó describiendo
+> el plan original sin que nadie lo corrigiera.
+>
+> **Dónde está lo real:**
+> - Tokens, paleta y densidad: `apps/web/app/globals.css` (fuente de
+>   verdad) y `docs/architecture/mapa-frontend.md` §Tokens.
+> - Componentes: propios en `apps/web/components/ui/`, sin librería base —
+>   ver `components.md` (corregido) para el inventario real.
+> - Iconos: componente propio `<Icono>` sobre el set Keyline (MIT, stroke),
+>   no Lucide ni Phosphor.
+> - Stack: Tailwind v4 + DM Sans, sistema de superficies del revamp v2
+>   (2026-08-27) — ver `style.md` (corregido).
+> - Sin Cmd+K, sin dark mode, sin tests de accesibilidad automatizados: son
+>   ideas de este documento que no llegaron a construirse, no funcionalidad
+>   retirada.
+>
+> Se conserva el cuerpo original abajo por si su intención de diseño —no su
+> inventario de tecnologías— sirve de referencia. No es la fuente de verdad
+> de nada de lo anterior.
 
 ## Principios (inspirados en Apple / HIG)
 

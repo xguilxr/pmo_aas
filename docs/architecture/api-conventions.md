@@ -2,14 +2,14 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-19
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
 # Convenciones del API REST
 
 **ID:** `DOC-ARCH-API`
-**Última verificación contra código:** 2026-05-23.
+**Última verificación contra código:** 2026-08-29.
 
 Reglas reales que sigue `apps/api`. Donde una sección dice "ideal" o "pendiente", describe un objetivo. El código actual todavía no lo cumple del todo.
 
@@ -19,7 +19,9 @@ Reglas reales que sigue `apps/api`. Donde una sección dice "ideal" o "pendiente
 
 - Prefijo: `/api/v1/…` para toda la API.
 - `v2` solo si rompemos contrato. Nuevas features no-breaking siguen en `v1`.
-- Sin métricas formales por versión (no hay Sentry/APM integrado hoy).
+- Sin métricas formales por versión. Sentry sí está instalado y wireado
+  (`core/observabilidad.py`), pero inerte sin `SENTRY_DSN`; no hay APM ni
+  tracing distribuido (sin `trace_id`, ver más abajo).
 
 ---
 
@@ -29,7 +31,7 @@ Reglas reales que sigue `apps/api`. Donde una sección dice "ideal" o "pendiente
 
 | Header | Cuándo | Notas |
 |---|---|---|
-| `Authorization: Bearer <jwt>` | Todas las rutas excepto `/health`, `/api/v1/auth/login`, `/api/v1/auth/forgot-password`, `/api/v1/auth/reset`, `/api/v1/approve/*` | Access token JWT HS256 |
+| `Authorization: Bearer <jwt>` | Todas las rutas excepto `/health`, `/api/v1/auth/login`, `/api/v1/auth/forgot-password`, `/api/v1/auth/reset`, `/api/v1/public/approve/{jwt_str}` | Access token JWT HS256 |
 
 ### Tenant activo
 

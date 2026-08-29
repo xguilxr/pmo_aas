@@ -2,7 +2,7 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
@@ -10,89 +10,87 @@ revisar_cada: 180d
 
 **ID:** `DOC-TEST`
 
-## Pirámide
+> **Reescrito el 2026-08-29.** La versión anterior describía una pirámide con
+> Playwright, Vitest, `@axe-core/playwright`, Schemathesis, k6 y Hypothesis —
+> ninguna de esas herramientas está en el repo (`apps/web/package.json` no
+> tiene `playwright`, `vitest`, `@testing-library` ni `@axe-core`; su script
+> `test` es literalmente `echo "no web tests yet"`). Era el plan original,
+> nunca lo que se construyó. Esto describe lo que hay hoy.
 
-```
-        ┌───────────┐
-        │   E2E     │  Playwright, flujos core + visuales
-        │  ~40 TC   │
-        └───────────┘
-       ┌─────────────┐
-       │ Integration │  pytest + testcontainers (Postgres real)
-       │   ~120 TC   │
-       └─────────────┘
-     ┌─────────────────┐
-     │      Unit       │  Vitest (web) + pytest (api)
-     │    ~250 TC      │
-     └─────────────────┘
-```
+## Lo que existe
 
-## Cobertura objetivo
+**Solo hay tests de backend.** 217 archivos en `apps/api/tests/`, pytest.
+**No hay tests automatizados de frontend** — ni unitarios, ni de integración,
+ni E2E. Verificar una pantalla es manual (`npm run dev` + navegador) o, para
+un cambio de UI, el flujo que describe el skill `run`.
 
-| Capa | Tool | Objetivo |
-|---|---|---|
-| Unit backend | pytest + pytest-asyncio + hypothesis | ≥ 80% líneas |
-| Unit frontend | Vitest + React Testing Library | ≥ 60% líneas |
-| Integration | pytest + testcontainers | 100% endpoints críticos |
-| Contract | Schemathesis | ✅ en cada PR |
-| E2E | Playwright | ≥ 40 flujos (ver test-matrix) |
-| Accessibility | `@axe-core/playwright` | 0 violaciones críticas |
-| Load | k6 | release pre-flight |
-| Security | `bandit` (py), `eslint-plugin-security` (ts), `trivy` (docker) | 0 high/critical |
+No hay contract testing (Schemathesis), ni load testing (k6), ni property-based
+testing (Hypothesis): ninguno se llegó a integrar. Si alguno se retoma, entra
+aquí cuando exista de verdad, no antes.
 
-## Convenciones
+## Backend: qué cubre pytest
 
-- **ID único global**: `TC-001` a `TC-999`. Los de multi-tenant usan prefijo `TC-MT-*`.
-- Un TC puede tener múltiples variantes (happy/error/edge). Descríbelas en el mismo test con `@pytest.mark.parametrize` o `describe.each`.
-- Cada PR que toca una US debe actualizar los TC asociados.
-- Tests **no flaky**: si un test falla aleatoriamente, se quarantina y se arregla en máx 48h.
-- **Fixtures compartidas** en `tests/fixtures/`:
-  - `fixture_tenant_a`, `fixture_tenant_b` (para TC-MT-*)
-  - `fixture_superadmin`, `fixture_admin`, `fixture_pm`, `fixture_viewer`
-  - `fixture_project_full` (proyecto + módulos poblados)
+Una suite, sin la separación formal unit/integration/E2E que sugiere una
+pirámide — un test de un endpoint típicamente ejercita el servicio, el modelo
+y la base (SQLite en memoria) en el mismo caso. Tres marcadores reales
+(`apps/api/pyproject.toml`):
 
-## CI/CD gates
+| Marcador | Qué enciende |
+|---|---|
+| `heavy` | Render real (WeasyPrint / python-docx) o hashing completo. Corre aparte (`api-tests-heavy`, solo en push a `main`) |
+| `permissions` | Matriz role × endpoint (US-079, gate de regresión post-DEC-024) |
+| `con_segundo_factor` | Enciende el MFA de administración, que la suite apaga por defecto |
 
-Un PR merges solo si:
+No hay marcador `multi_tenant` ni `slow`: el aislamiento multi-tenant se
+prueba en archivos con nombre explícito (`test_seg08_aislamiento_tenants.py`,
+`test_us214_multi_tenant.py`, y otros ~13 más — ver
+`docs/architecture/security-multitenant.md` §5), no por marcador.
 
-1. ✅ Lint (ruff, biome) pasa.
-2. ✅ Type checks pasan (mypy, tsc).
-3. ✅ Unit tests ≥ 80% backend / 60% frontend.
-4. ✅ Integration tests 100% passing.
-5. ✅ **Todos los TC-MT-* pasan** (no negociable).
-6. ✅ Contract tests sin regresiones OpenAPI.
-7. ✅ E2E smoke suite pasa.
-8. ✅ Build de Docker de los 3 servicios ok.
+**Criterio: `exit 0`, nunca un porcentaje de cobertura.** No hay un objetivo
+de cobertura declarado ni medido — el criterio de este repo es que la suite
+completa pase, según la skill `verificar`.
+
+## CI/CD — los gates reales
+
+Los jobs de `.github/workflows/ci.yml`, no una lista aspiracional:
+
+| Job | Qué hace |
+|---|---|
+| `lint` | `ruff check` |
+| `tipos-python` | `mypy --strict` con línea base heredada |
+| `web-typecheck` | `tsc --noEmit` |
+| `web-build` | `pnpm build` del frontend |
+| `api-tests-smoke` | pytest sin `heavy`, en cada PR |
+| `api-tests-heavy` | pytest con `heavy`, solo push a `main` |
+| `api-migrations-postgres` | `alembic upgrade → downgrade → upgrade` contra Postgres real |
+| `contexto-permanente` | Presupuesto de contexto + límites de `SPRINT.md`/`HANDOFF.md` + índice del conocimiento (DOC-06/07) |
+| `contraste-wcag` | Contraste de color + literales fuera de token |
+| `commits` | Conventional Commits + impacto documental (DOC-06) |
+| `seguridad` | Secretos, SAST, dependencias vulnerables |
+| `evaluacion-ia` | El conjunto de evaluación de `apps/api/evaluacion/` |
+
+Sin contract testing, sin E2E, sin build de Docker como gate propio (el
+`Dockerfile` se construye al desplegar, no en CI).
 
 ## Archivos
 
-- [`test-matrix.md`](./test-matrix.md) — Matriz de trazabilidad Épica↔US↔TC con estados.
-- [`multi-tenant-isolation.md`](./multi-tenant-isolation.md) — Detalle de TC-MT-* (bloqueantes).
-- `e2e-plan.md` (futuro) — flujos E2E prioritarios.
+- [`test-matrix.md`](./test-matrix.md) — convención real de ID de caso.
+- [`multi-tenant-isolation.md`](./multi-tenant-isolation.md) — el patrón real
+  de aislamiento multi-tenant.
 
-## Comandos rápidos
+## Comandos
+
+Los mismos que corre el CI; la skill `verificar` es la fuente de verdad y
+tiene el detalle de entorno (Python 3.12 fijado, por qué):
 
 ```bash
-# Backend
-cd apps/api && pytest -q                      # todos
-pytest -m "not slow"                          # rápidos
-pytest tests/integration/test_projects.py -v  # archivo
-
-# Frontend
-cd apps/web && pnpm test                      # unit
-pnpm test -- --coverage
-pnpm test:e2e                                 # Playwright
-
-# Multi-tenant suite (CI-gate)
-pytest -m multi_tenant -v
-
-# Contract
-schemathesis run http://localhost:8080/openapi.json
-
-# Load (pre-release)
-k6 run scripts/k6/dashboard-kpis.js
+cd apps/api && python -m ruff check .
+cd apps/api && python -m pytest -q -n auto -m "not heavy"
+cd apps/api && python -m pytest -q -m heavy      # solo lo que corre en main
+pnpm --filter @pmoaas/web exec tsc --noEmit
+python scripts/check_tipos.py
+python scripts/check_contexto.py
+python scripts/indexar.py --verificar
 ```
 
-## Flaky-quarantine
-
-Tests flakys se mueven a `tests/_quarantine/` con `@pytest.mark.flaky` y se les abre ticket con SLA 48 h. Pueden bloquear CI si llevan > 5 días sin arreglar.
+No hay `pytest -m multi_tenant`, `pnpm test:e2e` ni `k6 run`: ninguno existe.

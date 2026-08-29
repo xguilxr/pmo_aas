@@ -2,106 +2,40 @@
 tipo: gestion
 responsable: propietario
 estado: vigente
-revisado: 2026-08-19
+revisado: 2026-08-28
 revisar_cada: 30d
 ---
 
-# HANDOFF.md — Estado para la próxima sesión
+# HANDOFF.md — puente a la próxima sesión
 
-**Última actualización:** 2026-08-19
-**Branch activa:** `claude/handoff-development-2awr5v`
-**Generado por:** /handoff
+**2026-08-28** · rama `claude/platform-rundown-indexation-pn4a1q` · lo derivado:
+`python scripts/estado.py`
 
----
+## Qué se estaba haciendo, y por qué
 
-## 🎯 Dónde estamos parados
+Auditoría de la memoria del proyecto. 40 de 91 documentos vivos no tenían ruta
+de entrada desde el contexto permanente —glosario y fichas de indicador entre
+ellos—, así que cada sesión los re-derivaba del código. Se indexó por sección
+(US-243), léxico y no vectorial: el corpus tiene vocabulario controlado y un
+vector no se revisa en un PR. Salió además US-224, el catálogo de plantillas.
 
-Bloque **Reestructura-W1** terminado: la jerarquía es `organización → portafolio
-⊃ programa → proyecto` (ADR-037) y el vocabulario del proyecto está en español
-con el tipo como enum (ADR-038). Doce commits pusheados, **PR #594** abierto
-contra `main` y esperando verificación. Nada mergeado todavía; las migraciones
-`0105`–`0111` siguen sin desplegar.
+## Dónde retomar
 
-## 📍 Dónde retomar
+Abrir PR de esta rama contra `main` (suite en verde) y resolver lo de
+ESPERANDO en `SPRINT.md`.
 
-Verificar el PR **#594** (CI y recorrido de UI), cerrar los issues **#588–#592**
-y desplegar. Después, **Reestructura-W2** con la «Guía de sesiones» de
-`docs/epics/drafts/reestructura-plan.md`.
+## Qué va a morder
 
-## ✅ Hecho en esta sesión
+`proximo_id.py` **se queda corto sin `gh`**: dijo US-240 cuando #599–601 ya la
+habían tomado. Avisa, pero el aviso se pasa por alto.
 
-- **US-198** `27b6ae9` — tabla `portfolios`, `programs.portfolio_id` NOT NULL,
-  regla de consistencia en `services/jerarquia.py`. Mig. 0108.
-- **US-199** `c529085` — CRUD `/portfolios`; BU/departamentos fuera de la API.
-  Mig. 0109 (suelta 7 columnas FK).
-- **US-202** `3253338` + `0f2d167` — fases al español y `type` como enum, con
-  catálogo único y 5 ventanas de compat. Mig. 0110.
-- **US-200** `f3f1063` — UI de la jerarquía: acordeón, árbol de 5 niveles,
-  selects anidados.
-- **US-201** `3c066f6` — cascada org → portafolio → programa en el tablero, las
-  vistas cross y los snapshots.
-- **Limpieza** `ea5710b` `c36d208` `399fe0f` `0bdcf8c` `92c9882` `f155f40` —
-  ENH-190 retirada (DEC-032, mig. 0111), vocabulario duplicado unido, 675 líneas
-  huérfanas fuera, 20 documentos al día.
+Los 40 documentos con deriva **no se arreglan con un gate**: `check_docs.py`
+define `revisado` como declaración humana, y sincronizarlo con git automatiza
+la mentira que el campo existe para impedir.
 
-Detalle narrativo en `SPRINT-DONE-HISTORY.md` (ronda 2026-08-19).
+## Decisiones del owner
 
-## 🔄 PRs abiertos
-
-| # | Branch | Estado CI | Acción pendiente |
-|---|---|---|---|
-| #594 | `claude/handoff-development-2awr5v` | recién abierto | verificar y mergear |
-
-## ⚠️ Gotchas y decisiones
-
-- **El job `heavy` solo corre al pushear a `main`.** US-199 rompió un test heavy
-  y la suite normal no lo vio durante tres commits. Arreglado en `399fe0f`, pero
-  vale la pena decidir si ese job debe correr también en los PRs.
-- **El contador de compat tiene un hueco**: `GET /projects` no normaliza ni
-  registra `phase`/`type`, así que no ve a quien filtra con el nombre viejo.
-  Taparlo **antes** de cerrar esas ventanas.
-- Las tablas `business_units`/`departments` se quedan en el esquema hasta W8, a
-  propósito: un `drop` es irreversible y no se paga en la misma oleada.
-- Los campos de texto `business_unit`/`department` de la solicitud **no** son la
-  jerarquía y se conservan («Área que solicita», «Equipo o sub-área»).
-
-## 📋 Lo que sigue
-
-Detalle en `SPRINT.md` → INBOX.
-
-- Desplegar `0105`–`0111` y verificar #594.
-- Los nueve follow-ups listados en #594 (superficie de API sin pantalla, cadena
-  de permisos muerta, rutas sin enlace).
-- **W3** RLS de Postgres · **W8** el `drop` de BU/departamentos.
-
-## 📚 Estado de las epics docs
-
-| Epic | Sincronizada | Notas |
-|---|---|---|
-| EP002 | sí | jerarquía nueva; US-002/003/004 marcadas retiradas |
-| EP003 | sí | clasificación de la solicitud y del acta |
-| EP004 | sí | endpoints, US-201 y los 5 scopes de snapshot |
-| EP005 | sí | vocabulario US-202 |
-| EP007 | sí | US-024 marcada RETIRADA, la sustituye US-200 |
-| EP010 | sí | counts del detalle de inquilino |
-
-## 🧹 Cleanup técnico pendiente (owner)
-
-- [ ] Verificar y mergear **#594**; cerrar **#588–#592**.
-- [ ] Desplegar `0105`–`0111`; leer el registro de `0110` y `0111`.
-- [ ] Decidir los nueve follow-ups de #594.
-- [ ] Decidir si el job `heavy` corre en los PRs.
-
-## 🔮 Para sesiones futuras (sin issue)
-
-- Deduplicar la suite de tests: `_FakeRedis` ×7, `_build_xlsx` ×6 y el helper
-  `_admin(...)` reimplementado en 30 archivos.
-- Reescribir `design-system/tokens.md` contra la paleta vigente (D-7, ADR-023).
-
----
-
-## Cómo retomar
-
-1. Lee este `HANDOFF.md`.
-2. Luego `CLAUDE.md` + `SPRINT.md` + el epic en flight.
-3. Continúa desde «Dónde retomar».
+- **Las migraciones no se «despliegan» aparte**: el `CMD` del contenedor `api`
+  las corre al arrancar, así que `0105`–`0115` se aplicaron al mergear. Queda
+  **leer el registro** de `0110`, `0111` y `0115`.
+- **El revamp v2 sigue abierto**: el styling está, el diseño no.

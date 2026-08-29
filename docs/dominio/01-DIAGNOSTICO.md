@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -60,7 +60,14 @@ Conviene decirlo antes de la lista de brechas, porque cambia qué tan caro es ce
 
 ## 3. Brechas, por gravedad
 
-### B-1 · No existe línea base — **ALTA**
+### B-1 · No existe línea base — **CERRADA** (era ALTA)
+
+> **Cerrada el 2026-08-20** (US-212, commit `2082408`). `apps/api/app/models/plan_baseline.py`
+> define `PlanBaseline` y `PlanBaselineTask` (migración 0113): dos tablas, no una columna en
+> `tasks`, para poder guardar más de una línea base por proyecto y comparar plan/base/real.
+> Era la brecha keystone: B-4 y B-5 ya pueden re-evaluarse con esta pieza resuelta.
+
+*Enunciado original, 2026-08-03:*
 
 `grep -rli baseline apps/api/app/models/` → **0 modelos**. No hay `baselines`, ni
 `baseline_start`, ni `baseline_end`, ni `baseline_cost`.
