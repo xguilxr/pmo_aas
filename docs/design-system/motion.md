@@ -1,14 +1,25 @@
 ---
 tipo: referencia
 responsable: propietario
-estado: vigente
-revisado: 2026-08-12
-revisar_cada: 90d
+estado: reemplazado
+revisado: 2026-08-29
+revisar_cada: nunca
 ---
 
 # Motion — Movimiento y transiciones
 
 **ID:** `DOC-DS-MOTION`
+
+> **Reemplazado (2026-08-29).** Cita `framer-motion` como la librería de
+> animación y archivos que no existen (`packages/ui/src/tokens/motion.ts`,
+> `apps/web/src/components/PageTransition.tsx` — `apps/web/src` no existe;
+> `packages/` solo tiene `packages/sdk`). `framer-motion` no está en
+> `apps/web/package.json` ni se usa en ningún componente. Mismo caso que
+> `README.md` de esta carpeta: describe el plan original del design system,
+> nunca la implementación. Los principios de arriba (con propósito, corto,
+> `prefers-reduced-motion`) pueden seguir siendo la intención correcta; las
+> curvas, duraciones y rutas de archivo de abajo no reflejan código real y no
+> deben citarse como si lo hicieran.
 
 El movimiento comunica. No decora.
 

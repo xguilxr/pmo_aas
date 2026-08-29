@@ -2,7 +2,7 @@
 tipo: guia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 180d
 ---
 
@@ -15,9 +15,8 @@ Documentación técnica vigente de la IA generativa en la plataforma.
 ## Archivos activos
 
 - [`prompts-catalog.md`](./prompts-catalog.md) — prompts versionados
-  (`minute.from_transcript.v2`, `report.progress_draft.v1`,
-  `transcript.chunk_merge.v1`) con sus schemas Pydantic, few-shot y
-  reglas de guardrails. Es la **única doc técnica** que queda aquí.
+  (`MINUTE_SYSTEM`, `REPORT_SYSTEM`, `HTML_TWEAK_SYSTEM`) con sus schemas
+  Pydantic, few-shot y reglas de guardrails. Es la **única doc técnica** que queda aquí.
   Los runbooks de operación viven en `docs/runbooks/ai/`.
 
 ## Runbooks de operación

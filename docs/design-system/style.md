@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -10,7 +10,7 @@ revisar_cada: 90d
 
 **ID:** `DOC-DESIGN-STYLE`
 **Audiencia:** agentes de código (Claude Code, Cursor) y devs humanos.
-**Stack objetivo:** Next.js 15 + Tailwind CSS v4 + shadcn/ui + Radix.
+**Stack objetivo:** Next.js 15 + Tailwind CSS v4 + componentes propios (sin shadcn/ui ni Radix en `package.json`).
 
 Esta guía define el lenguaje visual de la plataforma PMO. Es la **fuente de verdad** para tokens, componentes y patrones. Cualquier UI debe compilar contra estos tokens. No inventes colores, tamaños, radios o sombras fuera de esta lista.
 
@@ -73,41 +73,18 @@ Todos comparten `L≈88%` (fondo) / `L≈45%` (texto) / `L≈70%` (borde) y `C�
 
 ```css
 :root {
-  --bg-app:         var(--neutral-50);
-  --bg-surface:     var(--neutral-0);
-  --bg-subtle:      var(--neutral-100);
-  --bg-muted:       var(--neutral-200);
-
-  --border-subtle:  var(--neutral-200);
-  --border-default: var(--neutral-300);
-  --border-strong:  var(--neutral-400);
-
-  --text-primary:   var(--neutral-800);
-  --text-secondary: var(--neutral-600);
-  --text-tertiary:  var(--neutral-500);
-  --text-disabled:  var(--neutral-400);
-  --text-inverse:   var(--neutral-0);
-
-  --accent-primary-bg:    var(--neutral-800);
-  --accent-primary-fg:    var(--neutral-0);
-  --accent-primary-hover: var(--neutral-900);
-
-  --focus-ring:     oklch(55% 0.15 240);
-
-  /* Chrome (sidebar + topbar) — NAVY #182e4e (DEC-006, fuente de verdad) */
-  --chrome-bg:             #182e4e;
-  --chrome-bg-translucent: color-mix(in oklab, #182e4e 92%, transparent);
-  --chrome-border:         #10203a;
-  --chrome-text:           #F0F3FF;
-  --chrome-text-muted:     #A7B0D9;
-  --chrome-hover:          #24406a;
-  --chrome-active:         #10203a;
-
-  --chrome-soft-bg:     oklch(97% 0.012 240);
-  --chrome-soft-border: oklch(90% 0.018 240);
-  --chrome-soft-text:   oklch(36% 0.025 240);
+  /* … token completo en apps/web/app/globals.css, la fuente de verdad real. */
 }
 ```
+
+> **Corrección 2026-08-29**: este bloque citaba valores NAVY (`#182e4e` para
+> `--chrome-bg` y derivados) como «fuente de verdad» de DEC-006. Ese sidebar
+> navy se retiró con el revamp v2 (2026-08-27): hoy `--chrome-bg` es
+> `#FAFAF9` en claro (ver `globals.css` línea ~158). Los nombres de token
+> tampoco coinciden ya con los reales (`--color-app`, `--color-surface`,
+> `--text-primary`, etc.) — este archivo quedó como una foto de un sistema
+> de tokens anterior al vigente. No copies valores de aquí: `globals.css` es
+> el único lugar que no puede desactualizarse sin romper la UI.
 
 ### 2.4 Dark mode
 
@@ -163,7 +140,7 @@ Escala base **4px**. Usa sólo múltiplos.
 
 ### Layout
 
-- **Sidebar:** 240px (chrome azul translúcido), 64px colapsado.
+- **Sidebar:** 216px (chrome claro a sangre, Revamp v2), 68px colapsado.
 - **Topbar:** 56px.
 - **Main:** padding `24px 32px`, max 1440px en ≥1600px.
 - **Grid:** 12 cols, gutter 24px.
@@ -220,14 +197,14 @@ Tamaños `sm` (h-8) · `md` (h-9) · `lg` (h-10).
 - `tabular-nums` en números.
 
 ### Sidebar
-- Chrome azul marino sólido (`--chrome-bg = #182e4e`).
+- Chrome claro sólido (`--chrome-bg = #FAFAF9`, Revamp v2, 2026-08-27).
 - Items `h-9`, icono 16px, gap 10px.
 - Activo: fondo `chrome-active` + weight 600.
 - **Sin footer con datos de usuario.** La identidad del usuario y la acción
   de cerrar sesión viven en el menú del topbar (ver abajo).
 
 ### Topbar
-- 56px, **mismo fondo chrome azul marino** que el sidebar. Borde inferior
+- 56px, **mismo fondo chrome claro** que el sidebar. Borde inferior
   `chrome-border`.
 - Izquierda: botón hamburguesa (móvil) + marca.
 - Derecha: **UserMenu** (avatar con iniciales + nombre truncado + chevron) que
@@ -348,6 +325,11 @@ Adoptamos **inspiración**, no imitación:
 ---
 
 ## 12. Referencias rápidas
+
+> Esta tabla usa los mismos nombres de token que el bloque `:root` de §2, ya
+> marcado desactualizado (corrección 2026-08-29): valores y nombres reales
+> en `apps/web/app/globals.css`. `Sidebar/Topbar → chrome-bg (#182e4e)` en
+> particular es el navy retirado — hoy `#FAFAF9`.
 
 ```
 Fondo app        → bg-app          (neutral-50)

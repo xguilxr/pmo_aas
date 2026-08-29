@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -12,11 +12,11 @@ revisar_cada: 90d
 
 Inventario organizado por categoría. Cada componente tiene anatomía, variantes, props clave y cuándo usarlo.
 
-Paquete: `packages/ui/src/components/*`. Stories en Storybook: `pnpm storybook`.
+Paquete: `apps/web/components/*`. Sin Storybook (no implementado: no hay script `storybook` en `apps/web/package.json`).
 
 ---
 
-## 1. Primitivos (base shadcn, tematizados)
+## 1. Primitivos (propios, sin librería base)
 
 ### Button
 
@@ -188,7 +188,10 @@ Para tags de lecciones: input + chips.
 
 ## 5. Navegación
 
-### CommandPalette (Cmd+K)
+### CommandPalette (Cmd+K) — propuesto, no implementado
+
+No existe hoy: `cmdk` no está en `apps/web/package.json` y no hay componente
+`CommandPalette` en `apps/web`. Backlog, si se construye:
 
 - Librería `cmdk`.
 - Secciones: Go to, Actions, Search results.

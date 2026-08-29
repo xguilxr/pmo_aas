@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-08-29
 revisar_cada: 90d
 ---
 
@@ -31,7 +31,7 @@ descrito como más barato resultó ser el más caro.
 
 | # | Qué | Decisión | Cuesta |
 |---|---|---|---|
-| D-1 | `yellow` vs `amber` | **`yellow`** | Corregir el glosario + 3 restos |
+| D-1 | `yellow` vs `amber` | **`yellow`** | ✅ **Hecha el 2026-08-05** — glosario corregido, 3 restos de `amber` limpiados (DAT-06) |
 | D-2 | `support` como fase | **Renombrar a `hypercare`** (2026-08-05) — ADR-019 | Migración + contrato + UI |
 | D-3 | `tasks.wbs` | **Renombrar a `wbs_code`** — ADR-020, ronda propia | ✅ **hecha** 2026-08-05 — US-194, mig 0100 |
 | D-4 | Umbral del semáforo | **Uno por dimensión** + calibrado — ✅ hecho 2026-08-05 (US-196) | Medio — el presupuesto cambió de fórmula |
@@ -63,9 +63,10 @@ queda `yellow`, y el glosario registra que **se aparta a conciencia del
 vocabulario RAG de P3O/PRINCE2**. La UI ya dice «Amarillo», que es lo que ve el
 cliente.
 
-**Pendiente mecánico:** limpiar los tres restos de `amber` —
-`charter_generator.py:52-53` mapea los dos, y `templates/pdf/sections/s-03.html:9`
-usa `'amber'` por defecto. El `CHECK` de la migración 0065 es histórico.
+**Cerrada del todo el 2026-08-05** (DAT-06). Los tres restos de `amber` se
+limpiaron: `charter_generator.py:53` documenta en el propio código por qué la
+clave se quitó, y `templates/pdf/sections/s-03.html:15` usa `'yellow'` por
+defecto. El `CHECK` de la migración 0065 sigue ahí, histórico y sin tocar.
 
 **Merece ADR:** es el tipo de decisión que dentro de un año nadie recuerda por
 qué se tomó.
@@ -256,8 +257,9 @@ Contarlos como deuda infla la lista y hace que la revisión pese más de lo que 
 El plan de remediación ya se puede escribir: el glosario estaba condicionado a
 esta aprobación. Orden sugerido, de menor a mayor riesgo:
 
-1. **Gratis y hoy** — corregir `02-GLOSARIO.md` (D-1, D-2, D-5) y limpiar los
-   tres restos de `amber`.
+1. **Gratis y hoy** — corregir `02-GLOSARIO.md` (D-2, D-5). Los tres restos
+   de `amber` ya se limpiaron (D-1, cerrada arriba); `02-GLOSARIO.md` §6 ya
+   confirma 0 restos.
 2. **Mecánico** — D-7 y D-9.
 3. **Con ADR y US propia, una por una** — D-3 (`wbs_code`), D-8
    (`portfolio_function`), y el nombre de `support` si se decide renombrar.
