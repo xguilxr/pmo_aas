@@ -186,6 +186,26 @@ async def test_tc067_filters_combine(client, db_session):
     assert all(p["type"] == "innovacion" and p["phase"] == "preparacion" for p in r.json())
 
 
+# ADR-038 — el filtro con el vocabulario viejo devolvía cero y no fallaba: un
+# marcador guardado antes del renombrado veía una lista vacía y la creía cierta.
+@pytest.mark.asyncio
+async def test_filtro_phase_acepta_el_nombre_viejo(client, db_session):
+    _, auth, org_id = await _setup(client, db_session)
+    me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
+    r = await client.post(
+        "/api/v1/projects", json=_project_body(org_id, me.json()["id"]), headers=auth["_authz"]
+    )
+    assert r.status_code == 201
+    creado = r.json()["id"]
+
+    viejo = await client.get("/api/v1/projects?phase=planning", headers=auth["_authz"])
+    assert viejo.status_code == 200
+    assert [p["id"] for p in viejo.json()] == [creado]
+
+    nuevo = await client.get("/api/v1/projects?phase=preparacion", headers=auth["_authz"])
+    assert nuevo.json() == viejo.json(), "el nombre viejo y el canónico son el mismo filtro"
+
+
 # ============================================================================
 # US-018 — Módulo Áreas/Organigrama del proyecto
 # ============================================================================

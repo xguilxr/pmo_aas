@@ -41,23 +41,29 @@ _DONDE_FASE = "fase del proyecto"
 #: Cinco contadores y no uno: el cliente que manda `planning` no es
 #: necesariamente el que manda `cancelled`, así que sus ventanas llegan a cero en
 #: momentos distintos y se cierran por separado.
-_AVISAR_FASE: dict[str, Callable[[], None]] = {
-    "planning": lambda: registrar_uso("phase=planning", donde=_DONDE_FASE),
-    "execution": lambda: registrar_uso("phase=execution", donde=_DONDE_FASE),
-    "support": lambda: registrar_uso("phase=support", donde=_DONDE_FASE),
-    "closed": lambda: registrar_uso("phase=closed", donde=_DONDE_FASE),
-    "cancelled": lambda: registrar_uso("phase=cancelled", donde=_DONDE_FASE),
+_AVISAR_FASE: dict[str, Callable[[str], None]] = {
+    "planning": lambda donde: registrar_uso("phase=planning", donde=donde),
+    "execution": lambda donde: registrar_uso("phase=execution", donde=donde),
+    "support": lambda donde: registrar_uso("phase=support", donde=donde),
+    "closed": lambda donde: registrar_uso("phase=closed", donde=donde),
+    "cancelled": lambda donde: registrar_uso("phase=cancelled", donde=donde),
 }
 
 
-def normalizar_fase(valor: object) -> object:
-    """Traduce el nombre viejo de la fase al canónico. Lo demás pasa igual."""
+def normalizar_fase(valor: object, *, donde: str = _DONDE_FASE) -> object:
+    """Traduce el nombre viejo de la fase al canónico. Lo demás pasa igual.
+
+    `donde` es la puerta por la que entró: el cuerpo lo manda un cliente que se
+    actualiza, pero un filtro guardado en un marcador sobrevive años, así que las
+    dos no se cierran a la vez. Sólo por palabra clave para no confundirse con la
+    `ValidationInfo` que Pydantic pasaría en el segundo posicional.
+    """
     if not isinstance(valor, str):
         return valor
     canonico = FASES_RENOMBRADAS.get(valor)
     if canonico is None:
         return valor
-    _AVISAR_FASE[valor]()
+    _AVISAR_FASE[valor](donde)
     return canonico
 
 

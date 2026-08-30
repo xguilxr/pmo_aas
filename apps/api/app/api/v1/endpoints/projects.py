@@ -29,6 +29,7 @@ from app.schemas.project import (
     ProjectDetail,
     ProjectRead,
     ProjectUpdate,
+    normalizar_fase,
 )
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
@@ -95,7 +96,12 @@ async def list_projects(
     tenant_id = _tenant(cu)
     stmt = select(Project).where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
     if phase:
-        stmt = stmt.where(Project.phase.in_(phase))
+        # ADR-038 — la escritura ya traducía el nombre retirado; la lectura no.
+        # Quien filtraba con `phase=execution` recibía cero resultados sin error
+        # —la peor forma de romperse— y encima no dejaba rastro, así que el
+        # contador de la ventana marcaba cero mientras alguien seguía usándola.
+        fases = [normalizar_fase(f, donde="parámetro de consulta") for f in phase]
+        stmt = stmt.where(Project.phase.in_(fases))
     if organization_id:
         stmt = stmt.where(Project.organization_id == str(organization_id))
     if program_id:
