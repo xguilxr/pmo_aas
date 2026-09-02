@@ -1,5 +1,5 @@
 ---
-tipo: conformidad
+tipo: informe
 responsable: propietario
 estado: vigente
 revisado: 2026-09-01
