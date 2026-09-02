@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-83 documentos vivos · 70 archivados · 2624 secciones indexadas.
+84 documentos vivos · 70 archivados · 2629 secciones indexadas.
 
 ## gestion
 
@@ -135,6 +135,7 @@ revisar_cada: nunca
 
 | Documento | De qué trata | Revisado | Líneas |
 |---|---|---|---|
+| [`conformidad/2026-09-01-seguimiento.md`](conformidad/2026-09-01-seguimiento.md) | Alcanzado, vs. la última medición · Qué se comprobó (regresiones desde la entrada de 2026-08-12 en `conform… | 2026-09-01 | 70 |
 | [`conformidad/asvs-l1.md`](conformidad/asvs-l1.md) | Cero huecos, y aun así PARCIAL · Lo que enseñó cerrar los quince · Cómo se agrupan, y qué decisión pide cad… | 2026-08-07 | 175 |
 
 ## Archivados
