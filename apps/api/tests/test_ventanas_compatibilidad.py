@@ -80,6 +80,19 @@ def test_la_fase_vieja_deja_rastro(caplog):
     assert any("phase=support" in r.getMessage() for r in caplog.records)
 
 
+def test_la_fase_vieja_dice_por_qué_puerta_entró(caplog):
+    """El cuerpo y el filtro guardado no se cierran a la vez; hay que separarlos."""
+    from app.schemas.project import normalizar_fase
+
+    with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
+        normalizar_fase("execution", donde="parámetro de consulta")
+
+    assert any(
+        "phase=execution" in r.getMessage() and "donde=parámetro de consulta" in r.getMessage()
+        for r in caplog.records
+    )
+
+
 def test_la_fase_nueva_no_deja_rastro(caplog):
     """Si el canónico también contara, el contador nunca llegaría a cero."""
     from app.schemas.project import normalizar_fase
