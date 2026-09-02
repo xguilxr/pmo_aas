@@ -65,6 +65,7 @@ from app.schemas.project import (
     ProjectUpdate,
 )
 from app.services.analytics.snapshots import ACTIVE_PHASES
+from tests.factories import create_admin_role, create_tenant, create_user, login
 
 RAIZ_API = Path(__file__).resolve().parents[1]
 RAIZ_REPO = RAIZ_API.parents[1]
@@ -241,6 +242,99 @@ def test_las_etiquetas_devuelven_el_crudo_ante_lo_desconocido() -> None:
     assert etiqueta_fase(None) == "—"
     assert etiqueta_tipo(BAU) == "BAU (operación continua)"
     assert etiqueta_tipo("Business as usual") == "Business as usual"
+
+
+# ---------------------------------------------------------------------------
+# La ventana, también a la lectura: el filtro de `GET /projects`
+# ---------------------------------------------------------------------------
+
+
+async def _dos_proyectos(client, db_session) -> tuple[dict[str, str], str, str]:
+    """Un tenant con dos proyectos de tipo distinto, ambos en `preparacion`.
+
+    Dos y no uno para que el filtro tenga algo que descartar: con una sola fila,
+    «traer todo» y «filtrar bien» son indistinguibles.
+    """
+    t = await create_tenant(db_session)
+    admin_role = await create_admin_role(db_session, t)
+    await create_user(
+        db_session, tenant=t, username="admin", email="admin@acme.example.com",
+        password="Str0ng-Admin-1!", roles=[admin_role],
+    )
+    auth = await login(client, "admin", "Str0ng-Admin-1!")
+    headers = auth["_authz"]
+    org_id = (
+        await client.post("/api/v1/organizations", json={"name": "Org1"}, headers=headers)
+    ).json()["id"]
+    pm_id = (await client.get("/api/v1/auth/me", headers=headers)).json()["id"]
+
+    folios = {}
+    for nombre, tipo in (("Alfa", "innovacion"), ("Beta", "bau")):
+        r = await client.post(
+            "/api/v1/projects",
+            json={
+                "name": f"Proyecto {nombre}", "description": "Desc", "type": tipo,
+                "priority": 3, "organization_id": org_id, "pm_id": pm_id,
+            },
+            headers=headers,
+        )
+        assert r.status_code == 201, r.text
+        folios[tipo] = r.json()["id"]
+    return headers, folios["innovacion"], folios["bau"]
+
+
+async def _ids(client, headers, query: str) -> set[str]:
+    r = await client.get(f"/api/v1/projects?{query}", headers=headers)
+    assert r.status_code == 200, r.text
+    return {p["id"] for p in r.json()}
+
+
+@pytest.mark.asyncio
+async def test_el_filtro_por_fase_vieja_trae_lo_mismo_y_deja_rastro(
+    client, db_session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """La lectura es la otra puerta de la ventana, y la que se olvida.
+
+    La columna ya guarda el vocabulario nuevo: sin normalizar, `phase=planning`
+    devuelve **cero filas sin error** —el fallo que no avisa— y el uso no llega
+    al contador, así que un rezagado puede quedar invisible incluso después de
+    dar la ventana por cerrada.
+    """
+    headers, innovacion, bau = await _dos_proyectos(client, db_session)
+
+    with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
+        viejo = await _ids(client, headers, "phase=planning")
+
+    assert viejo == {innovacion, bau} == await _ids(client, headers, "phase=preparacion")
+    assert any("campo=phase=planning" in r.getMessage() for r in caplog.records)
+    assert any("donde=parámetro de consulta" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_el_filtro_por_tipo_viejo_trae_lo_mismo_y_deja_rastro(
+    client, db_session, caplog: pytest.LogCaptureFixture
+) -> None:
+    headers, innovacion, _bau = await _dos_proyectos(client, db_session)
+
+    with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
+        viejo = await _ids(client, headers, "type=innovation")
+
+    assert viejo == {innovacion} == await _ids(client, headers, "type=innovacion")
+    assert any("donde=parámetro de consulta" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_el_filtro_canonico_no_deja_rastro(
+    client, db_session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Si el canónico contara, el contador nunca llegaría a cero."""
+    headers, _innovacion, _bau = await _dos_proyectos(client, db_session)
+
+    with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
+        assert await _ids(client, headers, "phase=cerrado&type=bau") == set()
+
+    # Solo los del contador: una petición completa hace hablar a medio API.
+    assert [r for r in caplog.records if r.name == "pmoaas.compat"] == []
 
 
 # ---------------------------------------------------------------------------

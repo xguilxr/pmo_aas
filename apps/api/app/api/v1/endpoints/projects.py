@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
@@ -8,10 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.autorizacion import proyecto_autorizado
+from app.core.compatibilidad import registrar_uso
 from app.core.errors import business_rule, conflict, forbidden, mensaje, validation_error
 from app.core.visibility import get_user_visibility
 from app.db.session import get_db
-from app.dominio.proyecto import CERRADO, EJECUCION, TRANSICIONES
+from app.dominio.proyecto import (
+    CERRADO,
+    EJECUCION,
+    FASES_RENOMBRADAS,
+    TIPOS_RENOMBRADOS,
+    TRANSICIONES,
+)
 from app.models.organization import Organization
 from app.models.project import Project
 from app.models.project_charter import ProjectCharter
@@ -68,6 +76,61 @@ def _tenant(cu: CurrentUser) -> UUID:
     return cu.effective_tenant_id
 
 
+#: US-202 / ADR-038 — el filtro de la lista es otra puerta de las mismas
+#: ventanas, y lleva su propio `donde`: el cuerpo lo manda un cliente que se
+#: actualiza; un filtro guardado en un marcador puede sobrevivir años, así que
+#: los dos contadores no llegan a cero a la vez.
+_DONDE_FILTRO = "parámetro de consulta"
+
+#: Un `registrar_uso` **literal** por nombre retirado, como en
+#: `schemas/project.py::_AVISAR_FASE`: el trinquete de
+#: `test_ventanas_compatibilidad.py` busca la clave escrita a mano, y con razón
+#: —«¿quién registra `phase=planning`?» no la contesta una indirección—.
+_AVISAR_FASE_FILTRO: dict[str, Callable[[], None]] = {
+    "planning": lambda: registrar_uso("phase=planning", donde=_DONDE_FILTRO),
+    "execution": lambda: registrar_uso("phase=execution", donde=_DONDE_FILTRO),
+    "support": lambda: registrar_uso("phase=support", donde=_DONDE_FILTRO),
+    "closed": lambda: registrar_uso("phase=closed", donde=_DONDE_FILTRO),
+    "cancelled": lambda: registrar_uso("phase=cancelled", donde=_DONDE_FILTRO),
+}
+
+
+def _fases_del_filtro(valores: list[str]) -> list[str]:
+    """Las fases pedidas, en el vocabulario que guarda la columna.
+
+    Sin esto, quien todavía filtra con el nombre viejo recibe **cero filas en
+    silencio** —la DB ya está en español— y su uso no llega al contador que
+    decide cuándo se puede cerrar la ventana: un rezagado invisible.
+    """
+    fases: list[str] = []
+    for valor in valores:
+        canonico = FASES_RENOMBRADAS.get(valor)
+        if canonico is None:
+            fases.append(valor)
+            continue
+        _AVISAR_FASE_FILTRO[valor]()
+        fases.append(canonico)
+    return fases
+
+
+def _tipos_del_filtro(valores: list[str]) -> list[str]:
+    """Lo mismo para el tipo, con un contador compartido por los tres nombres.
+
+    Un valor que no esté en el mapa pasa tal cual: la columna sigue siendo
+    texto y el filtro tiene que poder encontrar los tipos libres de antes de
+    US-202.
+    """
+    tipos: list[str] = []
+    for valor in valores:
+        canonico = TIPOS_RENOMBRADOS.get(valor)
+        if canonico is None:
+            tipos.append(valor)
+            continue
+        registrar_uso("project_type_libre", donde=_DONDE_FILTRO)
+        tipos.append(canonico)
+    return tipos
+
+
 @router.get("", response_model=list[ProjectRead])
 async def list_projects(
     phase: list[str] | None = Query(default=None),
@@ -95,7 +158,7 @@ async def list_projects(
     tenant_id = _tenant(cu)
     stmt = select(Project).where(Project.tenant_id == tenant_id, Project.deleted_at.is_(None))
     if phase:
-        stmt = stmt.where(Project.phase.in_(phase))
+        stmt = stmt.where(Project.phase.in_(_fases_del_filtro(phase)))
     if organization_id:
         stmt = stmt.where(Project.organization_id == str(organization_id))
     if program_id:
@@ -107,7 +170,7 @@ async def list_projects(
     if no_portfolio:
         stmt = stmt.where(Project.portfolio_id.is_(None))
     if type:
-        stmt = stmt.where(Project.type.in_(type))
+        stmt = stmt.where(Project.type.in_(_tipos_del_filtro(type)))
     if health:
         stmt = stmt.where(Project.health_status.in_(health))
     if priority_min is not None:
