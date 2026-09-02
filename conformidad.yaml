@@ -139,6 +139,15 @@ marcos:
   # ninguna. El pasivo de `.pip-audit-ignore` baja de 13 a 8 entradas.
   #
   # El nivel NO se mueve: MCS sigue en N0 y la distancia a N1 baja de 54 a 50.
+  #
+  # 2026-09-01 — SEGUIMIENTO (a pedido del owner, adelantado a la evaluación
+  # formal del 2026-11-03; ver docs/conformidad/2026-09-01-seguimiento.md).
+  # Comprobadas regresiones en los 283 commits / 8 PR llegados desde la
+  # entrada del 2026-08-12: CI verde (5/5), guard AUT-01 24/24, ruff limpio,
+  # mypy sin regresión (892/892), presupuesto de contexto y metadata de
+  # documentos OK. Cero regresiones, cero correcciones. Los 13 NO VERIFICABLE
+  # y las Tandas C/D/E siguen exactamente como el 2026-08-05: multi-día,
+  # fuera del alcance de un seguimiento. alcanzado no se toca.
   MCS: { objetivo: N2, alcanzado: N0, evaluados: "126/126", conformes: 25 }
   # Tanda A ejecutada el mismo día (plan.md). No re-auditado: los requisitos
   # que toca (CFG-02, INT-02, SEG-03, IA-05, OPS-02) siguen figurando como
