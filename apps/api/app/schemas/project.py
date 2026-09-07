@@ -31,6 +31,7 @@ FASES_TERMINALES = FASES_TERMINALES_DOMINIO
 
 
 _DONDE_FASE = "fase del proyecto"
+_DONDE_TIPO = "tipo del proyecto"
 
 #: Un `registrar_uso` **literal** por nombre retirado, y no un
 #: `registrar_uso(MAPA[valor])`. Cinco líneas en vez de una a propósito: el
@@ -67,7 +68,7 @@ def normalizar_fase(valor: object, *, donde: str = _DONDE_FASE) -> object:
     return canonico
 
 
-def normalizar_tipo(valor: object) -> object:
+def normalizar_tipo(valor: object, *, donde: str = _DONDE_TIPO) -> object:
     """Traduce el tipo en inglés al canónico. Lo demás pasa igual.
 
     Un solo contador para los tres nombres (`project_type_libre`): salían del
@@ -75,13 +76,17 @@ def normalizar_tipo(valor: object) -> object:
     en el mapa **no** se traduce ni se registra aquí: lo rechaza el enum, que es
     lo correcto — el texto libre de antes de US-202 se lee (la columna sigue
     siendo texto) pero no se vuelve a escribir.
+
+    `donde` es la puerta por la que entró, igual que en `normalizar_fase` y por
+    la misma razón. Sólo por palabra clave para no confundirse con la
+    `ValidationInfo` que Pydantic pasaría en el segundo posicional.
     """
     if not isinstance(valor, str):
         return valor
     canonico = TIPOS_RENOMBRADOS.get(valor)
     if canonico is None:
         return valor
-    registrar_uso("project_type_libre", donde="tipo del proyecto")
+    registrar_uso("project_type_libre", donde=donde)
     return canonico
 
 
