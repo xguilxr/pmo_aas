@@ -104,6 +104,74 @@ def test_la_fase_nueva_no_deja_rastro(caplog):
     assert caplog.records == []
 
 
+def test_el_tipo_viejo_deja_rastro_y_dice_por_qué_puerta_entró(caplog):
+    """El tipo tiene las mismas dos puertas que la fase: el cuerpo y el filtro."""
+    from app.schemas.project import normalizar_tipo
+
+    with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
+        assert normalizar_tipo("innovation", donde="parámetro de consulta") == "innovacion"
+
+    assert any(
+        "campo=type=innovation" in r.getMessage()
+        and "donde=parámetro de consulta" in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_el_tipo_nuevo_no_deja_rastro(caplog):
+    from app.schemas.project import normalizar_tipo
+
+    with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
+        normalizar_tipo("innovacion")
+
+    assert caplog.records == []
+
+
+@pytest.mark.asyncio
+async def test_el_filtro_type_acepta_el_nombre_viejo_y_lo_cuenta(client, db_session, caplog):
+    """ADR-038 — `phase` se arregló y `type` quedó afuera del mismo fix.
+
+    Las dos mitades de la ventana en una: `type=innovation` tenía que **devolver
+    el proyecto** (antes daba cero sin error, la peor forma de romperse) y tenía
+    que **dejar rastro**, porque un contador en cero mientras alguien la usa es
+    justo el dato con el que se decide cerrarla.
+    """
+    from tests.factories import create_admin_role, create_tenant, create_user, login
+
+    t = await create_tenant(db_session)
+    admin_role = await create_admin_role(db_session, t)
+    await create_user(
+        db_session, tenant=t, username="admin", email="admin@acme.example.com",
+        password="Str0ng-Admin-1!", roles=[admin_role],
+    )
+    auth = await login(client, "admin", "Str0ng-Admin-1!")
+    org = await client.post("/api/v1/organizations", json={"name": "Org1"}, headers=auth["_authz"])
+    me = await client.get("/api/v1/auth/me", headers=auth["_authz"])
+    creado = await client.post(
+        "/api/v1/projects",
+        json={
+            "name": "Proyecto Alfa", "description": "Desc", "type": "innovacion",
+            "priority": 3, "organization_id": org.json()["id"], "pm_id": me.json()["id"],
+        },
+        headers=auth["_authz"],
+    )
+    assert creado.status_code == 201
+
+    with caplog.at_level(logging.INFO, logger="pmoaas.compat"):
+        viejo = await client.get("/api/v1/projects?type=innovation", headers=auth["_authz"])
+
+    assert viejo.status_code == 200
+    assert [p["id"] for p in viejo.json()] == [creado.json()["id"]]
+    assert any(
+        "campo=type=innovation" in r.getMessage()
+        and "donde=parámetro de consulta" in r.getMessage()
+        for r in caplog.records
+    ), "sin rastro, el contador dice cero mientras alguien sigue filtrando en inglés"
+
+    nuevo = await client.get("/api/v1/projects?type=innovacion", headers=auth["_authz"])
+    assert nuevo.json() == viejo.json(), "el nombre viejo y el canónico son el mismo filtro"
+
+
 def test_el_cuerpo_con_el_nombre_viejo_deja_rastro(caplog):
     """`AliasChoices` acepta los dos y no dice cuál llegó; por eso se mira crudo."""
     from app.schemas.area import ActorCreate
