@@ -456,12 +456,15 @@ export function RiskMatrix({
 }) {
   const map = new Map<string, number>();
   for (const c of cells) map.set(`${c.probability}:${c.impact}`, c.count);
-  const zoneClass = (sev: number) =>
+  const maxCount = Math.max(1, ...cells.map((c) => c.count));
+  const zoneColor = (sev: number) =>
     sev <= 6
-      ? "bg-[var(--color-success-bg)] text-[var(--color-success-fg)]"
+      ? "var(--color-success-fg)"
       : sev <= 12
-        ? "bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
-        : "bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]";
+        ? "var(--color-warning-fg)"
+        : "var(--color-danger-fg)";
+  const dotSize = (count: number) =>
+    count === 0 ? 0 : 8 + Math.round((count / maxCount) * 10);
   const probs = [5, 4, 3, 2, 1];
   const impacts = [1, 2, 3, 4, 5];
   return (
@@ -477,6 +480,8 @@ export function RiskMatrix({
             impacts.map((im) => {
               const count = map.get(`${p}:${im}`) ?? 0;
               const sev = p * im;
+              const color = zoneColor(sev);
+              const size = dotSize(count);
               const interactive = onCellClick && count > 0;
               return (
                 <button
@@ -486,13 +491,18 @@ export function RiskMatrix({
                   onClick={interactive ? () => onCellClick!(p, im) : undefined}
                   title={`Prob ${p} × Impacto ${im} — ${count} riesgo(s)`}
                   className={cnLocal(
-                    "flex aspect-square items-center justify-center rounded-[var(--radius-sm)] font-semibold tabular-nums transition-opacity",
-                    zoneClass(sev),
-                    count === 0 ? "opacity-30" : "",
+                    "flex aspect-square items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-subtle)] transition-opacity",
                     interactive ? "cursor-pointer hover:opacity-80" : "cursor-default",
                   )}
                 >
-                  {count > 0 ? count : ""}
+                  {count > 0 && (
+                    <span
+                      style={{ width: size, height: size, borderColor: color, color }}
+                      className="flex items-center justify-center rounded-full border bg-[var(--color-surface)] font-semibold tabular-nums leading-none"
+                    >
+                      <span style={{ fontSize: Math.max(4.5, size * 0.42) }}>{count}</span>
+                    </span>
+                  )}
                 </button>
               );
             }),

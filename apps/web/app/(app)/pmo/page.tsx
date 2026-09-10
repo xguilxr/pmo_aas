@@ -42,6 +42,7 @@ import { Select } from "@/components/ui/select";
 import { HealthDimensionMatrix } from "@/components/health-panel";
 import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
 import { ProgramModal } from "@/components/program-modal";
+import { RoadmapTrimestral } from "@/components/roadmap-trimestral";
 import { VistaMaestra } from "@/components/vista-maestra";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
@@ -64,7 +65,9 @@ import {
   HEALTH_LABEL,
   PHASE_LABEL,
   PHASE_ORDER,
+  listProjects,
   updateProject,
+  type Project,
   type ProjectHealth,
 } from "@/lib/api/projects";
 
@@ -97,6 +100,7 @@ export default function PortafolioVistaMaestra() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [proyectosRoadmap, setProyectosRoadmap] = useState<Project[]>([]);
   const [healthMatrix, setHealthMatrix] = useState<HealthMatrixResponse | null>(null);
   const [evalTarget, setEvalTarget] = useState<{ id: string; name: string } | null>(null);
   const [healthReportBusy, setHealthReportBusy] = useState(false);
@@ -193,6 +197,27 @@ export default function PortafolioVistaMaestra() {
   useEffect(() => {
     void cargarFilas();
   }, [cargarFilas]);
+
+  // US-247 — el roadmap trimestral necesita start_date/end_date, que
+  // plan-vs-actual no expone (esa vista es de avance, no de calendario).
+  useEffect(() => {
+    if (!orgFilter) {
+      setProyectosRoadmap([]);
+      return;
+    }
+    let cancelado = false;
+    listProjects({
+      ...jerarquia,
+      phase: phaseFilter ? (phaseFilter as import("@/lib/api/projects").ProjectPhase) : undefined,
+      health: healthFilter ? [healthFilter as ProjectHealth] : undefined,
+      limit: 200,
+    })
+      .then((r) => !cancelado && setProyectosRoadmap(r))
+      .catch(() => !cancelado && setProyectosRoadmap([]));
+    return () => {
+      cancelado = true;
+    };
+  }, [jerarquia, phaseFilter, healthFilter, orgFilter]);
 
   useEffect(() => {
     let cancelado = false;
@@ -511,6 +536,15 @@ export default function PortafolioVistaMaestra() {
           </Button>
         ) : null}
       </section>
+
+      {orgFilter ? (
+        <section
+          aria-label="Roadmap trimestral"
+          className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
+        >
+          <RoadmapTrimestral proyectos={proyectosRoadmap} portafolios={portfolios} />
+        </section>
+      ) : null}
 
       <VistaMaestra
         filas={visibles}
