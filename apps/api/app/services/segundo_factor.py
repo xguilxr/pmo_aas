@@ -80,7 +80,7 @@ def _resumen(codigo: str) -> str:
     return hashlib.sha256(codigo.encode("utf-8")).hexdigest()
 
 
-async def _tenant_settings(db: AsyncSession, tenant_id: UUID | str | None) -> dict:
+async def _tenant_settings(db: AsyncSession, tenant_id: UUID | str | None) -> dict[str, object]:
     if tenant_id is None:
         return {}
     tenant = (

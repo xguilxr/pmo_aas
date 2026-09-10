@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-84 documentos vivos · 70 archivados · 2629 secciones indexadas.
+84 documentos vivos · 70 archivados · 2631 secciones indexadas.
 
 ## gestion
 
@@ -36,8 +36,8 @@ revisar_cada: nunca
 | Documento | De qué trata | Revisado | Líneas |
 |---|---|---|---|
 | [`epics/DB-CHANGES.md`](epics/DB-CHANGES.md) | Migraciones aplicadas (v1.0) · EP001 — Auth / usuarios · EP002 — Jerarquía org · EP003 — Solicitudes y Proj… | 2026-08-29 | 1406 |
-| [`epics/DECISIONS.md`](epics/DECISIONS.md) | DEC-001 — Tracking multi-sesión con GitHub Issues + archivos MD · DEC-002 — ❌ SUPERSEDED por DEC-013 · DEC-… | 2026-08-29 | 688 |
-| [`epics/EP001-auth-users.md`](epics/EP001-auth-users.md) | Modelo actual (post-Sprint 6 / DEC-024) · Objetivo de negocio (v1.0, histórico) · Roles involucrados · User… | 2026-08-29 | 607 |
+| [`epics/DECISIONS.md`](epics/DECISIONS.md) | DEC-001 — Tracking multi-sesión con GitHub Issues + archivos MD · DEC-002 — ❌ SUPERSEDED por DEC-013 · DEC-… | 2026-08-29 | 696 |
+| [`epics/EP001-auth-users.md`](epics/EP001-auth-users.md) | Modelo actual (post-Sprint 6 / DEC-024) · Objetivo de negocio (v1.0, histórico) · Roles involucrados · User… | 2026-08-29 | 628 |
 | [`epics/EP002-org-hierarchy.md`](epics/EP002-org-hierarchy.md) | Objetivo de negocio · Roles involucrados · User Stories existentes · # PENDING — User Stories nuevas | 2026-08-12 | 376 |
 | [`epics/EP003-project-requests.md`](epics/EP003-project-requests.md) | Objetivo de negocio · Roles · User Stories · Notas técnicas | 2026-08-29 | 308 |
 | [`epics/EP004-dashboard.md`](epics/EP004-dashboard.md) | Objetivo de negocio · User Stories · Notas técnicas · Definition of Done | 2026-08-29 | 782 |

@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 async def crear_tenant_demo_qa(*, slug: str, nombre: str, codigo: str | None, sin_mfa: bool) -> None:
-    settings: dict = {"locale": "es-MX", "currency": "MXN", "ai_mode": "disabled"}
+    settings: dict[str, object] = {"locale": "es-MX", "currency": "MXN", "ai_mode": "disabled"}
     if sin_mfa:
         settings["mfa_enabled"] = False
     elif codigo:
@@ -59,7 +59,8 @@ async def crear_tenant_demo_qa(*, slug: str, nombre: str, codigo: str | None, si
         print("MFA: deshabilitado para este tenant (settings.mfa_enabled=False)")
     elif codigo:
         print(f"Código MFA fijo: {codigo}")
-    print(f"Borrar luego con: DELETE FROM tenants WHERE slug = '{slug}';")
+    # Solo texto informativo para consola, no una query ejecutada.
+    print(f"Borrar luego con: DELETE FROM tenants WHERE slug = '{slug}';")  # nosec B608
 
 
 def main() -> None:
