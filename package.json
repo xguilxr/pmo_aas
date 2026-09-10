@@ -25,6 +25,9 @@
     "del gate. Revisar: 2026-09-15.",
     "2026-08-19: nanoid <3.3.18 (high, GHSA-2v37-7h3g-55p8, transitiva vía",
     "postcss) — se fuerza >=3.3.18.",
+    "2026-09-10: next 15.5.22 -> 15.5.24 (2 CVE críticas, GHSA-p293-qw3h-jr36",
+    "y GHSA-2xp9-vwfh-vxw4). sharp >=0.35.0 -> >=0.35.4 (GHSA-rgj7-g3m4-5g8c,",
+    "vía next, seguía instalando 0.35.3 dentro del rango viejo).",
     "Si un override deja de hacer falta porque la raíz lo subió, se retira."
   ],
   "pnpm": {
@@ -32,7 +35,7 @@
       "brace-expansion": ">=2.1.4",
       "postcss": ">=8.5.12",
       "tmp": ">=0.2.6",
-      "sharp": ">=0.35.0",
+      "sharp": ">=0.35.4",
       "nanoid": ">=3.3.18"
     }
   }
