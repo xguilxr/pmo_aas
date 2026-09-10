@@ -422,6 +422,45 @@ detalle de un proyecto individual, empezando por RAID.
 
 ---
 
+### 14. Full code review — descargas, formularios completos, alineado a "Pull Request Review" de GitHub
+
+**Estado:** pendiente — es una auditoría transversal, no una pantalla puntual
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
+Cambia de tema otra vez: deja las pantallas de detalle de proyecto y pide
+una pasada de code review sobre todo el sistema, con tres frentes:
+
+- [ ] **Botones de descarga** (auditoría de todos, no uno en particular):
+  - Alineación visual consistente.
+  - Nombre de archivo real y con sentido (no un nombre genérico/temporal).
+  - **Nada de CSV** como formato de descarga — todo debe ser **Excel**, para
+    poder aplicarle el branding y formato con el que ya se viene trabajando
+    (ver XLSX_FONT / `aplicarFuente` en `lib/plan-template.ts`, ya usado en
+    algunos reportes).
+- [ ] **Completitud de catálogos/formularios** para organizaciones,
+  portafolios, programas, proyectos, recursos — "todo": que la lista de
+  campos que se **piden** sea completa en todos los formularios, y no solo
+  que el campo exista vacío en la UI sin tener dónde configurarlo.
+  - Distinción que marca el owner: **un campo vacío** (dato no cargado
+    todavía, aceptable) es distinto de **un campo que ni siquiera se pide**
+    (no hay dónde configurarlo — eso hay que corregirlo).
+  - Objetivo: poder configurar **todo** siempre, y saber qué falta —
+    tanto del lado del sistema (backend/modelo) como de los forms
+    (frontend).
+- [ ] **Consistencia entre páginas/forms de la misma entidad**: que no haya
+  discrepancias entre los distintos lugares del sistema donde aparece la
+  misma entidad (ej. un proyecto se edita distinto en dos pantallas
+  distintas, con campos distintos).
+
+**Metodología pedida:** un "full code review" orientado al estilo de
+revisión de Pull Request de GitHub (comentarios puntuales por archivo/línea,
+findings accionables) — para simplificar y optimizar el código en el
+proceso, no solo listar hallazgos.
+
+**Screenshot de referencia:** no aplica (auditoría de código, no una
+pantalla puntual).
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
