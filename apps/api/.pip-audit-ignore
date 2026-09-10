@@ -44,8 +44,14 @@ PYSEC-2026-2280
 # Se borran los IDs en vez de dejarlos: un `--ignore-vuln` de algo que ya no se
 # instala no protege de nada y hace creer que el pasivo es mayor de lo que es.
 
-# ── weasyprint 68.1 · 1 CVE ─────────────────────────────────────────────────
+# ── weasyprint 68.1 · 2 CVE ─────────────────────────────────────────────────
 # Sin versión con arreglo al 2026-08-03. Genera PDF a partir de plantillas
 # propias, no de HTML arbitrario del usuario, lo que acota la exposición.
 # Revisar si aparece arreglo.
 PYSEC-2026-3412
+# PYSEC-2026-3940 — surgió el 2026-09-10 (CI de #607, que no toca apps/api).
+# Arreglo: weasyprint 70.0. No se sube aquí: es una rama mayor de una
+# librería nativa (GTK/Pango) que exige correr `test_us037_pdf_renderer.py`
+# (job `api-tests-heavy`) para validarla, fuera del alcance de ese PR.
+# Revisar: 2026-09-15.
+PYSEC-2026-3940
