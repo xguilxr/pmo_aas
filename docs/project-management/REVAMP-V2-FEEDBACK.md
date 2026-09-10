@@ -390,6 +390,38 @@ no se pierda y se retome cuando el owner la resuelva.
 
 ---
 
+### 12. Configuraciones → Admin → Auditoría — conforme, sin cambios
+
+**Estado:** conforme (nada que implementar)
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot).
+
+El owner confirma que esta página está bien — no hay nada que registrar
+aquí. Cierra el recorrido completo de la sección Admin (punto 10 + 11 + 12).
+
+---
+
+### 13. Páginas de detalle de proyecto — bug de tabla (wrap) en RAID + estado activo de tabs
+
+**Estado:** pendiente
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
+Cambia de tema: pasa de la navegación/administración a las páginas de
+detalle de un proyecto individual, empezando por RAID.
+
+- [ ] **Bug visual en las tablas de RAID** (detalle de proyecto): el
+  wrap de texto hace que algunos elementos se encimen unos sobre otros —
+  no se ve como una tabla normal. El owner no está seguro si es bug o
+  diseño, pero pide **quitar el wrap** en esas tablas.
+- [ ] **Estado activo inconsistente en los tabs** (la barra de navegación
+  horizontal, arriba, dentro del detalle de proyecto): algunos tabs sí
+  se rellenan de negro cuando están seleccionados (mismo estilo que el
+  item activo del sidebar), pero otros no. Hay que **unificar**: todos los
+  tabs deben indicar visualmente, de la misma manera, en cuál está parado
+  el usuario.
+
+**Screenshot de referencia:** pendiente de que el owner lo adjunte.
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
