@@ -244,6 +244,18 @@ proveedores externos, no solo empleados). Confirma que esto está bien.
 
 ---
 
+### 6. Solicitudes — conforme, sin cambios
+
+**Estado:** conforme (nada que implementar)
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot).
+
+La página tal cual está hoy: lista de solicitudes con opción de crear una
+nueva, y el flujo completo hasta generar el charter y el registro del
+proyecto en estado "pendiente por aprobación" (el flujo normal). El owner
+confirma que esta página está bien — no hay nada que registrar aquí.
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
