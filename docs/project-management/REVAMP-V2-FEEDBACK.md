@@ -182,6 +182,29 @@ del punto 1 en lo referente al roadmap — el resto de la lista del punto 1
 
 ---
 
+### 4. Página PMO — el Gantt trimestral navegable + lista de proyectos debajo
+
+**Estado:** pendiente
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
+
+- [ ] El Gantt trimestral (roadmap del punto 3, US-247) es donde se ve
+  **todos** los proyectos a nivel trimestral.
+- [ ] Tiene que poder **navegar entre años**: años previos y siguientes.
+  Ejemplo dado: 2025, 2026, 2027. Todo lo de **2026 en adelante** debe estar
+  cubierto (no es solo el año en curso, como está implementado hoy).
+- [ ] **Debajo** del Gantt: la lista de proyectos, **ordenada** por
+  organización → portafolio → programa (no "agrupados", el owner corrige a
+  media frase: es orden, no agrupación por separado).
+  - Todos los proyectos de esa lista van a tener la misma organización,
+    porque solo un rol específico puede ver a nivel de varias
+    organizaciones a la vez — la idea general de la página es que todo viva
+    a nivel de **una** organización (ver también punto 2.3, filtro por
+    organización activa).
+
+**Screenshot de referencia:** pendiente de que el owner lo adjunte.
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
