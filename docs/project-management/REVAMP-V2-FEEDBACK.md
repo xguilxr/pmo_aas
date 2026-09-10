@@ -461,10 +461,41 @@ pantalla puntual).
 
 ---
 
-<!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
+### 15. Cierre de la ronda de comentarios — qué debe traer el plan, y el orden de las fases
+
+**Estado:** cierra la ronda — pasa a instrucción de cómo se arma el plan
+**Origen:** owner, sesión 2026-09-10 (dictado). No es feedback sobre una
+pantalla: es la instrucción de qué debe producir el plan de implementación
+y en qué secuencia se ejecuta el resto de la ronda.
+
+**El plan debe incluir, antes que nada, diagramas sencillos de:**
+
+- [ ] **Navegación** — el mapa de páginas y cómo se llega de una a otra
+  (recoge la estructura del punto 2).
+- [ ] **Estados** — los flujos de estado de las entidades que los tienen
+  (fase de proyecto, estado de solicitud, severidad de riesgo, etc.).
+- [ ] **Entidades** — organización, portafolio, programa, proyecto, recurso,
+  con sus **fases** y **campos**, de forma que sirva de mapeo visual
+  completo del sistema y su flujo operativo (conecta directo con el punto
+  14: la auditoría de completitud de campos se apoya en este mapeo).
+
+**Secuencia pedida a partir de aquí (en este orden, no en paralelo):**
+
+1. **Diagramas** (arriba) — para que el owner y la sesión estén "en la
+   misma página" sobre cómo es el sistema hoy y hacia dónde va.
+2. **Wireframes** — recién ahí se definen los wireframes de las pantallas
+   nuevas/modificadas (Dashboard, PMO, Recursos, Reportes, Proyectos,
+   Admin, detalle de proyecto).
+3. **Implementación final** del código, con los code reviews
+   correspondientes (conecta con el punto 14 — estilo PR review de GitHub).
+
+**No saltar directo a wireframes o código sin pasar primero por los
+diagramas** — es el orden explícito que pide el owner.
 
 ---
 
 ## Plan de implementación
 
-*(vacío — se arma cuando el owner da por cerrada la ronda de comentarios)*
+*(vacío — se arma cuando el owner da por cerrada la ronda de comentarios.
+Cuando se arme: seguir la secuencia del punto 15 — diagramas primero,
+wireframes después, implementación y code review al final.)*
