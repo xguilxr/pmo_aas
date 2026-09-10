@@ -139,7 +139,7 @@ export function RoadmapTrimestral({
       {[...porPortafolio.entries()].map(([portfolioId, filas]) => (
         <div key={portfolioId}>
           <div
-            className="grid items-center bg-[var(--bg-subtle)]"
+            className="grid items-center bg-[var(--color-bg-subtle)]"
             style={{ gridTemplateColumns: "200px repeat(4,1fr)", height: 20 }}
           >
             <span className="truncate pl-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)] [grid-column:1/-1]">
@@ -163,7 +163,7 @@ export function RoadmapTrimestral({
                   className="flex h-4 items-center justify-center rounded-full text-[9px] font-semibold text-white"
                   style={{
                     gridColumn: `${q1 + 1}/${q2 + 2}`,
-                    background: vacia ? "var(--bg-muted)" : color,
+                    background: vacia ? "var(--color-bg-muted)" : color,
                     border: vacia ? "1px solid var(--border-default)" : undefined,
                     color: vacia ? "transparent" : undefined,
                   }}

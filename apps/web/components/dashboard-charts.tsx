@@ -491,7 +491,7 @@ export function RiskMatrix({
                   onClick={interactive ? () => onCellClick!(p, im) : undefined}
                   title={`Prob ${p} × Impacto ${im} — ${count} riesgo(s)`}
                   className={cnLocal(
-                    "flex aspect-square items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] transition-opacity",
+                    "flex aspect-square items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-subtle)] transition-opacity",
                     interactive ? "cursor-pointer hover:opacity-80" : "cursor-default",
                   )}
                 >
