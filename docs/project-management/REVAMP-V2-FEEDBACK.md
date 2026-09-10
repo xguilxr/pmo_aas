@@ -205,6 +205,45 @@ del punto 1 en lo referente al roadmap — el resto de la lista del punto 1
 
 ---
 
+### 5. Recursos — unicidad por organización, borrado, % asignado, import masivo
+
+**Estado:** pendiente
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
+
+**Lo que ya funciona y le gusta al owner (no tocar):** la información que
+se ve hoy — quién es el recurso, su organización/empresa (contempla
+proveedores externos, no solo empleados). Confirma que esto está bien.
+
+- [ ] **Porcentaje asignado**: dice que "creo que ya está" — verificar que el
+  dato exista y **se refleje** en la UI (puede ser un problema de visualización,
+  no de datos).
+- [ ] **Borrar / quitar recurso**: no existe la opción hoy. Falta poder
+  quitar o poner usuarios como recurso.
+- [ ] **Unicidad por organización** (la pieza central del punto): un recurso
+  es **estrictamente de una organización**. Hoy hay recursos duplicados
+  porque dos organizaciones se juntaron (mismo problema de datos que ya
+  había anotado en el punto 2.3) y aparecen en ambas — hay que limpiar eso.
+  - Un recurso solo puede asignarse a proyectos **dentro de su propia
+    organización**.
+  - Si la misma persona participa en otra organización, se tiene que volver
+    a dar de alta ahí — es un registro nuevo e independiente, no el mismo
+    recurso compartido entre organizaciones.
+  - La unicidad **no es por nombre** (puede haber personas con el mismo
+    nombre dentro de una organización) — el candidato es **correo
+    electrónico**, a validar cómo se implementa exactamente.
+- [ ] **Import masivo de recursos** (ya apuntado en el punto 2.2, ahora con
+  el detalle):
+  - Necesita una plantilla con los campos obligatorios para poder subir
+    correctamente.
+  - El sistema debe **crear** los usuarios que no existen todavía.
+  - El sistema debe **validar** (por el criterio de unicidad de arriba) los
+    que ya existen y **no volver a crearlos** — evitar duplicados en la
+    importación.
+
+**Screenshot de referencia:** pendiente de que el owner lo adjunte.
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
