@@ -289,6 +289,30 @@ diseñar") queda para después — este punto registra el alcance funcional
 
 ---
 
+### 8. Proyectos — orden de columnas y filtros como dropdown con checkmarks
+
+**Estado:** pendiente
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
+
+La página en general está bien (confirma), con dos ajustes:
+
+- [ ] **Orden de columnas**: portafolio, programa, nombre del proyecto —
+  en ese orden. (La organización es siempre la misma para todos los
+  proyectos listados, ver punto 2.3/4 — no hace falta como columna
+  separada.) Más algunas columnas de detalle adicionales para dar contexto
+  (el owner no precisa cuáles todavía).
+- [ ] **Filtros como dropdown con checkmarks**: que se puedan marcar/
+  desmarcar valores dentro del dropdown (selección múltiple), no como están
+  hoy.
+  - Nota de contexto del owner: los PMs, por su rol, normalmente solo ven
+    un subconjunto de proyectos (a los que están asignados), así que no
+    espera que usen mucho los filtros — pero deben quedar disponibles
+    igual.
+
+**Screenshot de referencia:** pendiente de que el owner lo adjunte.
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
