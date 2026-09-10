@@ -238,7 +238,7 @@ function LoginForm() {
               disabled={submitting}
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="admin@acme.pmoaas.local"
+              placeholder="Usuario o correo"
             />
           </div>
 

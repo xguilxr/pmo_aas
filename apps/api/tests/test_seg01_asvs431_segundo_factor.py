@@ -667,3 +667,56 @@ def test_adr035_la_cookie_del_equipo_sobrevive_a_cerrar_sesion():
         "El cierre de sesión borra la cookie del equipo, así que el código se "
         "volvería a pedir en la siguiente entrada"
     )
+
+
+# ---------------------------------------------------------------------------
+# ENH-203 — un tenant configura si exige el segundo factor
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_enh203_tenant_con_mfa_deshabilitado_no_recibe_desafio(client, db_session, correos):
+    """TC-013. `settings.mfa_enabled=False` es opt-in explícito: pensado para
+    tenants de demo desechables, nunca el comportamiento de fábrica."""
+    from tests.factories import create_admin_role, create_tenant, create_user
+
+    tenant = await create_tenant(
+        db_session, slug="mfaoff", name="MfaOff", settings={"mfa_enabled": False}
+    )
+    rol = await create_admin_role(db_session, tenant)
+    await create_user(
+        db_session, tenant=tenant, username="mfaoff",
+        email="mfaoff@acme.example.com", password="Zx9-Correcta-Larga!", roles=[rol],
+    )
+
+    r = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "mfaoff@acme.example.com", "password": "Zx9-Correcta-Larga!"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["access_token"]
+    assert not correos, "El tenant desactivó el MFA; no debió enviarse ningún código"
+
+
+@pytest.mark.asyncio
+async def test_enh203_tenant_con_codigo_fijo_siempre_valida_ese_codigo(client, db_session, correos):
+    """TC-014. El código fijo es para no depender de un buzón real en una
+    demo — no reemplaza el freno de intentos ni el resto del control."""
+    from tests.factories import create_admin_role, create_tenant, create_user
+
+    tenant = await create_tenant(
+        db_session, slug="mfafijo", name="MfaFijo", settings={"otp_codigo_fijo": "424242"}
+    )
+    rol = await create_admin_role(db_session, tenant)
+    await create_user(
+        db_session, tenant=tenant, username="mfafijo",
+        email="mfafijo@acme.example.com", password="Zx9-Correcta-Larga!", roles=[rol],
+    )
+
+    r = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "mfafijo@acme.example.com", "password": "Zx9-Correcta-Larga!"},
+    )
+    assert r.status_code == 202, r.text
+    _, codigo = correos[0]
+    assert codigo == "424242"
