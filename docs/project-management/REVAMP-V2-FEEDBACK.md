@@ -363,6 +363,33 @@ de que el owner los dicte por separado.
 
 ---
 
+### 11. Configuraciones → Admin → Plan e IA — sin definir, decisión de producto pendiente
+
+**Estado:** sin definir (no es un punto de implementación todavía —
+decisión de producto que el owner deja explícitamente abierta)
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
+
+El owner junta "Plan" e "IA" en un solo tema porque están relacionados:
+
+- [ ] El plan puede incluir **costos o uso de tokens mensuales**. El
+  excedente sobre ese uso se le debe cobrar al usuario/tenant.
+- [ ] **Pendiente de decidir** (el owner es explícito: "todavía no está
+  definido este paso"): si se sigue ofreciendo **Bring Your Own Key** (BYOK,
+  que hoy existe — ver `_ping_byo_provider` y el proveedor propio en el
+  código) o si se pasa a un modelo fijo: un solo proveedor y modelo
+  homologado, con un costo de tokens definido por PMO-aaS.
+  - Motivación mencionada para ir a modelo fijo: poder garantizar/homologar
+    la herramienta, y usar un modelo que **no retenga la información del
+    cliente** para entrenamiento — importante para poder ofrecer pruebas.
+
+**No implementar nada de este punto todavía** — es una decisión de producto
+sin cerrar, no una instrucción de desarrollo. Se deja registrado para que
+no se pierda y se retome cuando el owner la resuelva.
+
+**Screenshot de referencia:** no aplica (decisión de producto, no visual).
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
