@@ -145,6 +145,43 @@ deja anotado, lo retoma después, no es parte de este punto de navegación.
 
 ---
 
+### 3. Dashboard — corrección de alcance: el roadmap trimestral NO va aquí
+
+**Estado:** pendiente
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
+Corrige el punto 1: ahí se había dicho que el roadmap trimestral (estilo
+Gantt por trimestre) iba en el Dashboard — el owner rectifica: **no va ahí**.
+
+- [ ] **Mover** el roadmap trimestral (US-247, ya implementado en `/pmo`) de
+  donde esté hoy hacia la página de **PMO** (la que resulta de fusionar
+  Portafolio + Board, punto 2.2). Si ya vive en `/pmo`, este punto queda en
+  standby hasta que exista la página PMO fusionada — no hay que moverlo dos
+  veces.
+
+Para el resto del Dashboard (lo que sí queda aquí, "lo que estuvimos
+reconstruyendo"):
+
+- [ ] **Rueda de salud + número de proyectos activos**: solidificar en una
+  sola pieza — la dona de "por salud" con el total de proyectos activos al
+  centro (ya es parecido al spec original; falta fusionarlo con el KPI
+  "Proyectos activos" en vez de tenerlos como dos elementos separados).
+- [ ] **Hero de avance**: juntar el KPI "Avance plan vs real" (el que da el
+  % puntual) con la card de tendencia "Avance promedio" (la que trae la
+  gráfica de tendencia) en **una sola pieza hero principal** — no dos cards
+  separadas mostrando cosas relacionadas.
+- [ ] El resto de las piezas (distribuciones por fase/programa/sponsor, top
+  en riesgo/atraso/sobrecarga, matriz RAID, semáforo consolidado) **sin
+  cambio de alcance**: se implementan como ya estaba diseñado en el spec
+  original (`PMO-aaS Dashboard Redesign.dc.html`, punto 1).
+
+**Nota:** este punto reemplaza, para el Dashboard, la lista de pendientes
+del punto 1 en lo referente al roadmap — el resto de la lista del punto 1
+(KPI band, distribuciones, semáforo) sigue vigente tal cual.
+
+**Screenshot de referencia:** pendiente de que el owner lo adjunte.
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
