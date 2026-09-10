@@ -170,7 +170,7 @@ const GRUPOS_NAV: GrupoNav[] = [
 function buildAdminNav(): NavItem {
   return {
     id: "admin",
-    label: "Admin",
+    label: "Configuraciones",
     icono: "settings",
     href: "/admin",
     match: (p) =>
@@ -726,15 +726,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <Icono nombre="x" size={16} />
             </button>
-            <button
-              type="button"
-              onClick={() => setCollapsedPersisted(!collapsed)}
-              aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
-              title={collapsed ? "Expandir menú" : "Colapsar menú"}
-              className="hidden lg:inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)]"
-            >
-              <Icono nombre={collapsed ? "panel-left" : "panel-left-close-dashed"} size={16} />
-            </button>
           </div>
           <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3">
             {userReady && (!user?.is_superadmin || superadminJoinedTenant)
@@ -756,7 +747,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               : null}
             {adminVisible ? (
               <div className="mt-0.5">
-                <RotuloDeGrupo titulo="Admin" oculto={collapsed} />
+                <RotuloDeGrupo titulo="Configuraciones" oculto={collapsed} />
                 <NavTree
                   items={[adminNav]}
                   pathname={pathname}
@@ -785,6 +776,21 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ))
               : null}
           </nav>
+          <div className="mt-auto border-t border-[var(--chrome-border)] px-2 py-2">
+            <button
+              type="button"
+              onClick={() => setCollapsedPersisted(!collapsed)}
+              aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
+              title={collapsed ? "Expandir menú" : "Colapsar menú"}
+              className={cn(
+                "flex h-8 w-full items-center gap-2 rounded-[var(--radius-md)] px-2 text-xs text-[var(--chrome-text-muted)] hover:bg-[var(--chrome-hover)]",
+                collapsed && "justify-center",
+              )}
+            >
+              <Icono nombre={collapsed ? "panel-left" : "panel-left-close-dashed"} size={16} />
+              {!collapsed && <span>Colapsar menú</span>}
+            </button>
+          </div>
         </aside>
 
         <main
