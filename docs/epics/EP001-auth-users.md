@@ -172,6 +172,27 @@ sabe quién hizo qué.
 
 ---
 
+### Segundo factor por correo para administradores (ADR-035 · ENH-203)
+
+Quien llega a una interfaz de administración (superadmin o rol `admin`/`pm_sr`)
+no entra con solo la contraseña: `login` responde `202 {mfa_required: true,
+desafio}` y manda un código de 6 dígitos al correo; `POST /verificar-codigo`
+lo consume y recién ahí emite la sesión. Caduca en 10 min, un solo uso, 5
+intentos máximo (`app/services/segundo_factor.py`).
+
+**Por tenant (ENH-203):** `tenants.settings` acepta dos claves opcionales,
+pensadas para ambientes de demo/QA desechables — ausentes, el comportamiento
+de fábrica no cambia:
+- `mfa_enabled: false` — el tenant no pide segundo factor a ningún admin.
+- `otp_codigo_fijo: "123456"` — el código que se manda (y que valida) es
+  siempre ese, en vez de aleatorio.
+
+Script para crear un tenant así: `python -m app.scripts.seed_demo_qa`
+(`apps/api/app/scripts/seed_demo_qa.py`). Trinquete: `TC-013`/`TC-014` en
+`tests/test_seg01_asvs431_segundo_factor.py`.
+
+---
+
 ### US-003 — Bloqueo tras 5 intentos fallidos
 
 **Como** Administrador de seguridad

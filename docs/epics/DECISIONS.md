@@ -685,3 +685,11 @@ legacy en Sprint 7 (US-081).
 **Consecuencia aceptada:** MRR (US-236) sale de tarifas declaradas en código (`PLAN_PRICING`) y de lo que el superadmin capture — es tan bueno como la disciplina de captura. La UI no lo esconde: la cifra es real respecto del registro, no de un cobro bancario.
 **Reversible:** sí — la integración es aditiva sobre el mismo esquema.
 **Implementación:** US-235/236 (`plan-post-revamp-especificaciones.md` §R2). Origen: owner por chat, 2026-08-27 («Dec de billing si primero manual»).
+
+## DEC-035 — El segundo factor de administración se apaga por tenant, nunca por defecto (ENH-203)
+**Fecha:** 2026-09-10
+**Decisión:** `tenants.settings` gana dos claves opcionales: `mfa_enabled` (bool) y `otp_codigo_fijo` (str). Con `mfa_enabled=False` el tenant no exige el código de correo (ADR-035/ASVS 4.3.1) a ninguno de sus administradores; con `otp_codigo_fijo` puesto, el código que se manda y valida es siempre ese en vez de aleatorio. Ausentes las dos, el comportamiento no cambia: el factor sigue exigido y el código sigue siendo aleatorio.
+**Rationale:** un ambiente de demo/QA desechable necesita que quien prueba pueda entrar sin depender de un buzón real. La alternativa —hardcodear una excepción por slug de tenant en el código— es peor: vive fuera del dato del tenant, nadie la ve al mirar `tenants`, y sobrevive al tenant que la motivó. Un setting JSON que ya existe (`Tenant.settings`) no pide migración y se borra con el tenant.
+**Por qué el defecto no cambia:** el control es ASVS 4.3.1 y su ausencia debilita justo la cuenta que más puede hacer daño si se compromete. Que un tenant nuevo nazca sin las claves y siga pidiendo MFA es lo que hace este cambio aditivo y no una regresión de seguridad general.
+**Reversible:** sí — quitar las claves del `settings` de un tenant (o borrar el tenant) vuelve todo al comportamiento de fábrica.
+**Implementación:** `app/services/segundo_factor.py::mfa_habilitado_para_tenant` · `app/scripts/seed_demo_qa.py` (crea el tenant de demo) · trinquete `TC-013`/`TC-014` en `tests/test_seg01_asvs431_segundo_factor.py`. Origen: owner por chat, 2026-09-10.

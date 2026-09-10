@@ -59,6 +59,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.auth import AdminOtpCode, DispositivoConfiable
+from app.models.tenant import Tenant
 from app.models.user import User
 
 log = logging.getLogger(__name__)
@@ -77,6 +78,26 @@ INTENTOS_MAXIMOS = 5
 
 def _resumen(codigo: str) -> str:
     return hashlib.sha256(codigo.encode("utf-8")).hexdigest()
+
+
+async def _tenant_settings(db: AsyncSession, tenant_id: UUID | str | None) -> dict:
+    if tenant_id is None:
+        return {}
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    ).scalar_one_or_none()
+    return (tenant.settings or {}) if tenant else {}
+
+
+async def mfa_habilitado_para_tenant(db: AsyncSession, tenant_id: UUID | str | None) -> bool:
+    """¿Este tenant exige el segundo factor a sus administradores?
+
+    ENH-203: pensado para ambientes de demo/QA desechables, donde pedir un
+    código por correo es fricción sin nadie del otro lado del buzón. Por
+    defecto —ausencia de la clave— el factor sigue exigido: apagarlo es un
+    opt-in explícito por tenant, nunca el comportamiento de fábrica.
+    """
+    return bool((await _tenant_settings(db, tenant_id)).get("mfa_enabled", True))
 
 
 def necesita_segundo_factor(user: User) -> bool:
@@ -99,7 +120,10 @@ async def emite(db: AsyncSession, *, user: User) -> tuple[str, str]:
     solo queda su resumen.
     """
     desafio = secrets.token_urlsafe(24)
-    codigo = f"{secrets.randbelow(10**DIGITOS):0{DIGITOS}d}"
+    # ENH-203: un tenant de demo puede fijar su código para no depender de un
+    # buzón real. Ausente para cualquier tenant normal — sigue siendo random.
+    codigo_fijo = (await _tenant_settings(db, user.tenant_id)).get("otp_codigo_fijo")
+    codigo = str(codigo_fijo) if codigo_fijo else f"{secrets.randbelow(10**DIGITOS):0{DIGITOS}d}"
     db.add(
         AdminOtpCode(
             desafio=desafio,

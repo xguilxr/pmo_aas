@@ -27,8 +27,10 @@ ADMIN_PERMS = {
 }
 
 
-async def create_tenant(db: AsyncSession, slug: str = "acme", name: str = "Acme") -> Tenant:
-    t = Tenant(slug=slug, name=name, is_active=True, settings={})
+async def create_tenant(
+    db: AsyncSession, slug: str = "acme", name: str = "Acme", settings: dict | None = None
+) -> Tenant:
+    t = Tenant(slug=slug, name=name, is_active=True, settings=settings or {})
     db.add(t)
     await db.flush()
     return t

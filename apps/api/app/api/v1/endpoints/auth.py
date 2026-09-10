@@ -66,6 +66,7 @@ from app.services.segundo_factor import (
     emite,
     envia_codigo,
     es_dispositivo_de_confianza,
+    mfa_habilitado_para_tenant,
     necesita_segundo_factor,
     recuerda_dispositivo,
     revoca_dispositivos,
@@ -235,7 +236,11 @@ async def login(
     # contraseña correcta **no** basta: no se emite sesión todavía, se manda un
     # código al correo y se devuelve el desafío. La sesión la emite
     # `/verificar-codigo` si el código es el bueno.
-    if settings.ADMIN_MFA_REQUIRED and necesita_segundo_factor(user):
+    if (
+        settings.ADMIN_MFA_REQUIRED
+        and necesita_segundo_factor(user)
+        and await mfa_habilitado_para_tenant(db, user.tenant_id)
+    ):
         # ADR-035 §Ventana — si este equipo ya demostró el segundo factor, no se
         # vuelve a pedir durante la ventana. Sigue habiendo dos factores: la
         # cookie es un secreto de 256 bits que solo tiene este navegador, y la
