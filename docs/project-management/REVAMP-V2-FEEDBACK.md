@@ -52,6 +52,99 @@ Portafolio. El resto del spec —que es la parte que más se ve— no se tocó:
 
 ---
 
+### 2. Barra de navegación (sidebar) — reestructuración completa
+
+**Estado:** pendiente
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
+
+#### 2.1 Estructura actual
+
+```
+Organizaciones
+  Dashboard
+  Portafolio
+  Proyectos
+  Importar
+  Solicitudes
+  Recursos
+  Reportes
+Transversal
+  RAID
+  Cambios
+  Minutas
+  Notificaciones
+Configuraciones
+  Configuraciones
+    Tenant
+    IA
+    Organizaciones
+    Usuarios
+    Permisos
+    Plan
+    Auditoría
+```
+
+#### 2.2 Estructura pedida
+
+```
+Organización
+  Dashboard
+  PMO
+    — fusiona Portafolio + Board en una sola página
+    — el import masivo de proyectos se mueve aquí
+    — botón que lleva a la config de portafolios y programas
+    — siempre existe un portafolio-programa base de la organización, donde
+      caen los proyectos sin programa ni portafolio asignado
+    — para cada portafolio hay su propio panel, que agrupa sus programas y,
+      adentro, sus proyectos ya asignados (estilo carpetas)
+    — debe quedar muy simple de navegar
+  Recursos
+    — el import masivo de recursos se mueve aquí
+  Solicitudes
+  Reportes
+    — clic lleva a /pmo/reports
+    — incluye RAID y Cambios
+    — Minutas y Notificaciones NO van aquí (no se consideran relevantes)
+  Proyectos
+    — lista de proyectos, solo para navegar a la página propia de cada uno
+
+Configuraciones
+  Cuenta
+    — todos los usuarios ven su propia página: datos personales y todo lo
+      que pueden hacer
+  Admin
+    Tenant
+      Branding
+      Usuarios (creación, gestión y asignación de roles)
+      Organizaciones, Portafolios, Programas y Proyectos
+        (agregar, configurar, eliminar, reasignar)
+      Plan e IA
+      Auditoría
+```
+
+#### 2.3 Filtro por organización activa (nota aparte, no es de navegación)
+
+Con una organización seleccionada, **todo** el contenido de **todas** las
+páginas debe filtrar solo esa organización. El owner marca que ahora mismo
+los Recursos se ven mezclados entre organizaciones por las migraciones —lo
+deja anotado, lo retoma después, no es parte de este punto de navegación.
+
+#### 2.4 Encabezado (barra superior)
+
+- La barra (y el primer rótulo del sidebar) debe arrancar justo debajo de la
+  línea que separa el header del resto — actualmente hay un espacio/salto ahí.
+- El logo del tenant deja el lugar donde hoy dice "PMO-aaS": ese lugar pasa a
+  decir **"Organización:"** seguido del dropdown de organizaciones que ya
+  existe.
+- El logo del tenant se mueve a la derecha, entre el buscador y las
+  notificaciones.
+- El buscador pasa a ocupar el espacio central: centrado y más extendido
+  (más ancho que el actual de 260px).
+
+**Screenshot de referencia:** pendiente de que el owner lo adjunte.
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
