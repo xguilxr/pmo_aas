@@ -313,6 +313,25 @@ La página en general está bien (confirma), con dos ajustes:
 
 ---
 
+### 9. Configuraciones → Cuenta — las acciones del dropdown del usuario
+
+**Estado:** pendiente (bajo detalle — confirma alcance, falta precisar contenido)
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
+
+"Cuenta" (punto 2.2) es la página a la que hoy se llega por el dropdown del
+avatar del usuario, arriba a la derecha ("administrar cuenta"). El owner
+confirma que el contenido de esa página son, básicamente, esas mismas
+acciones — no agrega detalle nuevo sobre qué campos o funciones debe tener
+más allá de lo que ya existe en ese dropdown.
+
+- [ ] Verificar qué opciones tiene hoy el dropdown de "administrar cuenta" y
+  confirmarlas/trasladarlas como el contenido de la página Cuenta del nuevo
+  sidebar.
+
+**Screenshot de referencia:** pendiente de que el owner lo adjunte.
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
