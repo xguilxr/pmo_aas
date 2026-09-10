@@ -332,6 +332,37 @@ más allá de lo que ya existe en ese dropdown.
 
 ---
 
+### 10. Configuraciones → Admin — acceso, branding, usuarios (borrado real), jerarquía
+
+**Estado:** pendiente
+**Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
+
+**Acceso:** esta sección completa (Admin, punto 2.2) es **solo para el
+administrador del tenant**. No es a nivel de organización — es a nivel de
+tenant.
+
+- [ ] **Branding**: lo que ya existe hoy — sin cambios de alcance.
+- [ ] **Usuarios**: lo que ya existe hoy, con un cambio:
+  - [ ] Poder **eliminar** usuarios de verdad. Hoy solo se pueden
+    **desactivar** — el owner marca que necesita el borrado real, no solo
+    desactivación.
+- [ ] **Organizaciones, Portafolios, Programas y Proyectos** (gestión
+  jerárquica): desde acá el admin del tenant puede:
+  - Reasignar: por ejemplo, mover un proyecto de un programa a otro.
+  - Crear/borrar programas, proyectos, portafolios (todo el árbol).
+  - Esto es **exclusivo del administrador**, para todo lo que es a nivel
+    de organización hacia abajo (organización, portafolio, programa,
+    proyecto).
+  - Y a nivel de **tenant**: el admin puede configurar y **dar de baja
+    organizaciones completas** — también exclusivo del admin.
+
+**Nota:** no tocó en este punto Plan e IA ni Auditoría — quedan pendientes
+de que el owner los dicte por separado.
+
+**Screenshot de referencia:** pendiente de que el owner lo adjunte.
+
+---
+
 <!-- Los siguientes puntos se agregan según los vaya dictando el owner. -->
 
 ---
