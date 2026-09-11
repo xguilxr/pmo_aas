@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-84 documentos vivos · 70 archivados · 2631 secciones indexadas.
+97 documentos vivos · 70 archivados · 2758 secciones indexadas.
 
 ## gestion
 
@@ -25,11 +25,24 @@ revisar_cada: nunca
 | [`epics/drafts/reestructura-modelo-datos.md`](epics/drafts/reestructura-modelo-datos.md) | Estado real, oleada por oleada (verificado contra código, 2026-08-29) · 1. Jerarquía organizacional · 2. Id… | 2026-08-29 | 272 |
 | [`epics/drafts/reestructura-plan.md`](epics/drafts/reestructura-plan.md) | Qué ya se ejecutó, y dónde quedó · Lo que sigue sin construir · Riesgos que siguen vigentes · Guía de sesio… | 2026-08-29 | 89 |
 | [`project-management/CRITERIOS-DE-ACEPTACION.md`](project-management/CRITERIOS-DE-ACEPTACION.md) | El hueco que había · La regla · Lo que este control NO comprueba · Para el trabajo de producto que no toca … | 2026-08-07 | 107 |
-| [`project-management/HANDOFF.md`](project-management/HANDOFF.md) | Qué se estaba haciendo, y por qué · Dónde retomar · Qué va a morder · Decisiones del owner | 2026-08-28 | 42 |
+| [`project-management/HANDOFF.md`](project-management/HANDOFF.md) | Qué se estaba haciendo, y por qué · Dónde retomar · Qué va a morder · Decisiones del owner de esta sesión | 2026-09-11 | 42 |
 | [`project-management/LESSONS.md`](project-management/LESSONS.md) | Lecciones vivas | 2026-08-12 | 26 |
+| [`project-management/REVAMP-V2-FEEDBACK.md`](project-management/REVAMP-V2-FEEDBACK.md) | Cómo se usa · Puntos registrados · Plan de implementación | 2026-09-10 | 504 |
+| [`project-management/REVAMP-V2-PLAN.md`](project-management/REVAMP-V2-PLAN.md) | 1. Navegación objetivo · 2. Estados · 3. Entidades, fases y campos · 4. Flujo operativo | 2026-09-11 | 507 |
 | [`project-management/SPRINT-BACKLOG.md`](project-management/SPRINT-BACKLOG.md) | 📤 Salido de SPRINT.md el 2026-08-28 · ⏸️ Deferred — re-evaluación post EP020 · ✅ DONE · 📋 Backlog v2.0 (pos… | 2026-08-28 | 152 |
 | [`project-management/SPRINT-DONE-HISTORY.md`](project-management/SPRINT-DONE-HISTORY.md) | Ronda 2026-08-27 — Revamp de diseño v2 (batch del owner, sin US) · Ronda 2026-08-06 — Ola 2, `SEG-04` y ver… | 2026-08-12 | 609 |
-| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · ⏳ ESPERANDO al owner · 📥 INBOX · 📦 Lo demás | 2026-08-28 | 61 |
+| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · ⏳ ESPERANDO al owner · 📥 INBOX · 📦 Lo demás | 2026-09-11 | 60 |
+| [`project-management/revamp-v2/FASE-0.md`](project-management/revamp-v2/FASE-0.md) | Preparación · Corrección 1 — tabs del detalle de proyecto no se marcan activos · Corrección 2 — tabla RAID … | 2026-09-11 | 181 |
+| [`project-management/revamp-v2/FASE-1.md`](project-management/revamp-v2/FASE-1.md) | Preparación · Commit 1 — sidebar (US-A) · Commit 2 — header (US-B) · Verificación antes de push | 2026-09-11 | 231 |
+| [`project-management/revamp-v2/FASE-2.md`](project-management/revamp-v2/FASE-2.md) | Preparación · Hechos verificados · Paso 1 — las tres páginas transversales (3 commits) · Paso 2 — regla D2:… | 2026-09-11 | 155 |
+| [`project-management/revamp-v2/FASE-3.md`](project-management/revamp-v2/FASE-3.md) | Preparación · Hechos verificados (`apps/web/app/(app)/dashboard/page.tsx`) · Commit 1 — rueda de salud con … | 2026-09-11 | 200 |
+| [`project-management/revamp-v2/FASE-4.md`](project-management/revamp-v2/FASE-4.md) | Preparación · Hechos verificados · Commit 1 — Gantt navegable por año (US-A) · Commit 2 — lista ordenada po… | 2026-09-11 | 250 |
+| [`project-management/revamp-v2/FASE-5.md`](project-management/revamp-v2/FASE-5.md) | Preparación · Hechos verificados (`apps/web/app/(app)/pmo/projects/page.tsx`) · Commit 1 — `FiltroMultiple`… | 2026-09-11 | 133 |
+| [`project-management/revamp-v2/FASE-6.md`](project-management/revamp-v2/FASE-6.md) | Preparación · Hechos verificados · Decisión D1 (reformulada con los hechos) · Commit 1 — migración: unicida… | 2026-09-11 | 210 |
+| [`project-management/revamp-v2/FASE-7.md`](project-management/revamp-v2/FASE-7.md) | Preparación · Hechos verificados · Commit 1 — `/admin/hierarchy` (US-A) · Commit 2 — borrado real de usuari… | 2026-09-11 | 212 |
+| [`project-management/revamp-v2/FASE-8.md`](project-management/revamp-v2/FASE-8.md) | Preparación · Hechos verificados · Commit 1 — endpoints de exportación transversal (US-A) · Commit 2 — pest… | 2026-09-11 | 179 |
+| [`project-management/revamp-v2/FASE-9.md`](project-management/revamp-v2/FASE-9.md) | Preparación · Pasada 1 — descargas (PR `Revamp v2 — fase 9a: descargas`) · Pasada 2 — completitud de formul… | 2026-09-11 | 143 |
+| [`project-management/revamp-v2/README.md`](project-management/revamp-v2/README.md) | Runbooks del revamp v2 — una fase por archivo | 2026-09-11 | 52 |
 
 ## epica
 

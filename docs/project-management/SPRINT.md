@@ -2,7 +2,7 @@
 tipo: gestion
 responsable: propietario
 estado: vigente
-revisado: 2026-08-28
+revisado: 2026-09-11
 revisar_cada: 30d
 ---
 
@@ -17,28 +17,27 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Revamp v2 — el styling está, el diseño no** (owner, 2026-08-28):
+**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso: abrir
+PR de `claude/magical-hypatia-7ekyal` (solo docs) y arrancar
+[`revamp-v2/FASE-0.md`](revamp-v2/FASE-0.md) en rama nueva desde `main`.
 
-- [ ] QA de vista web — el owner levanta la lista → BUG-093+
+- [x] Feedback: 15 puntos en `REVAMP-V2-FEEDBACK.md` (2026-09-10/11)
+- [x] Plan + diagramas: `REVAMP-V2-PLAN.md` · runbooks `revamp-v2/FASE-0..9`
+- [ ] Fases 0 → 1 → 2 (sin wireframe) → 3…8 (con wireframe) → 9
 - [ ] Mobile, sin revisar ninguna pantalla
-- [ ] Diseño de dashboards · [ ] Diseño de reportes
-
-Los dos diseños bloquean el bloque G del plan post-revamp: un renderer
-determinista necesita el diseño antes que el código.
 
 ---
 
 ## ⏳ ESPERANDO al owner
 
-- [ ] **Cerrar #588–#592** (US-198–202): mergeadas desde el 2026-08-19 con
-  `status:ready` intacta. Claude nunca cierra un issue (§3).
-- [ ] **Leer el registro del despliegue** de `0110` (tipos sin traducir), `0111`
-  (inquilinos con `org_label`) y `0115` (membresías sembradas). Las migraciones
-  ya corrieron —el `CMD` del contenedor `api` las aplica al arrancar—; lo que
-  falta es mirar lo que dejaron escrito.
-- [ ] **Cómo se traza un batch.** US-203–222 se mergearon sin issues: o se crean
-  al cerrar el lote, o se escribe que el lote se traza por commit y
-  `SPRINT-DONE-HISTORY.md` es su registro de aceptación.
+- [ ] **Wireframes W1–W8** (plan §5): gate de las fases 3–8. Se hacen con la
+  skill `design` y se aprueban en el canvas.
+- [ ] **Decisiones D1–D7** (plan §7). Ninguna bloquea las fases 0–1; D2
+  bloquea la 2, D3 la 4, D1 la 6, D4 la 7.
+- [ ] **Leer el registro del despliegue** de `0110`, `0111` y `0115`: las
+  migraciones ya corrieron; falta mirar lo que dejaron escrito.
+- [ ] **Cómo se traza un batch.** US-203–222 se mergearon sin issues: o se
+  crean al cerrar el lote, o se escribe que el lote se traza por commit.
 
 ---
 
@@ -47,10 +46,10 @@ determinista necesita el diseño antes que el código.
 - [ ] **W3 — RLS de Postgres**: #599 (US-240), #600 (US-241), #601 (US-242).
 - [ ] **EP021**: quedan US-223, US-225 y US-226. US-224 entregada.
 - [ ] **US-239** — clave de proyecto estilo Jira en la URL (mig. 0120).
-- [ ] **Hueco de compat**: `GET /projects` no normaliza `phase`/`type`, así que
-  el contador no ve a quien filtra con el nombre viejo. Taparlo antes de cerrar
-  las ventanas. Ver `core/compatibilidad.py`.
-- [ ] **Pantalla del catálogo de IA** en `/admin/ai` — US-224 solo tiene API.
+- [ ] **Hueco de compat**: `GET /projects` no normaliza `phase`/`type`.
+  Ver `core/compatibilidad.py`.
+- [ ] **Pantalla del catálogo de IA** en `/admin/ai` — US-224 solo tiene
+  API. Coordinar con FASE-7 (Plan e IA en una página).
 
 ---
 
