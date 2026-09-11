@@ -693,3 +693,22 @@ legacy en Sprint 7 (US-081).
 **Por qué el defecto no cambia:** el control es ASVS 4.3.1 y su ausencia debilita justo la cuenta que más puede hacer daño si se compromete. Que un tenant nuevo nazca sin las claves y siga pidiendo MFA es lo que hace este cambio aditivo y no una regresión de seguridad general.
 **Reversible:** sí — quitar las claves del `settings` de un tenant (o borrar el tenant) vuelve todo al comportamiento de fábrica.
 **Implementación:** `app/services/segundo_factor.py::mfa_habilitado_para_tenant` · `app/scripts/seed_demo_qa.py` (crea el tenant de demo) · trinquete `TC-013`/`TC-014` en `tests/test_seg01_asvs431_segundo_factor.py`. Origen: owner por chat, 2026-09-10.
+
+## DEC-036 — Quién ve "todas" las organizaciones en el filtro activo (EP002, revamp v2 §2.3)
+**Fecha:** 2026-09-11
+**Decisión:** `role_type` `admin` y `pm_sr` pueden dejar `activa = "todas"` en el
+contexto de organización (`organizacion-activa.tsx`) y ver el contenido de
+todas las organizaciones del tenant, en las páginas que declara
+`RUTAS_QUE_AGREGAN`. `role_type = "user"` (PM) nunca ve "todas": el
+switcher del header solo le ofrece organizaciones concretas y, si su
+`activa` almacenada era "todas" (por ejemplo tras un cambio de rol), el
+contexto la sustituye por la `efectiva` (primera organización visible) al
+cargar.
+**Rationale:** `pm_sr` ya es "acceso admin completo" por vocabulario
+(`schemas/user.py`), y el owner lo confirma como el rol multi-organización.
+Restringir "todas" a `user` habría dejado sin vista consolidada al PM
+senior que sigue varias organizaciones a la vez; dársela a `user` habría
+roto el aislamiento que la fase 2 del revamp construye.
+**Reversible:** sí — es una condición de rol en el provider, sin migración.
+**Implementación:** FASE-2 del revamp v2 (`docs/project-management/revamp-v2/FASE-2.md`),
+`components/organizacion-activa.tsx`. Origen: owner por chat, 2026-09-11.

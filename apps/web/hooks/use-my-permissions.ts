@@ -40,7 +40,7 @@ export type UseMyPermissions = {
   data: MyPermissions | null;
   loading: boolean;
   isSuperadmin: boolean;
-  roleType: "admin" | "user" | "viewer" | null;
+  roleType: "admin" | "pm_sr" | "user" | "viewer" | null;
   has: (moduleAction: string) => boolean;
   canCreate: (module: string) => boolean;
   canUpdate: (module: string) => boolean;

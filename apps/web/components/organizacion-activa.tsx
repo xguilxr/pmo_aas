@@ -46,6 +46,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { listOrganizations, type Organization } from "@/lib/api/organizations";
 import { getActiveTenantId, getStoredUser } from "@/lib/auth-storage";
 
@@ -128,11 +129,19 @@ export function OrganizacionActivaProvider({ children }: { children: ReactNode }
   // anterior —una lista que ya no le corresponde y consultas que vuelven
   // vacías—.
   const [tenantId, setTenantId] = useState<string | null>(null);
+  // DEC-036 (FASE-2 §2.3) — «todas» es de `admin`/`pm_sr`, o del superadmin
+  // que se unió al inquilino (BUG-056, mismo patrón que `app-shell.tsx`);
+  // `user` (PM) siempre ve una organización concreta.
+  const [superadminUnido, setSuperadminUnido] = useState(false);
   const pathname = usePathname();
+  const { roleType } = useMyPermissions();
 
   useEffect(() => {
     function leer() {
       setTenantId(getActiveTenantId() ?? getStoredUser()?.id ?? null);
+      setSuperadminUnido(
+        Boolean(getStoredUser()?.is_superadmin && getActiveTenantId()),
+      );
     }
     leer();
     window.addEventListener("storage", leer);
@@ -194,7 +203,9 @@ export function OrganizacionActivaProvider({ children }: { children: ReactNode }
   );
 
   const valor = useMemo<Contexto>(() => {
-    const agrega = RUTAS_QUE_AGREGAN.includes(pathname);
+    const puedeAgregar =
+      superadminUnido || roleType === "admin" || roleType === "pm_sr";
+    const agrega = RUTAS_QUE_AGREGAN.includes(pathname) && puedeAgregar;
     const efectiva =
       activa || (agrega ? TODAS : (organizaciones[0]?.id ?? TODAS));
     return {
@@ -207,7 +218,7 @@ export function OrganizacionActivaProvider({ children }: { children: ReactNode }
       cargando,
       vacio: !cargando && organizaciones.length === 0,
     };
-  }, [organizaciones, activa, elegir, cargando, pathname]);
+  }, [organizaciones, activa, elegir, cargando, pathname, roleType, superadminUnido]);
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }
