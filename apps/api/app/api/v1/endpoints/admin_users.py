@@ -1,5 +1,6 @@
 import secrets
 import string
+from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -29,7 +30,7 @@ from app.models.project_member import ProjectMember
 from app.models.project_request import ProjectRequest
 from app.models.role import Role, UserRole
 from app.models.user import User
-from app.models.user_scope_assignment import UserScopeAssignment
+from app.models.user_scope_assignment import ScopeType, UserScopeAssignment
 from app.schemas.hard_delete import HardDeletePreview
 from app.schemas.user import (
     ExcludedOrganizationsBody,
@@ -578,7 +579,7 @@ async def list_scope_assignments(
     ).scalars().all()
     return ScopeAssignmentsRead(
         assignments=[
-            ScopeAssignmentItem(scope_type=r.scope_type, scope_id=r.scope_id)
+            ScopeAssignmentItem(scope_type=cast(ScopeType, r.scope_type), scope_id=r.scope_id)
             for r in rows
         ]
     )
@@ -634,7 +635,9 @@ async def replace_scope_assignments(
     )
     await db.commit()
     return ScopeAssignmentsRead(
-        assignments=[ScopeAssignmentItem(scope_type=t, scope_id=s) for t, s in seen]
+        assignments=[
+            ScopeAssignmentItem(scope_type=cast(ScopeType, t), scope_id=s) for t, s in seen
+        ]
     )
 
 

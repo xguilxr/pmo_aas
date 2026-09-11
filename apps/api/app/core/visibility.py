@@ -117,8 +117,8 @@ async def get_user_visibility(
                 )
             )
         ).scalars().all()
-        for p in progs:
-            program_ids.add(str(p.id))
+        for prog in progs:
+            program_ids.add(str(prog.id))
         # Projects in those programs
         if program_ids:
             projs = (
@@ -130,8 +130,8 @@ async def get_user_visibility(
                     )
                 )
             ).scalars().all()
-            for p in projs:
-                project_ids.add(str(p.id))
+            for proj in projs:
+                project_ids.add(str(proj.id))
         # Also projects directly under the org with no program
         projs_no_prog = (
             await db.execute(
@@ -143,8 +143,8 @@ async def get_user_visibility(
                 )
             )
         ).scalars().all()
-        for p in projs_no_prog:
-            project_ids.add(str(p.id))
+        for proj in projs_no_prog:
+            project_ids.add(str(proj.id))
 
     # Expand portfolio → all programs + all projects + org visible as
     # context. No lateral reach into other portfolios of the same org.
@@ -169,9 +169,9 @@ async def get_user_visibility(
             )
         ).scalars().all()
         portfolio_program_ids: set[str] = set()
-        for p in progs:
-            program_ids.add(str(p.id))
-            portfolio_program_ids.add(str(p.id))
+        for prog in progs:
+            program_ids.add(str(prog.id))
+            portfolio_program_ids.add(str(prog.id))
         if portfolio_program_ids:
             projs = (
                 await db.execute(
@@ -182,8 +182,8 @@ async def get_user_visibility(
                     )
                 )
             ).scalars().all()
-            for p in projs:
-                project_ids.add(str(p.id))
+            for proj in projs:
+                project_ids.add(str(proj.id))
         # Projects hanging directly off the portfolio (no program).
         projs_no_prog = (
             await db.execute(
@@ -195,8 +195,8 @@ async def get_user_visibility(
                 )
             )
         ).scalars().all()
-        for p in projs_no_prog:
-            project_ids.add(str(p.id))
+        for proj in projs_no_prog:
+            project_ids.add(str(proj.id))
 
     # Expand program → all projects + org and portfolio visible as context
     if direct_program_ids:
@@ -209,9 +209,9 @@ async def get_user_visibility(
                 )
             )
         ).scalars().all()
-        for p in progs:
-            org_ids.add(str(p.organization_id))  # org visible as context
-            portfolio_ids.add(str(p.portfolio_id))  # portfolio visible as context
+        for prog in progs:
+            org_ids.add(str(prog.organization_id))  # org visible as context
+            portfolio_ids.add(str(prog.portfolio_id))  # portfolio visible as context
         projs = (
             await db.execute(
                 select(Project).where(
@@ -221,8 +221,8 @@ async def get_user_visibility(
                 )
             )
         ).scalars().all()
-        for p in projs:
-            project_ids.add(str(p.id))
+        for proj in projs:
+            project_ids.add(str(proj.id))
 
     # Expand project → org, portfolio and program visible as context
     if direct_project_ids:
@@ -235,12 +235,12 @@ async def get_user_visibility(
                 )
             )
         ).scalars().all()
-        for p in projs:
-            org_ids.add(str(p.organization_id))  # org visible as context
-            if p.portfolio_id:
-                portfolio_ids.add(str(p.portfolio_id))  # portfolio visible as context
-            if p.program_id:
-                program_ids.add(str(p.program_id))  # program visible as context
+        for proj in projs:
+            org_ids.add(str(proj.organization_id))  # org visible as context
+            if proj.portfolio_id:
+                portfolio_ids.add(str(proj.portfolio_id))  # portfolio visible as context
+            if proj.program_id:
+                program_ids.add(str(proj.program_id))  # program visible as context
 
     return VisibilityScope(
         org_ids=org_ids,

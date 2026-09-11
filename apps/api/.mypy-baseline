@@ -10,8 +10,8 @@
 # huella nueva significa que se está aflojando el trinquete, y eso necesita
 # razón escrita — la misma regla que el techo de contexto de `conformidad.yaml`.
 #
-# Generada: 2026-08-20
-# Errores tolerados: 892 en 114 archivos
+# Generada: 2026-09-11
+# Errores tolerados: 884 en 113 archivos
 1	app/api/deps.py	no-untyped-def	Function is missing a return type annotation
 3	app/api/v1/endpoints/admin_ai.py	no-untyped-def	Function is missing a return type annotation
 1	app/api/v1/endpoints/admin_ai.py	return-value	Incompatible return value type (got "str", expected "UUID")
@@ -22,7 +22,6 @@
 1	app/api/v1/endpoints/admin_panel.py	return-value	Incompatible return value type (got "str", expected "UUID")
 1	app/api/v1/endpoints/admin_panel.py	unused-ignore	Unused "type: ignore" comment
 2	app/api/v1/endpoints/admin_users.py	arg-type	Argument "scope_id" to "ScopeAssignmentItem" has incompatible type "str"; expected "UUID"
-2	app/api/v1/endpoints/admin_users.py	arg-type	Argument "scope_type" to "ScopeAssignmentItem" has incompatible type "str"; expected "Literal['organization', 'program', 'project']"
 1	app/api/v1/endpoints/admin_users.py	arg-type	Argument "tenant_id" to "_send_welcome_email" has incompatible type "str"; expected "UUID | None"
 1	app/api/v1/endpoints/admin_users.py	arg-type	Argument "tenant_id" to "write_audit" has incompatible type "str"; expected "UUID | None"
 1	app/api/v1/endpoints/admin_users.py	arg-type	Argument 2 to "confirm_slug" has incompatible type "str | UUID"; expected "str"
@@ -197,8 +196,6 @@
 2	app/core/hard_delete.py	type-arg	Missing type parameters for generic type "dict"
 1	app/core/security.py	no-any-return	Returning Any from function declared to return "bool"
 1	app/core/security.py	no-any-return	Returning Any from function declared to return "str"
-4	app/core/visibility.py	assignment	Incompatible types in assignment (expression has type "Project", variable has type "Program")
-2	app/core/visibility.py	attr-defined	"Program" has no attribute "program_id"
 1	app/db/session.py	no-untyped-def	Function is missing a return type annotation
 1	app/db/session.py	type-arg	Missing type parameters for generic type "dict"
 1	app/main.py	index	Unsupported target for indexed assignment ("Collection[str]")
