@@ -442,6 +442,14 @@ export default function PortafolioVistaMaestra() {
               Status PMO (PDF)
             </Button>
           ) : null}
+          {canUpdate("portfolios") ? (
+            <Link href="/pmo/config">
+              <Button variant="secondary" size="sm">
+                <Icono nombre="settings" size={14} />
+                Configurar portafolios y programas
+              </Button>
+            </Link>
+          ) : null}
           {canCreate("programs") ? (
             <Button
               variant="secondary"

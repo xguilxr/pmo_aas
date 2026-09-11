@@ -75,8 +75,7 @@ const GRUPOS_NAV: GrupoNav[] = [
         href: "/pmo",
         match: (p) =>
           p === "/pmo" ||
-          p.startsWith("/pmo/board") ||
-          p.startsWith("/pmo/imports") ||
+          p.startsWith("/pmo/config") ||
           p.startsWith("/pmo/programs") ||
           p.startsWith("/pmo/organizations"),
       },
