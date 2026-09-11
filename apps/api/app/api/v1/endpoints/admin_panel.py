@@ -1,4 +1,3 @@
-import csv
 import io
 import json
 from datetime import datetime
@@ -606,39 +605,65 @@ async def list_audit_logs(
     ]
 
 
-@router.get("/audit-logs/export.csv")
+@router.get("/audit-logs/export.xlsx")
 async def export_audit_logs(
     cu: CurrentUser = Depends(require_capability("audit.read")),
     db: AsyncSession = Depends(get_db),
 ):
+    """US-272 (FASE-9, revamp v2, pasada 1) — XLSX en vez de CSV: mismo
+    formato que el resto de las descargas del producto (fuente corporativa,
+    header con estilo), y `details` (JSON) ya no se corta en un CSV que
+    algunas hojas de cálculo truncan a 32k caracteres por celda igual, pero
+    al menos abre con la fuente del sistema como todo lo demás."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+
+    from app.core.tipografia import aplicar_a_workbook
+    from app.models.tenant import Tenant
+
     tenant_id = _tenant(cu)
+    tenant_slug = (
+        await db.execute(select(Tenant.slug).where(Tenant.id == str(tenant_id)))
+    ).scalar_one()
     rows = (
         await db.execute(
             select(AuditLog).where(AuditLog.tenant_id == str(tenant_id)).order_by(AuditLog.occurred_at.desc())
         )
     ).scalars().all()
-    buf = io.StringIO()
-    w = csv.writer(buf)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Auditoría"
+    headers = [
+        "occurred_at", "action", "module", "user_id",
+        "entity_type", "entity_id", "ip", "details",
+    ]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
     # BUG-080: incluye `details` (JSON con el contexto del evento: job_id,
     # errores, conteos, etc.). Sin esta columna no se podía ver el detalle
     # del job desde el CSV exportado.
-    w.writerow([
-        "occurred_at", "action", "module", "user_id",
-        "entity_type", "entity_id", "ip", "details",
-    ])
     for r in rows:
         details = (
             json.dumps(r.details, ensure_ascii=False, default=str)
             if r.details else ""
         )
-        w.writerow([
+        ws.append([
             r.occurred_at.isoformat() if r.occurred_at else "",
             r.action, r.module or "", r.user_id or "",
             r.entity_type or "", r.entity_id or "", r.ip_address or "",
             details,
         ])
+    ws.freeze_panes = "A2"
+    aplicar_a_workbook(wb)
+
+    buf = io.BytesIO()
+    wb.save(buf)
     buf.seek(0)
+    filename = f"auditoria-{tenant_slug}-{datetime.now().date().isoformat()}.xlsx"
     return StreamingResponse(
-        iter([buf.getvalue()]), media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=audit_logs.csv"},
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

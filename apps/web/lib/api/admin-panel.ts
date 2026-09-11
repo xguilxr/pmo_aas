@@ -79,8 +79,8 @@ export function listAuditLogs(params: ListAuditParams = {}): Promise<AuditLogEnt
   return apiFetch<AuditLogEntry[]>(`/api/v1/admin/audit-logs${qs(params)}`);
 }
 
-export function auditLogsCsvUrl(apiBase: string): string {
-  return `${apiBase.replace(/\/+$/, "")}/api/v1/admin/audit-logs/export.csv`;
+export function auditLogsXlsxUrl(apiBase: string): string {
+  return `${apiBase.replace(/\/+$/, "")}/api/v1/admin/audit-logs/export.xlsx`;
 }
 
 /* ===== Admin project supervision ===== */
