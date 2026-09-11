@@ -27,7 +27,11 @@ revisar_cada: 30d
 
 ### 1. Dashboard — el rediseño visual completo sigue sin aplicar
 
-**Estado:** pendiente
+**Estado:** hecho — FASE-3, commits `3117675` (US-252), `72dcdd7` (US-253),
+`22a0445`/`d024938` (US-254). No se pudo verificar contra el zip
+`PMO-aaS Dashboard Redesign.dc.html` del owner (no está en el repo); se
+construyó a partir de este punto, el punto 3 (corrección de alcance) y el
+wireframe W1 aprobado.
 **Origen:** spec `PMO-aaS Dashboard Redesign.dc.html` (owner, sesión 2026-09-10),
 gramática editorial Lieflat Charts sobre tokens ADR-023.
 
@@ -36,17 +40,17 @@ Lo único que se implementó de toda la ronda anterior fue: sidebar
 RAID (contorno + punto en vez de bloque sólido) y el roadmap trimestral en
 Portafolio. El resto del spec —que es la parte que más se ve— no se tocó:
 
-- [ ] **KPI band**: sigue con el layout viejo. El spec pide 5 columnas,
-  paneles centrados con label pequeño en mayúsculas, cifra en JetBrains Mono,
+- [x] **KPI band**: 5 → 4 columnas (la de avance se fue al hero), paneles
+  centrados con label pequeño en mayúsculas, cifra en JetBrains Mono,
   sparkline mínima y nota de contexto debajo.
-- [ ] **Cards de tendencia** (avance promedio, riesgos abiertos, proyectos
-  activos): formato label → valor → gráfica → delta. Sin cambios.
-- [ ] **Distribuciones** (por fase, por programa, por sponsor): barras finas
-  con hairlines, sin cambios respecto al diseño anterior.
-- [ ] **Fusión "Salud" (KPI) + "Por salud" (distribución)** en una sola card
-  de anillo + leyenda. Explícitamente pendiente, señalado al cerrar la ronda
-  anterior y sin resolver.
-- [ ] **Semáforo consolidado**: sin cambios.
+- [x] **Cards de tendencia** (riesgos abiertos, proyectos activos): sin
+  cambios de formato. "Avance promedio" se fusionó en el hero (punto 3).
+- [x] **Distribuciones** (por fase, por programa, por sponsor): barras finas,
+  punta redondeada.
+- [x] **Fusión "Salud" (KPI) + "Por salud" (distribución)** en una sola card
+  de anillo + leyenda — `RuedaDeSalud`.
+- [x] **Semáforo consolidado**: se mueve a la fila "Cómo va la cartera",
+  junto a la Rueda de salud y el Hero de avance, en ese orden (W1).
 
 **Screenshot de referencia:** pendiente de que el owner lo adjunte.
 
@@ -159,12 +163,13 @@ deja anotado, lo retoma después, no es parte de este punto de navegación.
 
 ### 3. Dashboard — corrección de alcance: el roadmap trimestral NO va aquí
 
-**Estado:** pendiente
+**Estado:** hecho — FASE-3 (roadmap ya vivía en `/pmo` desde US-247/FASE-1;
+quedaba en standby y no hubo que moverlo).
 **Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
 Corrige el punto 1: ahí se había dicho que el roadmap trimestral (estilo
 Gantt por trimestre) iba en el Dashboard — el owner rectifica: **no va ahí**.
 
-- [ ] **Mover** el roadmap trimestral (US-247, ya implementado en `/pmo`) de
+- [x] **Mover** el roadmap trimestral (US-247, ya implementado en `/pmo`) de
   donde esté hoy hacia la página de **PMO** (la que resulta de fusionar
   Portafolio + Board, punto 2.2). Si ya vive en `/pmo`, este punto queda en
   standby hasta que exista la página PMO fusionada — no hay que moverlo dos
@@ -173,15 +178,15 @@ Gantt por trimestre) iba en el Dashboard — el owner rectifica: **no va ahí**.
 Para el resto del Dashboard (lo que sí queda aquí, "lo que estuvimos
 reconstruyendo"):
 
-- [ ] **Rueda de salud + número de proyectos activos**: solidificar en una
+- [x] **Rueda de salud + número de proyectos activos**: solidificar en una
   sola pieza — la dona de "por salud" con el total de proyectos activos al
   centro (ya es parecido al spec original; falta fusionarlo con el KPI
   "Proyectos activos" en vez de tenerlos como dos elementos separados).
-- [ ] **Hero de avance**: juntar el KPI "Avance plan vs real" (el que da el
+- [x] **Hero de avance**: juntar el KPI "Avance plan vs real" (el que da el
   % puntual) con la card de tendencia "Avance promedio" (la que trae la
   gráfica de tendencia) en **una sola pieza hero principal** — no dos cards
   separadas mostrando cosas relacionadas.
-- [ ] El resto de las piezas (distribuciones por fase/programa/sponsor, top
+- [x] El resto de las piezas (distribuciones por fase/programa/sponsor, top
   en riesgo/atraso/sobrecarga, matriz RAID, semáforo consolidado) **sin
   cambio de alcance**: se implementan como ya estaba diseñado en el spec
   original (`PMO-aaS Dashboard Redesign.dc.html`, punto 1).

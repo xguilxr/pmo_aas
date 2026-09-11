@@ -17,21 +17,21 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso: fase 3
-(dashboard) — necesita wireframe **W1** aprobado (`docs/project-management/revamp-v2/FASE-3.md`).
+**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso: fase 4
+(PMO) — necesita decisión **D3** (`docs/project-management/revamp-v2/FASE-4.md`).
 
 - [x] Feedback: 15 puntos en `REVAMP-V2-FEEDBACK.md` (2026-09-10/11)
 - [x] Plan + diagramas: `REVAMP-V2-PLAN.md` · runbooks `revamp-v2/FASE-0..9`
+- [x] Wireframes W1–W8: canvas `revamp-v2-wireframes` — W2/5/6/7/8 OK,
+  W1/3/4 con cambios aplicados (2026-09-11)
 - [x] Fase 0 (BUG-095/096/097) → [x] 1 (US-248/249) → [x] 2 (US-250/251) →
-  [ ] 3…8 (con wireframe) → 9
+  [x] 3 (US-252/253/254) → [ ] 4…8 (con wireframe) → 9
 - [ ] Mobile, sin revisar ninguna pantalla
 
 ---
 
 ## ⏳ ESPERANDO al owner
 
-- [ ] **Wireframes W1–W8** (plan §5): gate de las fases 3–8. Se hacen con la
-  skill `design` y se aprueban en el canvas.
 - [ ] **Decisiones D1/D3/D4/D6/D7** (plan §7; D2 cerrada, DEC-036). D3
   bloquea la 4, D1 la 6, D4 la 7.
 - [ ] **Leer el registro del despliegue** de `0110`, `0111` y `0115`: las
