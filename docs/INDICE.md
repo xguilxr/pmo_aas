@@ -27,7 +27,7 @@ revisar_cada: nunca
 | [`project-management/CRITERIOS-DE-ACEPTACION.md`](project-management/CRITERIOS-DE-ACEPTACION.md) | El hueco que había · La regla · Lo que este control NO comprueba · Para el trabajo de producto que no toca … | 2026-08-07 | 107 |
 | [`project-management/HANDOFF.md`](project-management/HANDOFF.md) | Qué se estaba haciendo, y por qué · Dónde retomar · Qué va a morder · Decisiones del owner de esta sesión | 2026-09-11 | 42 |
 | [`project-management/LESSONS.md`](project-management/LESSONS.md) | Lecciones vivas | 2026-08-12 | 26 |
-| [`project-management/REVAMP-V2-FEEDBACK.md`](project-management/REVAMP-V2-FEEDBACK.md) | Cómo se usa · Puntos registrados · Plan de implementación | 2026-09-10 | 515 |
+| [`project-management/REVAMP-V2-FEEDBACK.md`](project-management/REVAMP-V2-FEEDBACK.md) | Cómo se usa · Puntos registrados · Plan de implementación | 2026-09-10 | 512 |
 | [`project-management/REVAMP-V2-PLAN.md`](project-management/REVAMP-V2-PLAN.md) | 1. Navegación objetivo · 2. Estados · 3. Entidades, fases y campos · 4. Flujo operativo | 2026-09-11 | 507 |
 | [`project-management/SPRINT-BACKLOG.md`](project-management/SPRINT-BACKLOG.md) | 📤 Salido de SPRINT.md el 2026-08-28 · ⏸️ Deferred — re-evaluación post EP020 · ✅ DONE · 📋 Backlog v2.0 (pos… | 2026-08-28 | 152 |
 | [`project-management/SPRINT-DONE-HISTORY.md`](project-management/SPRINT-DONE-HISTORY.md) | Ronda 2026-08-27 — Revamp de diseño v2 (batch del owner, sin US) · Ronda 2026-08-06 — Ola 2, `SEG-04` y ver… | 2026-08-12 | 609 |
@@ -81,7 +81,7 @@ revisar_cada: nunca
 | [`architecture/mapa-backend.md`](architecture/mapa-backend.md) | Estructura · Modelos por dominio (archivo → tablas clave) · Routers (api/v1/endpoints/) — 1 línea cada uno … | 2026-08-19 | 119 |
 | [`architecture/mapa-frontend.md`](architecture/mapa-frontend.md) | Stack · Tokens (globals.css) — los que se usan al escribir UI · Rutas (grupo `(app)`) · Componentes reutili… | 2026-08-19 | 184 |
 | [`architecture/modelo-amenazas.md`](architecture/modelo-amenazas.md) | 0. Método, y una advertencia sobre él · 1. Arquitectura de la que deriva · 2. Amenazas · 3. Cómo se revisa | 2026-08-29 | 589 |
-| [`architecture/navigation.md`](architecture/navigation.md) | 1. Árbol de navegación · 2. Superficies de navegación · 3. Inventario de páginas · 4. Flujos de navegación … | 2026-09-11 | 548 |
+| [`architecture/navigation.md`](architecture/navigation.md) | 1. Árbol de navegación · 2. Superficies de navegación · 3. Inventario de páginas · 4. Flujos de navegación … | 2026-09-11 | 543 |
 | [`architecture/security-multitenant.md`](architecture/security-multitenant.md) | 1. Modelo de tenancy real · 2. Autenticación · 3. Autorización — modelo capability-based (DEC-024 / US-076)… | 2026-08-29 | 329 |
 | [`architecture/stack.md`](architecture/stack.md) | Frontend — Next.js 15 + React 19 + TypeScript · Backend — FastAPI + Python 3.12 · Base de datos — PostgreSQ… | 2026-08-29 | 280 |
 | [`conformidad/README.md`](conformidad/README.md) | Lo que está vivo · El expediente, en orden · Lo que este expediente enseñó · Los otros dos marcos | 2026-08-06 | 120 |

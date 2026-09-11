@@ -17,15 +17,15 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso: fase 8
-(reportes: RAID/Cambios/Organización) — W5 aprobado, D6 cerrada en W5
-(`docs/project-management/revamp-v2/FASE-8.md`).
+**Revamp v2 — ronda de limpieza.** Sin US activa. Fases 0-8 al día en
+`claude/handoff-review-development-e02aq2`, **nada mergeado a `main`
+todavía**. Fase 9 pide esa fase mergeada primero — son 3 PRs propios con
+`code-review --comment` (`revamp-v2/FASE-9.md`). Owner: revisar/mergear.
 
-- [x] Feedback: 15 puntos en `REVAMP-V2-FEEDBACK.md` (2026-09-10/11)
-- [x] Plan + diagramas: `REVAMP-V2-PLAN.md` · runbooks `revamp-v2/FASE-0..9`
-- [x] Wireframes W1–W8: canvas `revamp-v2-wireframes` — todos OK
-- [x] Fases 0-7 (BUG-095..097, US-248..268, DEC-036..039) → [ ] 8 (con
-  wireframe) → 9
+- [x] Feedback: 14/15 hechos (`REVAMP-V2-FEEDBACK.md`); punto 11 (Plan e
+  IA) es decisión de producto sin cerrar (D5)
+- [x] Fases 0-8 (BUG-095..097, US-248..271, DEC-036..039) → [ ] 9 (mergear
+  primero) — runbooks en `revamp-v2/FASE-0..9`, wireframes W1–W8 OK
 - [ ] Mobile, sin revisar ninguna pantalla
 
 ---
@@ -49,8 +49,8 @@ revisar_cada: 30d
 - [ ] **US-239** — clave de proyecto estilo Jira en la URL (mig. 0120).
 - [ ] **Hueco de compat**: `GET /projects` no normaliza `phase`/`type`.
   Ver `core/compatibilidad.py`.
-- [ ] **Pantalla del catálogo de IA** en `/admin/ai` — US-224 solo tiene
-  API. Coordinar con FASE-7 (Plan e IA en una página).
+- [ ] **Pantalla del catálogo de IA** en `/admin/plan?tab=ia` — US-224 solo
+  tiene API.
 
 ---
 

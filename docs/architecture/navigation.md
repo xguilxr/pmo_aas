@@ -54,8 +54,7 @@ flowchart TB
             PRJ_NEW["/pmo/projects/new"]:::app
             PRJ["/pmo/projects/[id]<br/>(hub + tabs)"]:::app
             REQ["/pmo/requests"]:::app
-            RAID_X["/pmo/raid (cross-project)"]:::app
-            CHG_X["/pmo/changes (cross-project)"]:::app
+            RAID_X["/pmo/raid/[type]/[raidId]<br/>(detalle; el listado es /pmo/reports?tab=raid)"]:::app
             MIN_X["/pmo/minutes (cross-project)"]:::app
             REP["/pmo/reports"]:::app
             RES_X["/pmo/resources (cross-project)"]:::app
@@ -297,11 +296,9 @@ Total: **76 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/pmo/requests` | Listado de solicitudes de proyecto. |
 | `/pmo/requests/new` | Nueva solicitud. |
 | `/pmo/requests/[id]` | Detalle de solicitud + aprobación → crea proyecto. |
-| `/pmo/raid` | RAID consolidado cross-project. |
-| `/pmo/raid/[type]/[raidId]` | Detalle de item RAID (risk/issue/action/decision). |
-| `/pmo/changes` | Cambios cross-project. |
+| `/pmo/raid/[type]/[raidId]` | Detalle de item RAID (risk/issue/action/decision); el listado vive en `/pmo/reports?tab=raid` (FASE-8). |
 | `/pmo/minutes` | Minutas cross-project. |
-| `/pmo/reports` | Reportes operativos. |
+| `/pmo/reports` | Reportes operativos: PMO, Organización, Portafolios, Programas, Proyectos, RAID y Cambios (FASE-8: las dos últimas absorbieron `/pmo/raid` y `/pmo/changes`). |
 | `/pmo/resources` | US-183: capacidad/saturación de recursos — vista Personas, Roles, Áreas y Equipos, Conflictos (sobreasignación con recomendación). Filtro de ventana (Hoy/Semana/3 semanas/Mes). |
 
 **Subrutas del proyecto** (montadas con `ProjectTabsBar`)
@@ -522,8 +519,6 @@ de reemplazo hasta que su fase las absorba (`REVAMP-V2-FEEDBACK.md` §2.2):
 |---|---|---|
 | `/pmo/minutes` | Ninguno — no forma parte del rediseño; queda solo por URL. | Pendiente (D4) |
 | `/admin/permissions` | Ninguno — solo lectura, DEC-024. Queda solo por URL. | No aplica |
-| `/pmo/raid` | `<Link>` arriba del contenido de `/pmo/reports`. | FASE-8 |
-| `/pmo/changes` | `<Link>` arriba del contenido de `/pmo/reports`. | FASE-8 |
 
 ---
 

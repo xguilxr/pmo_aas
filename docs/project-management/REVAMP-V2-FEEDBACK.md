@@ -267,7 +267,7 @@ confirma que esta página está bien — no hay nada que registrar aquí.
 
 ### 7. Reportes — pestañas RAID / Cambios / Organización, HTML one-page + descargas
 
-**Estado:** pendiente
+**Estado:** hecho (FASE-8, revamp v2, 2026-09-11 — wireframe W5).
 **Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
 
 La página en sí está bien (confirma). El contenido: incluye una pestaña de
@@ -275,20 +275,17 @@ La página en sí está bien (confirma). El contenido: incluye una pestaña de
 ya definido**, con ciertas especificaciones, que se puede generar en
 cualquier momento, con opción de descargar algunos archivos.
 
-- [ ] **Pestaña RAID**:
-  - Reporte "one-page" en HTML (a diseñar — el owner lo marca explícitamente
-    como pendiente de diseño, no de implementación todavía).
-  - Debajo del reporte: tabla agrupada con **todos** los riesgos, todas las
-    acciones, todos los issues, todas las decisiones (con su información),
-    de los proyectos que estén filtrados.
-  - Opción de **descargar el Excel** del RAID — mismo formato que ya existe
-    a nivel de proyecto individual, pero agregando **todos los proyectos
-    filtrados** en ese momento (no uno solo).
-- [ ] **Pestaña Cambios**: mismo patrón que RAID (reporte HTML + descarga),
-  sin más detalle todavía — pendiente de que el owner lo precise.
-- [ ] **Pestaña / vista a nivel organización**: un "snapshot" del Dashboard,
-  más una lista de portafolios → programas → proyectos, mostrando cómo
-  están agrupados, con sus líneas (relación jerárquica visible).
+- [x] **Pestaña RAID**: filtros (organización del header + portafolio/
+  programa/proyecto), KPI band de 4, tabla agrupada en 4 bloques (Riesgos/
+  Acciones/Incidencias/Decisiones) de todos los proyectos filtrados, botón
+  "Imprimir / guardar PDF" y "Descargar Excel"
+  (`GET /api/v1/tenant/raid/export`, mismo formato que el export por
+  proyecto, con "Proyecto (folio)"/"Proyecto" al inicio de cada fila).
+- [x] **Pestaña Cambios**: mismo patrón (KPI band, tabla, imprimir, Excel
+  vía `GET /api/v1/tenant/change-requests/export`).
+- [x] **Pestaña Organización**: snapshot del Dashboard (Salud, Avance, KPI
+  band) + árbol portafolio → programa → proyecto con punto de salud y %
+  avance por proyecto, e imprimir/PDF.
 
 **Nota del owner:** el diseño puntual de estos reportes ("ahorita lo vamos a
 diseñar") queda para después — este punto registra el alcance funcional
