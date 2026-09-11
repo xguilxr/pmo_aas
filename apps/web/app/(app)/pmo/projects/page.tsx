@@ -11,13 +11,16 @@ import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FiltroMultiple } from "@/components/ui/filtro-multiple";
 import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
 import {
+  listPortfolios,
   listPrograms,
   type Organization,
+  type Portfolio,
   type Program,
 } from "@/lib/api/organizations";
 import {
@@ -82,14 +85,20 @@ export default function ProjectsListPage() {
     return v;
   }, [search]);
 
+  const initialPortfolioIds = useMemo(() => search.getAll("portfolio_id"), [search]);
+  const initialProgramIds = useMemo(() => search.getAll("program_id"), [search]);
+
   const [phases, setPhases] = useState<ProjectPhase[]>(initialPhases);
   const [types, setTypes] = useState<ProjectType[]>(initialTypes);
   const [health, setHealth] = useState<ProjectHealth[]>(initialHealth);
   // US-205 — la organización viene del header, no de esta página.
   const { efectiva: orgId } = useOrganizacionActiva();
-  // ENH-185: cascada de programa (depende de organización) + prioridad mínima.
-  const [programId, setProgramId] = useState(search.get("program_id") ?? "");
-  const [noProgram, setNoProgram] = useState(search.get("no_program") === "true");
+  // FASE-5 (revamp v2, US-B) — Portafolio y Programa pasan a FiltroMultiple
+  // (W6): listProjects solo acepta un id escalar, así que con más de uno
+  // marcado se filtra en cliente (la primera opción del runbook).
+  // "__sin__" representa "sin portafolio"/"sin programa".
+  const [portfolioIds, setPortfolioIds] = useState<string[]>(initialPortfolioIds);
+  const [programIds, setProgramIds] = useState<string[]>(initialProgramIds);
   const [priorityMin, setPriorityMin] = useState(search.get("priority_min") ?? "");
   const [q, setQ] = useState(search.get("q") ?? "");
   const [onlyMine, setOnlyMine] = useState(search.get("only_mine") === "true");
@@ -99,18 +108,28 @@ export default function ProjectsListPage() {
 
   const debouncedQ = useDebounced(q, 300);
 
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [rows, setRows] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ENH-185: programas en cascada — dependen de la organización elegida.
+  // ENH-185 / FASE-5 — portafolios y programas en cascada, dependen de la
+  // organización elegida.
   useEffect(() => {
     if (!orgId) {
+      setPortfolios([]);
       setPrograms([]);
       return;
     }
     let cancelled = false;
+    listPortfolios(orgId, { is_active: true })
+      .then((r) => {
+        if (!cancelled) setPortfolios(r);
+      })
+      .catch(() => {
+        if (!cancelled) setPortfolios([]);
+      });
     listPrograms({ organization_id: orgId, is_active: true })
       .then((r) => {
         if (!cancelled) setPrograms(r);
@@ -123,16 +142,22 @@ export default function ProjectsListPage() {
     };
   }, [orgId]);
 
+  const nombrePortafolio = useMemo(
+    () => new Map(portfolios.map((p) => [p.id, p.name])),
+    [portfolios],
+  );
+  const nombrePrograma = useMemo(
+    () => new Map(programs.map((p) => [p.id, p.name])),
+    [programs],
+  );
+
   const syncUrl = useCallback(() => {
     const usp = new URLSearchParams();
     for (const p of phases) usp.append("phase", p);
     for (const t of types) usp.append("type", t);
     for (const h of health) usp.append("health", h);
-    if (noProgram) {
-      usp.set("no_program", "true");
-    } else if (programId) {
-      usp.set("program_id", programId);
-    }
+    for (const id of portfolioIds) usp.append("portfolio_id", id);
+    for (const id of programIds) usp.append("program_id", id);
     if (priorityMin) usp.set("priority_min", priorityMin);
     if (debouncedQ.trim()) usp.set("q", debouncedQ.trim());
     if (onlyMine) usp.set("only_mine", "true");
@@ -144,8 +169,8 @@ export default function ProjectsListPage() {
     types,
     health,
     orgId,
-    programId,
-    noProgram,
+    portfolioIds,
+    programIds,
     priorityMin,
     debouncedQ,
     onlyMine,
@@ -161,20 +186,40 @@ export default function ProjectsListPage() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    // FASE-5 — portafolio/programa son multi-select; `listProjects` solo
+    // acepta un id escalar, así que con más de uno marcado se trae la
+    // cartera completa y se filtra en cliente (abajo).
+    const soloUnPortafolio = portfolioIds.length === 1 ? portfolioIds[0] : undefined;
+    const soloUnPrograma = programIds.length === 1 ? programIds[0] : undefined;
     listProjects({
       phase: phases.length ? phases : undefined,
       type: types.length ? types : undefined,
       health: health.length ? health : undefined,
       organization_id: orgId || undefined,
-      program_id: !noProgram && programId ? programId : undefined,
-      no_program: noProgram || undefined,
+      portfolio_id:
+        soloUnPortafolio && soloUnPortafolio !== "__sin__" ? soloUnPortafolio : undefined,
+      no_portfolio: soloUnPortafolio === "__sin__" || undefined,
+      program_id: soloUnPrograma && soloUnPrograma !== "__sin__" ? soloUnPrograma : undefined,
+      no_program: soloUnPrograma === "__sin__" || undefined,
       priority_min: priorityMin ? Number(priorityMin) : undefined,
       q: debouncedQ.trim() || undefined,
       only_mine: onlyMine || undefined,
-      limit: 60,
+      limit: portfolioIds.length > 1 || programIds.length > 1 ? 500 : 60,
     })
       .then((r) => {
-        if (!cancelled) setRows(r);
+        if (cancelled) return;
+        const filtradas = r.filter((p) => {
+          if (portfolioIds.length > 1) {
+            const clave = p.portfolio_id ?? "__sin__";
+            if (!portfolioIds.includes(clave)) return false;
+          }
+          if (programIds.length > 1) {
+            const clave = p.program_id ?? "__sin__";
+            if (!programIds.includes(clave)) return false;
+          }
+          return true;
+        });
+        setRows(filtradas);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -187,11 +232,16 @@ export default function ProjectsListPage() {
     return () => {
       cancelled = true;
     };
-  }, [phases, types, health, orgId, programId, noProgram, priorityMin, debouncedQ, onlyMine]);
+  }, [phases, types, health, orgId, portfolioIds, programIds, priorityMin, debouncedQ, onlyMine]);
 
-  function toggleIn<T extends string>(arr: T[], val: T, setter: (v: T[]) => void) {
-    setter(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
-  }
+  const hayFiltro = Boolean(
+    portfolioIds.length ||
+      programIds.length ||
+      phases.length ||
+      types.length ||
+      health.length ||
+      priorityMin,
+  );
 
   return (
     <div className="space-y-6">
@@ -244,7 +294,7 @@ export default function ProjectsListPage() {
       </header>
 
       <section className="rounded-[var(--radius-window)] border border-[var(--border-subtle)] bg-[var(--color-surface)]">
-        <div className="grid gap-3 border-b border-[var(--border-subtle)] p-4 sm:grid-cols-[1fr_200px_200px_160px]">
+        <div className="grid gap-3 border-b border-[var(--border-subtle)] p-4 sm:grid-cols-[1fr_160px]">
           <div className="relative">
             <Icono
               nombre="search"
@@ -260,41 +310,6 @@ export default function ProjectsListPage() {
               aria-label="Buscar proyectos"
             />
           </div>
-          <Select
-            value={noProgram ? "__no_program__" : programId}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "__no_program__") {
-                setNoProgram(true);
-                setProgramId("");
-              } else {
-                setNoProgram(false);
-                setProgramId(v);
-              }
-            }}
-            disabled={!orgId}
-            aria-label="Programa"
-          >
-            {orgId ? (
-              <>
-                <option value="">Todos los programas</option>
-                <option value="__no_program__">Sin programa</option>
-                {/* DIS-03: la organización elegida puede no tener programas. */}
-                {programs.length === 0 ? (
-                  <option value="" disabled>
-                    (esta organización no tiene programas)
-                  </option>
-                ) : null}
-                {programs.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </>
-            ) : (
-              <option value="">Selecciona una organización</option>
-            )}
-          </Select>
           <label className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--color-surface)] px-3 text-[13px] text-[var(--text-secondary)]">
             <input
               type="checkbox"
@@ -306,37 +321,46 @@ export default function ProjectsListPage() {
           </label>
         </div>
 
-        <div className="flex flex-wrap gap-2 border-b border-[var(--border-subtle)] p-4">
-          <FilterGroup label="Fase">
-            {ALL_PHASES.map((p) => (
-              <Chip
-                key={p}
-                active={phases.includes(p)}
-                onClick={() => toggleIn(phases, p, setPhases)}
-              >
-                {PHASE_LABEL[p]}
-              </Chip>
-            ))}
-          </FilterGroup>
-          <FilterGroup label="Tipo">
-            {ALL_TYPES.map((t) => (
-              <Chip key={t} active={types.includes(t)} onClick={() => toggleIn(types, t, setTypes)}>
-                {TYPE_LABEL[t]}
-              </Chip>
-            ))}
-          </FilterGroup>
-          <FilterGroup label="Salud">
-            {ALL_HEALTH.map((h) => (
-              <Chip
-                key={h}
-                active={health.includes(h)}
-                onClick={() => toggleIn(health, h, setHealth)}
-                tone={h}
-              >
-                {HEALTH_LABEL[h]}
-              </Chip>
-            ))}
-          </FilterGroup>
+        {/* FASE-5 (revamp v2, W6) — filtros como dropdown con checkmarks,
+            selección múltiple. Portafolio y Programa reemplazan al `Select`
+            único de antes; Fase/Tipo/Salud reemplazan a los `Chip` sueltos. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] p-4">
+          <FiltroMultiple
+            label="Portafolio"
+            opciones={[
+              { value: "__sin__", label: "Sin portafolio" },
+              ...portfolios.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+            seleccion={portfolioIds}
+            onChange={setPortfolioIds}
+          />
+          <FiltroMultiple
+            label="Programa"
+            opciones={[
+              { value: "__sin__", label: "Sin programa" },
+              ...programs.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+            seleccion={programIds}
+            onChange={setProgramIds}
+          />
+          <FiltroMultiple
+            label="Fase"
+            opciones={ALL_PHASES.map((p) => ({ value: p, label: PHASE_LABEL[p] }))}
+            seleccion={phases}
+            onChange={(v) => setPhases(v as ProjectPhase[])}
+          />
+          <FiltroMultiple
+            label="Tipo"
+            opciones={ALL_TYPES.map((t) => ({ value: t, label: TYPE_LABEL[t] }))}
+            seleccion={types}
+            onChange={(v) => setTypes(v as ProjectType[])}
+          />
+          <FiltroMultiple
+            label="Salud"
+            opciones={ALL_HEALTH.map((h) => ({ value: h, label: HEALTH_LABEL[h] }))}
+            seleccion={health}
+            onChange={(v) => setHealth(v as ProjectHealth[])}
+          />
           <FilterGroup label="Prioridad mínima">
             <Select
               value={priorityMin}
@@ -352,6 +376,23 @@ export default function ProjectsListPage() {
               ))}
             </Select>
           </FilterGroup>
+          {hayFiltro ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setPortfolioIds([]);
+                setProgramIds([]);
+                setPhases([]);
+                setTypes([]);
+                setHealth([]);
+                setPriorityMin("");
+              }}
+            >
+              Limpiar
+            </Button>
+          ) : null}
         </div>
 
         {error ? (
@@ -361,7 +402,12 @@ export default function ProjectsListPage() {
         ) : null}
 
         {view === "list" ? (
-          <ListView rows={rows} loading={loading} />
+          <ListView
+            rows={rows}
+            loading={loading}
+            nombrePortafolio={nombrePortafolio}
+            nombrePrograma={nombrePrograma}
+          />
         ) : (
           <BoardView rows={rows} loading={loading} />
         )}
@@ -381,50 +427,37 @@ function FilterGroup({ label, children }: { label: string; children: React.React
   );
 }
 
-function Chip({
-  active,
-  onClick,
-  children,
-  tone,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  tone?: "green" | "yellow" | "red";
-}) {
-  const activeTone =
-    tone === "green"
-      ? "border-[var(--color-success-border)] bg-[var(--color-success-bg)] text-[var(--color-success-fg)]"
-      : tone === "yellow"
-        ? "border-[var(--color-warning-border)] bg-[var(--color-warning-bg)] text-[var(--color-warning-fg)]"
-        : tone === "red"
-          ? "border-[var(--color-danger-border)] bg-[var(--color-danger-bg)] text-[var(--color-danger-fg)]"
-          : "border-[var(--text-primary)] bg-[var(--text-primary)] text-[var(--color-inverse)]";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "inline-flex h-7 items-center rounded-full border px-2.5 text-[12px] font-medium transition-colors",
-        active
-          ? activeTone
-          : "border-[var(--border-default)] bg-[var(--color-surface)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 function ListView({
   rows,
   loading,
+  nombrePortafolio,
+  nombrePrograma,
 }: {
   rows: Project[];
   loading: boolean;
+  nombrePortafolio: Map<string, string>;
+  nombrePrograma: Map<string, string>;
 }) {
-  const { sortedRows, ctrl: sortCtrl } = useSortableRows<Project>(rows);
+  // FASE-5 (revamp v2, US-B) — orden por defecto portafolio → programa →
+  // nombre (mismo criterio que la vista maestra de `/pmo`, fase 4);
+  // `useSortableRows` lo respeta hasta que alguien haga clic en una columna.
+  const ordenadas = useMemo(
+    () =>
+      [...rows].sort(
+        (a, b) =>
+          (nombrePortafolio.get(a.portfolio_id ?? "") ?? "￿").localeCompare(
+            nombrePortafolio.get(b.portfolio_id ?? "") ?? "￿",
+            "es",
+          ) ||
+          (nombrePrograma.get(a.program_id ?? "") ?? "￿").localeCompare(
+            nombrePrograma.get(b.program_id ?? "") ?? "￿",
+            "es",
+          ) ||
+          a.name.localeCompare(b.name, "es"),
+      ),
+    [rows, nombrePortafolio, nombrePrograma],
+  );
+  const { sortedRows, ctrl: sortCtrl } = useSortableRows<Project>(ordenadas);
   // ENH-190: label configurable por tenant para "Organización(es)".
   // US-192: evaluar la salud 5+1 desde el portafolio (click en el dot),
   // sin abrir cada proyecto. El override repinta el dot sin refetch.
@@ -437,6 +470,22 @@ function ListView({
       <table className="w-full table-fixed text-[13px]">
         <thead className="border-b border-[var(--border-subtle)] bg-[var(--color-subtle)] text-left text-[11px] uppercase tracking-[0.01em] text-[var(--text-secondary)]">
           <tr>
+            <SortableTh<Project>
+              sortKey="portfolio"
+              getter={(p) => nombrePortafolio.get(p.portfolio_id ?? "") ?? ""}
+              ctrl={sortCtrl}
+              className="h-8.5 px-4 w-33"
+            >
+              Portafolio
+            </SortableTh>
+            <SortableTh<Project>
+              sortKey="program"
+              getter={(p) => nombrePrograma.get(p.program_id ?? "") ?? ""}
+              ctrl={sortCtrl}
+              className="h-8.5 px-4 w-33"
+            >
+              Programa
+            </SortableTh>
             <SortableTh<Project> sortKey="name" getter={(p) => p.name} ctrl={sortCtrl} className="h-8.5 px-4">Proyecto</SortableTh>
             <SortableTh<Project> sortKey="phase" getter={(p) => p.phase ?? ""} ctrl={sortCtrl} className="h-8.5 px-4 w-33">Fase</SortableTh>
             <SortableTh<Project> sortKey="priority" getter={(p) => (p as any).priority ?? ""} ctrl={sortCtrl} className="h-8.5 pl-4 pr-3.5 w-23" align="right">Prioridad</SortableTh>
@@ -449,7 +498,7 @@ function ListView({
           {loading ? (
             Array.from({ length: 6 }).map((_, i) => (
               <tr key={i} className="h-11 border-b border-[var(--border-subtle)]">
-                {Array.from({ length: 6 }).map((_, j) => (
+                {Array.from({ length: 8 }).map((_, j) => (
                   <td key={j} className="px-4">
                     <Skeleton className="h-4 w-24" />
                   </td>
@@ -462,6 +511,12 @@ function ListView({
                 key={p.id}
                 className="h-11 border-b border-[var(--border-subtle)] transition-colors hover:bg-[var(--color-subtle)]/60"
               >
+                <td className="min-w-0 truncate px-4 text-[var(--text-secondary)]">
+                  {nombrePortafolio.get(p.portfolio_id ?? "") ?? "—"}
+                </td>
+                <td className="min-w-0 truncate px-4 text-[var(--text-secondary)]">
+                  {nombrePrograma.get(p.program_id ?? "") ?? "—"}
+                </td>
                 <td className="min-w-0 px-4">
                   <div className="flex min-w-0 flex-col">
                     <Link
@@ -508,7 +563,7 @@ function ListView({
             ))
           ) : (
             <tr>
-              <td colSpan={6} className="px-4 py-16 text-center text-[var(--text-tertiary)]">
+              <td colSpan={8} className="px-4 py-16 text-center text-[var(--text-tertiary)]">
                 No hay proyectos que coincidan con los filtros.
               </td>
             </tr>
