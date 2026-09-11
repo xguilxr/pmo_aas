@@ -17,14 +17,12 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Revamp v2 — el styling está, el diseño no** (owner, 2026-08-28):
+**Revamp v2 — ronda de limpieza** (owner, 2026-09-10/11):
 
-- [ ] QA de vista web — el owner levanta la lista → BUG-093+
+- [x] QA de vista web → 15 puntos en `REVAMP-V2-FEEDBACK.md`
+- [ ] Ejecutar `REVAMP-V2-PLAN.md`: fase 0 (bugs) → 1 (navegación) → …
+- [ ] Wireframes W1–W8 (plan §5) antes de las fases 3–8
 - [ ] Mobile, sin revisar ninguna pantalla
-- [ ] Diseño de dashboards · [ ] Diseño de reportes
-
-Los dos diseños bloquean el bloque G del plan post-revamp: un renderer
-determinista necesita el diseño antes que el código.
 
 ---
 

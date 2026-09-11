@@ -496,6 +496,8 @@ diagramas** — es el orden explícito que pide el owner.
 
 ## Plan de implementación
 
-*(vacío — se arma cuando el owner da por cerrada la ronda de comentarios.
-Cuando se arme: seguir la secuencia del punto 15 — diagramas primero,
-wireframes después, implementación y code review al final.)*
+**Ronda cerrada el 2026-09-11** con los 15 puntos de arriba. El plan vive en
+[`REVAMP-V2-PLAN.md`](REVAMP-V2-PLAN.md): diagramas (§1–§4), wireframes
+pendientes (§5), diez fases en orden (§6) y las decisiones del owner (§7).
+
+Al cerrar cada fase se marca aquí el punto como `hecho` con su commit.
