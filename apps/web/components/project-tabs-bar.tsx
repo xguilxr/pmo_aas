@@ -22,7 +22,7 @@ const TABS: ProjectTab[] = [
     href: (id) => `/pmo/projects/${id}`,
     match: (p, id) =>
       p === `/pmo/projects/${id}` ||
-      /^\/admin\/projects\/[^/]+\/edit/.test(p),
+      /^\/pmo\/projects\/[^/]+\/edit/.test(p),
   },
   {
     id: "plan",
@@ -30,7 +30,7 @@ const TABS: ProjectTab[] = [
     icono: "list-check",
     href: (id) => `/pmo/projects/${id}/plan`,
     match: (p) =>
-      /^\/admin\/projects\/[^/]+\/(plan|tasks|gantt)/.test(p),
+      /^\/pmo\/projects\/[^/]+\/(plan|tasks|gantt)/.test(p),
   },
   {
     // US-219 — el Project Board del artboard «Boards». Va detrás del Plan porque
@@ -48,7 +48,7 @@ const TABS: ProjectTab[] = [
     label: "RAID",
     icono: "triangle-alert",
     href: (id) => `/pmo/projects/${id}/raid`,
-    match: (p) => /^\/admin\/projects\/[^/]+\/(raid|risks|issues)/.test(p),
+    match: (p) => /^\/pmo\/projects\/[^/]+\/(raid|risks|issues)/.test(p),
   },
   {
     id: "areas",
@@ -60,7 +60,7 @@ const TABS: ProjectTab[] = [
     label: "Recursos",
     icono: "users",
     href: (id) => `/pmo/projects/${id}/areas`,
-    match: (p) => /^\/admin\/projects\/[^/]+\/areas/.test(p),
+    match: (p) => /^\/pmo\/projects\/[^/]+\/areas/.test(p),
   },
   {
     id: "documents",
@@ -71,7 +71,7 @@ const TABS: ProjectTab[] = [
     label: "Artefactos",
     icono: "file-text",
     href: (id) => `/pmo/projects/${id}/documents`,
-    match: (p) => /^\/admin\/projects\/[^/]+\/documents/.test(p),
+    match: (p) => /^\/pmo\/projects\/[^/]+\/documents/.test(p),
   },
   {
     id: "minutes",
@@ -79,21 +79,21 @@ const TABS: ProjectTab[] = [
     icono: "file-spreadsheet",
     href: (id) => `/pmo/projects/${id}/minutes`,
     match: (p) =>
-      /^\/admin\/projects\/[^/]+\/(minutes|ai-minutes)/.test(p),
+      /^\/pmo\/projects\/[^/]+\/(minutes|ai-minutes)/.test(p),
   },
   {
     id: "reports",
     label: "Reportes",
     icono: "trending-up",
     href: (id) => `/pmo/projects/${id}/reports`,
-    match: (p) => /^\/admin\/projects\/[^/]+\/reports/.test(p),
+    match: (p) => /^\/pmo\/projects\/[^/]+\/reports/.test(p),
   },
   {
     id: "changes",
     label: "Cambios",
     icono: "git-branch",
     href: (id) => `/pmo/projects/${id}/changes`,
-    match: (p) => /^\/admin\/projects\/[^/]+\/changes/.test(p),
+    match: (p) => /^\/pmo\/projects\/[^/]+\/changes/.test(p),
   },
   {
     id: "lessons",
@@ -102,7 +102,7 @@ const TABS: ProjectTab[] = [
     // provisional de la especificación de revamp (§2).
     icono: "info",
     href: (id) => `/pmo/projects/${id}/lessons`,
-    match: (p) => /^\/admin\/projects\/[^/]+\/lessons/.test(p),
+    match: (p) => /^\/pmo\/projects\/[^/]+\/lessons/.test(p),
   },
 ];
 
