@@ -309,19 +309,23 @@ diseñar") queda para después — este punto registra el alcance funcional
 
 ### 8. Proyectos — orden de columnas y filtros como dropdown con checkmarks
 
-**Estado:** pendiente
+**Estado:** hecho — FASE-5, commits `a65082c` (US-260), `9ab6819` (US-261).
 **Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
 
 La página en general está bien (confirma), con dos ajustes:
 
-- [ ] **Orden de columnas**: portafolio, programa, nombre del proyecto —
+- [x] **Orden de columnas**: portafolio, programa, nombre del proyecto —
   en ese orden. (La organización es siempre la misma para todos los
   proyectos listados, ver punto 2.3/4 — no hace falta como columna
   separada.) Más algunas columnas de detalle adicionales para dar contexto
-  (el owner no precisa cuáles todavía).
-- [ ] **Filtros como dropdown con checkmarks**: que se puedan marcar/
+  (el owner no precisa cuáles todavía — se dejaron las que ya había: Fase,
+  Prioridad, Avance, Presupuesto, Salud).
+- [x] **Filtros como dropdown con checkmarks**: que se puedan marcar/
   desmarcar valores dentro del dropdown (selección múltiple), no como están
-  hoy.
+  hoy. `FiltroMultiple` en Portafolio, Programa, Fase, Tipo y Salud
+  (Prioridad mínima y "Sólo míos" se quedaron igual). Con más de un
+  portafolio o programa marcado, el filtro se aplica en cliente —
+  `listProjects` solo acepta un id escalar de cada uno.
   - Nota de contexto del owner: los PMs, por su rol, normalmente solo ven
     un subconjunto de proyectos (a los que están asignados), así que no
     espera que usen mucho los filtros — pero deben quedar disponibles

@@ -17,16 +17,15 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso: fase 5
-(proyectos) — W6 ya aprobado, sin decisión pendiente
-(`docs/project-management/revamp-v2/FASE-5.md`).
+**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso: fase 6
+(recursos) — W4 aprobado, necesita decisión **D1** (unicidad por
+organización) (`docs/project-management/revamp-v2/FASE-6.md`).
 
 - [x] Feedback: 15 puntos en `REVAMP-V2-FEEDBACK.md` (2026-09-10/11)
 - [x] Plan + diagramas: `REVAMP-V2-PLAN.md` · runbooks `revamp-v2/FASE-0..9`
 - [x] Wireframes W1–W8: canvas `revamp-v2-wireframes` — W2/5/6/7/8 OK,
   W1/3/4 con cambios aplicados (2026-09-11)
-- [x] Fase 0 (BUG-095/096/097) → [x] 1 (US-248/249) → [x] 2 (US-250/251) →
-  [x] 3 (US-252/253/254) → [x] 4 (US-255..259) → [ ] 5…8 (con wireframe) → 9
+- [x] Fases 0-5 (BUG-095..097, US-248..261) → [ ] 6…8 (con wireframe) → 9
 - [ ] Mobile, sin revisar ninguna pantalla
 
 ---
