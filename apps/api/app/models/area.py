@@ -164,7 +164,12 @@ class Actor(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_actors_tenant_team", "tenant_id", "team_id"),
         Index("ix_actors_tenant_user", "tenant_id", "user_id"),
-        UniqueConstraint("tenant_id", "email", name="uq_actors_tenant_email"),
+        # FASE-6 del revamp v2 (DEC-038 / D1, migración 0116): único por
+        # organización, no por tenant — la misma persona puede ser un actor
+        # distinto en cada organización del tenant (punto 5 del feedback).
+        UniqueConstraint(
+            "tenant_id", "organization_id", "email", name="uq_actors_org_email"
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(String(36), primary_key=True, default=new_uuid)

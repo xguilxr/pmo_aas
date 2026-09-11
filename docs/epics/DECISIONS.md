@@ -744,3 +744,32 @@ especificar uno — ahí se resuelve sola.
 **Reversible:** sí — no hay migración de schema; es lógica de aplicación.
 **Implementación:** FASE-4 del revamp v2 (`docs/project-management/revamp-v2/FASE-4.md`),
 wireframe W3 aprobado. Origen: owner por chat, 2026-09-11 («Sí, confirmo D3»).
+
+## DEC-038 — La unicidad de un recurso pasa de por tenant a por organización (EP017, revamp v2 §5)
+**Fecha:** 2026-09-11
+**Decisión:** `uq_actors_tenant_email` — hoy `(tenant_id, email)` — cambia a
+`(tenant_id, organization_id, email)`. La misma persona puede existir como
+actor en dos organizaciones del mismo tenant, cada una con su propio
+registro; ya no comparten fila. Los actores sin correo (`email IS NULL`)
+quedan fuera del índice único como hoy y piden uno al importar (FASE-6,
+paso de import masivo).
+**Rationale:** el punto 5 del feedback es explícito: "si la misma persona
+participa en otra organización, se tiene que volver a dar de alta ahí — es
+un registro nuevo e independiente, no el mismo recurso compartido". La
+unicidad por tenant hoy lo impide: un correo que ya existe en la Organización
+A no se puede volver a dar de alta en la B. Acotar la unicidad a
+`(tenant_id, organization_id)` es lo mínimo que desbloquea el caso sin tocar
+el resto del modelo (`Actor.tenant_id` sigue existiendo; sigue siendo el
+tenant del recurso).
+**Consecuencia aceptada:** los actores que hoy comparten fila entre
+organizaciones (el caso real de datos duplicados que el owner reporta,
+diagnosticado por `scripts/diagnostico_actores_por_org.py`, US-251) hay que
+separarlos con datos delante — no se puede automatizar sin decidir cuál
+organización se queda con cuál historial de participación. Eso lo resuelve
+el owner en el mismo bloque de FASE-6, con el diagnóstico como insumo.
+**Reversible:** no del todo — una vez que hay dos filas para el mismo correo
+en organizaciones distintas, volver a `(tenant_id, email)` exige fusionarlas
+primero o el `downgrade` falla por choque de unicidad.
+**Implementación:** FASE-6 del revamp v2 (`docs/project-management/revamp-v2/FASE-6.md`),
+migración sobre `actors` + `DB-CHANGES.md`. Origen: owner por chat,
+2026-09-11 («Confirmo d1»).
