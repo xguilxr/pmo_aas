@@ -25,7 +25,7 @@ revisar_cada: nunca
 | [`epics/drafts/reestructura-modelo-datos.md`](epics/drafts/reestructura-modelo-datos.md) | Estado real, oleada por oleada (verificado contra código, 2026-08-29) · 1. Jerarquía organizacional · 2. Id… | 2026-08-29 | 272 |
 | [`epics/drafts/reestructura-plan.md`](epics/drafts/reestructura-plan.md) | Qué ya se ejecutó, y dónde quedó · Lo que sigue sin construir · Riesgos que siguen vigentes · Guía de sesio… | 2026-08-29 | 89 |
 | [`project-management/CRITERIOS-DE-ACEPTACION.md`](project-management/CRITERIOS-DE-ACEPTACION.md) | El hueco que había · La regla · Lo que este control NO comprueba · Para el trabajo de producto que no toca … | 2026-08-07 | 107 |
-| [`project-management/HANDOFF.md`](project-management/HANDOFF.md) | Qué se estaba haciendo, y por qué · Dónde retomar · Qué va a morder · Decisiones del owner de esta sesión | 2026-09-11 | 42 |
+| [`project-management/HANDOFF.md`](project-management/HANDOFF.md) | Qué se estaba haciendo, y por qué · Dónde retomar · Qué va a morder · Decisiones del owner de esta sesión | 2026-09-11 | 45 |
 | [`project-management/LESSONS.md`](project-management/LESSONS.md) | Lecciones vivas | 2026-08-12 | 26 |
 | [`project-management/REVAMP-V2-FEEDBACK.md`](project-management/REVAMP-V2-FEEDBACK.md) | Cómo se usa · Puntos registrados · Plan de implementación | 2026-09-10 | 512 |
 | [`project-management/REVAMP-V2-PLAN.md`](project-management/REVAMP-V2-PLAN.md) | 1. Navegación objetivo · 2. Estados · 3. Entidades, fases y campos · 4. Flujo operativo | 2026-09-11 | 507 |

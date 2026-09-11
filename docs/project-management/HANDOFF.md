@@ -8,34 +8,37 @@ revisar_cada: 30d
 
 # HANDOFF.md — puente a la próxima sesión
 
-**2026-09-11** · rama `claude/magical-hypatia-7ekyal` · lo derivado:
+**2026-09-11** · rama `claude/handoff-review-development-e02aq2` · lo derivado:
 `python scripts/estado.py`
 
 ## Qué se estaba haciendo, y por qué
 
-El owner mergeó el rediseño parcial (#607) y no vio cambios: se había
-implementado 3 de 7 piezas. En vez de seguir a ciegas, se registró todo su
-feedback (15 puntos) antes de tocar código, y de ahí salió un plan con
-diagramas y un runbook por fase escrito para modelos pequeños. El orden es
-del owner: diagramas → wireframes → código.
+Ejecución autónoma, "uno a la vez", de las fases 6-8 del revamp v2
+(`revamp-v2/FASE-6..8.md`): recursos, admin/cuenta, reportes. Cada fase
+cerró sus commits, gates locales y docs (epics, DECISIONS.md, SPRINT.md)
+antes de pasar a la siguiente. Al terminar, el owner abrió PR #610 desde
+Claude Code UI; el resto de la sesión fue apagar CI rojo sobre ese PR.
 
 ## Dónde retomar
 
-Abrir PR de esta rama (16 commits, solo docs) y mergear. Luego rama nueva
-desde `main` y ejecutar `revamp-v2/FASE-0.md` tal cual. Las fases 3–8
-esperan wireframes del owner (`SPRINT.md` → ESPERANDO).
+Revisar y mergear PR #610 — CI verde en el último push (`72122a7`).
+Después: fase 9 (`revamp-v2/FASE-9.md`) — 3 PRs propios de code review
+transversal con `code-review --comment`, empieza sobre `main` ya con #610
+adentro.
 
 ## Qué va a morder
 
-- La unicidad de actores ya existe **por tenant**, no por organización:
-  FASE-6 la cambia con migración y hay duplicados reales que resolver
-  antes (plan §7, D1).
-- `#607` está mergeado y esta rama sigue sobre esa historia: el PR nuevo
-  solo debe mostrar los commits de docs. Si aparecen más, rebasar.
-- La tabla RAID envuelve a dos líneas **a propósito** (comentario en el
-  código); el owner igual pidió quitarlo. FASE-0 lo hace, no discutir.
+- 3 commits fueron reescritos con `rebase -i` + force-push (mensajes de
+  más de 100 caracteres, CFG-04) — diff idéntico, solo cambió el asunto.
+  OK del owner antes de hacerlo.
+- Varios gates de arquitectura tenían excepciones apuntando a rutas que
+  este PR borró (`/admin/ai`, `TenantActorsPanel.tsx`) — ya corregidas,
+  pero si aparece otro "ruta ya no existe", es el mismo patrón: FASE-7
+  movió/fusionó bastante de `/admin/*`.
 
 ## Decisiones del owner de esta sesión
 
-Todas en `REVAMP-V2-FEEDBACK.md` (15 puntos) y `REVAMP-V2-PLAN.md` §7
-(D1–D7 abiertas). Ninguna cerrada aún en `DECISIONS.md`.
+- D4 (dónde queda `/admin/areas`): "Dentro de Recursos, como pestaña" →
+  `DEC-039`.
+- CI: OK para reescribir los 3 mensajes de commit largos vía rebase +
+  force-push (branch propia, PR sin revisión humana aún).

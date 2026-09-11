@@ -17,10 +17,10 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Revamp v2 — ronda de limpieza.** Sin US activa. Fases 0-8 al día en
-`claude/handoff-review-development-e02aq2`, **nada mergeado a `main`
-todavía**. Fase 9 pide esa fase mergeada primero — son 3 PRs propios con
-`code-review --comment` (`revamp-v2/FASE-9.md`). Owner: revisar/mergear.
+**Revamp v2 — ronda de limpieza.** Sin US activa. Fases 0-8 en PR #610
+(`claude/handoff-review-development-e02aq2`), CI verde, **sin mergear**.
+Fase 9 pide esa fase mergeada primero — son 3 PRs propios con
+`code-review --comment` (`revamp-v2/FASE-9.md`). Owner: revisar/mergear #610.
 
 - [x] Feedback: 14/15 hechos (`REVAMP-V2-FEEDBACK.md`); punto 11 (Plan e
   IA) es decisión de producto sin cerrar (D5)
