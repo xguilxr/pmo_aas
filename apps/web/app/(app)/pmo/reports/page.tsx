@@ -63,6 +63,10 @@ import {
   RISK_STATUS_LABEL,
 } from "@/lib/api/modules";
 import { KpiCard } from "@/components/kpi-card";
+import { HeroAvance, RuedaDeSalud } from "@/components/tablero-ejecutivo";
+import { healthTone } from "@/components/health-panel";
+import { getDashboardCharts, getDashboardKpis } from "@/lib/api/dashboard";
+import { listProjects, type Project } from "@/lib/api/projects";
 
 type TenantReportsTab =
   | "pmo"
@@ -77,7 +81,7 @@ type TenantReportsTab =
 
 const TABS: Array<{ v: TenantReportsTab; label: string; icono: string }> = [
   { v: "pmo", label: "PMO", icono: "layout-dashboard" },
-  { v: "organization", label: "Organizaciones", icono: "building" },
+  { v: "organization", label: "Organización", icono: "building" },
   { v: "portfolio", label: "Portafolios", icono: "folders" },
   { v: "program", label: "Programas", icono: "route" },
   { v: "projects", label: "Proyectos", icono: "file-text" },
@@ -329,6 +333,8 @@ function OrgScopePlaceholder() {
   return (
     <div className="space-y-5">
       {error ? <Banner variant="danger">{error}</Banner> : null}
+
+      {orgId ? <OrgSnapshotYArbol orgId={orgId} /> : null}
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
         <div className="flex items-start gap-3">
@@ -1283,5 +1289,170 @@ function CambiosReportsView() {
         )}
       </section>
     </>
+  );
+}
+
+// FASE-8 (revamp v2, US-D) — snapshot (Dashboard, mismos componentes de la
+// fase 3) + árbol portafolio → programa → proyecto, en la pestaña
+// "Organización". Los PDF de status por organización ya existen
+// (organizations.py:1584, POST /{org_id}/reports/status) y se enlazan desde
+// la sección de plantillas que ya estaba aquí — no se reescriben.
+function OrgSnapshotYArbol({ orgId }: { orgId: string }) {
+  const [kpis, setKpis] = useState<import("@/lib/api/dashboard").DashboardKpis | null>(null);
+  const [charts, setCharts] = useState<import("@/lib/api/dashboard").DashboardCharts | null>(null);
+  const [loadingSnapshot, setLoadingSnapshot] = useState(true);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loadingArbol, setLoadingArbol] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingSnapshot(true);
+    Promise.all([
+      getDashboardKpis({ organization_id: orgId }),
+      getDashboardCharts({ organization_id: orgId }),
+    ])
+      .then(([k, c]) => {
+        if (cancelled) return;
+        setKpis(k);
+        setCharts(c);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingSnapshot(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingArbol(true);
+    Promise.all([
+      listPortfolios(orgId, { is_active: true }),
+      listPrograms({ organization_id: orgId }),
+      listProjects({ organization_id: orgId, limit: 500 }),
+    ])
+      .then(([p, pr, proj]) => {
+        if (cancelled) return;
+        setPortfolios(p);
+        setPrograms(pr);
+        setProjects(proj.filter((x) => x.phase !== "cerrado" && x.phase !== "cancelado"));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingArbol(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  return (
+    <div className="space-y-5">
+      <section aria-label="Cómo va la organización" className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+          <RuedaDeSalud
+            conteos={charts?.portfolio_health ?? {}}
+            total={kpis?.active_projects}
+            cargando={loadingSnapshot}
+          />
+        </div>
+        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+          <HeroAvance
+            real={kpis?.progress_avg}
+            plan={kpis?.plan_progress_avg}
+            serie={[]}
+            cargando={loadingSnapshot}
+          />
+        </div>
+      </section>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <KpiCard label="Proyectos activos" value={loadingSnapshot ? null : kpis?.active_projects} loading={loadingSnapshot} />
+        <KpiCard label="Riesgos abiertos" value={loadingSnapshot ? null : kpis?.open_risks} loading={loadingSnapshot} tone="warning" />
+        <KpiCard label="Riesgos severos" value={loadingSnapshot ? null : kpis?.severe_risks} loading={loadingSnapshot} tone="danger" />
+        <KpiCard label="Presupuesto total" value={loadingSnapshot ? null : kpis?.budget_total} format="currency" loading={loadingSnapshot} />
+      </div>
+
+      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+        <h3 className="border-b border-[var(--border-default)] px-4 py-2.5 text-[13px] font-semibold text-[var(--text-primary)] shadow-[var(--linea-surco)]">
+          Portafolio → programa → proyecto
+        </h3>
+        {loadingArbol ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-full" />
+            ))}
+          </div>
+        ) : portfolios.length === 0 ? (
+          <div className="p-8 text-center text-[13px] text-[var(--text-tertiary)]">
+            Sin portafolios en esta organización.
+          </div>
+        ) : (
+          <ul className="divide-y divide-[var(--border-subtle)] p-2">
+            {portfolios.map((pf) => {
+              const susProgramas = programs.filter((pg) => pg.portfolio_id === pf.id);
+              const directos = projects.filter(
+                (p) => p.portfolio_id === pf.id && !p.program_id,
+              );
+              return (
+                <li key={pf.id} className="py-1.5">
+                  <div className="flex items-center gap-2 px-2 py-1 text-[13px] font-semibold text-[var(--text-primary)]">
+                    <Icono nombre="folder" size={14} className="text-[var(--text-tertiary)]" />
+                    {pf.name}
+                  </div>
+                  <ul className="ml-3 border-l border-[var(--border-subtle)] pl-3">
+                    {susProgramas.map((pg) => (
+                      <li key={pg.id} className="py-1">
+                        <div className="flex items-center gap-2 px-2 py-0.5 text-[12.5px] font-medium text-[var(--text-secondary)]">
+                          <Icono nombre="folders" size={13} className="text-[var(--text-tertiary)]" />
+                          {pg.name}
+                        </div>
+                        <ul className="ml-3 border-l border-[var(--border-subtle)] pl-3">
+                          {projects
+                            .filter((p) => p.program_id === pg.id)
+                            .map((p) => (
+                              <li key={p.id} className="flex items-center gap-2 px-2 py-1 text-[12.5px] text-[var(--text-secondary)]">
+                                <span className={cn("h-2 w-2 shrink-0 rounded-full", healthTone(p.health_status))} aria-hidden />
+                                <Link href={`/pmo/projects/${p.id}`} className="truncate hover:underline">
+                                  {p.name}
+                                </Link>
+                                <span className="ml-auto font-mono text-[11px] text-[var(--text-tertiary)]">
+                                  {Math.round(p.progress)}%
+                                </span>
+                              </li>
+                            ))}
+                        </ul>
+                      </li>
+                    ))}
+                    {directos.map((p) => (
+                      <li key={p.id} className="flex items-center gap-2 px-2 py-1 text-[12.5px] text-[var(--text-secondary)]">
+                        <span className={cn("h-2 w-2 shrink-0 rounded-full", healthTone(p.health_status))} aria-hidden />
+                        <Link href={`/pmo/projects/${p.id}`} className="truncate hover:underline">
+                          {p.name}
+                        </Link>
+                        <span className="ml-auto font-mono text-[11px] text-[var(--text-tertiary)]">
+                          {Math.round(p.progress)}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <div className="print:hidden flex justify-end">
+        <Button variant="secondary" size="sm" onClick={() => window.print()}>
+          <Icono nombre="printer" size={14} />
+          Imprimir / guardar PDF
+        </Button>
+      </div>
+    </div>
   );
 }
