@@ -58,10 +58,10 @@ Portafolio. El resto del spec —que es la parte que más se ve— no se tocó:
 
 ### 2. Barra de navegación (sidebar) — reestructuración completa
 
-**Estado:** 2.1/2.2/2.4 hechos — FASE-1, commits `f353f41` (US-248),
-`de45703` (US-249). Diferido de 2.2 (no bloqueante): el botón a la config de
-portafolios/programas y el portafolio-programa base van con `/admin/hierarchy`
-o `/pmo/config` (fase 7/4, D3). 2.3 sigue pendiente (fase 2).
+**Estado:** hecho — 2.1/2.2/2.4 FASE-1 (commits `f353f41` US-248, `de45703`
+US-249); el resto de 2.2 (botón a `/pmo/config`, portafolio-programa base)
+FASE-4 (commits `026b375` US-259, `356dc6b` US-258/DEC-037). `/admin/hierarchy`
+sigue en fase 7. 2.3 FASE-2 (commits `c41bd76` US-250, `b3870d3` US-251).
 **Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
 
 #### 2.1 Estructura actual
@@ -201,15 +201,16 @@ del punto 1 en lo referente al roadmap — el resto de la lista del punto 1
 
 ### 4. Página PMO — el Gantt trimestral navegable + lista de proyectos debajo
 
-**Estado:** pendiente
+**Estado:** hecho — FASE-4, commits `7f0e7d4` (US-255), `455b059` (US-256),
+`78d620f` (US-257), `356dc6b` (US-258, DEC-037), `026b375` (US-259).
 **Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
 
-- [ ] El Gantt trimestral (roadmap del punto 3, US-247) es donde se ve
+- [x] El Gantt trimestral (roadmap del punto 3, US-247) es donde se ve
   **todos** los proyectos a nivel trimestral.
-- [ ] Tiene que poder **navegar entre años**: años previos y siguientes.
+- [x] Tiene que poder **navegar entre años**: años previos y siguientes.
   Ejemplo dado: 2025, 2026, 2027. Todo lo de **2026 en adelante** debe estar
   cubierto (no es solo el año en curso, como está implementado hoy).
-- [ ] **Debajo** del Gantt: la lista de proyectos, **ordenada** por
+- [x] **Debajo** del Gantt: la lista de proyectos, **ordenada** por
   organización → portafolio → programa (no "agrupados", el owner corrige a
   media frase: es orden, no agrupación por separado).
   - Todos los proyectos de esa lista van a tener la misma organización,

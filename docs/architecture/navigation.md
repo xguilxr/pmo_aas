@@ -259,7 +259,7 @@ del sidebar admin + un panel adicional para Áreas:
 
 ## 3. Inventario de páginas
 
-Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08) + `/admin/plan` (US-221). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano); FASE-4 (revamp v2) borró 2 más: `/pmo/board`, `/pmo/imports` (absorbidas como pestañas de `/pmo`, con redirect).
+Total: **76 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08) + `/admin/plan` (US-221). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano); FASE-4 (revamp v2) borró 2 (`/pmo/board`, `/pmo/imports`, absorbidas como pestañas de `/pmo` con redirect) y agregó 1 (`/pmo/config`).
 
 ### 3.1 Rutas públicas (5)
 
@@ -286,6 +286,7 @@ Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | URL | Propósito |
 |---|---|
 | `/pmo` | Vista maestra del portafolio: una fila por proyecto con las 16 columnas del mockup, header y primera columna fijos, columnas configurables y XLSX (US-207, US-210, US-211). FASE-4 (revamp v2): pestañas Portafolio · Board · Importar proyectos (`?tab=board`\|`importar`); el Gantt trimestral navega por año. |
+| `/pmo/config` | FASE-4 (revamp v2): alta, edición y reasignación de portafolios y programas de la organización activa — "estilo carpetas". Borrado suave; el permanente es de Admin (fase 7). |
 | `/pmo/organizations/[id]` | Detalle de organización: programas + proyectos + reportes. |
 | `/pmo/organizations/[id]/reports` | Reportes scope organización. |
 | `/pmo/programs/[id]` | Detalle de programa. |
