@@ -189,7 +189,12 @@ export function Bars({
           return (
             <g key={i}>
               {fino ? (
-                <path d={barPath(x, y, w, h, w / 2)} fill={d.color}>
+                // BUG (owner, 2026-09-11): el radio era `w / 2` — con pocas
+                // categorías (1-2) la barra ocupa casi todo el ancho y ese
+                // radio gigante convierte el tope redondeado en un domo/media
+                // luna en vez de una barra con esquinas redondeadas. Se topa
+                // a un radio fijo pequeño, igual que un tope redondeado real.
+                <path d={barPath(x, y, w, h, Math.min(w / 2, 6))} fill={d.color}>
                   <title>{`${d.label}: ${valueFormat ? valueFormat(d.value) : d.value}`}</title>
                 </path>
               ) : (
