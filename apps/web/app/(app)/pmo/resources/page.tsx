@@ -30,8 +30,11 @@ import { SortableTh } from "@/components/ui/sortable-th";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { downloadGlobalOrganigrama } from "@/lib/api/analytics";
+import { confirmarDestructivo } from "@/lib/confirmar";
+import { deleteActor } from "@/lib/api/areas";
+import { ActorFormModal } from "@/components/actor-form-modal";
 import { CapacidadSemanal } from "@/components/capacidad-semanal";
-import { useOrgFiltro } from "@/components/organizacion-activa";
+import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import {
   getCapacityConflicts,
   getCapacitySummary,
@@ -102,8 +105,11 @@ export default function ResourcesPage() {
   // US-205 — la organización sale del header. El catálogo es por organización
   // (lo dice el mockup: «catálogo por organización»); la carga de una persona
   // suma todos sus proyectos, y eso lo resuelve el servidor.
-  const orgFiltro = useOrgFiltro();
+  const { efectiva, activaObj } = useOrganizacionActiva();
+  const orgFiltro = efectiva || undefined;
   const [pestana, setPestana] = useState<Pestana>("catalogo");
+  const [mostrarAlta, setMostrarAlta] = useState(false);
+  const [recargarTick, setRecargarTick] = useState(0);
   const [win, setWin] = useState<CapacityWindow>("week");
   const [tab, setTab] = useState<Tab>("people");
   const [semanas, setSemanas] = useState(12);
@@ -167,7 +173,7 @@ export default function ResourcesPage() {
     return () => {
       cancelled = true;
     };
-  }, [win, orgFiltro]);
+  }, [win, orgFiltro, recargarTick]);
 
   // La carga semanal se pide aparte y solo cuando su pestaña está a la vista:
   // es la respuesta más pesada de la pantalla —una serie por recurso— y traerla
@@ -275,6 +281,12 @@ export default function ResourcesPage() {
       ) : (
       <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-end gap-2">
+        {orgFiltro ? (
+          <Button variant="primary" size="sm" onClick={() => setMostrarAlta(true)}>
+            <Icono nombre="plus" size={15} />
+            Nuevo recurso
+          </Button>
+        ) : null}
         <Button
           variant="secondary"
           size="sm"
@@ -286,6 +298,18 @@ export default function ResourcesPage() {
           {downloadingOrganigrama ? "Generando…" : "Organigrama global (XLSX)"}
         </Button>
       </div>
+      {orgFiltro ? (
+        <ActorFormModal
+          open={mostrarAlta}
+          organizationId={orgFiltro}
+          organizationName={activaObj?.name ?? "—"}
+          onClose={() => setMostrarAlta(false)}
+          onSaved={() => {
+            setMostrarAlta(false);
+            setRecargarTick((n) => n + 1);
+          }}
+        />
+      ) : null}
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {organigramaError ? <Banner variant="danger">{organigramaError}</Banner> : null}
@@ -329,7 +353,10 @@ export default function ResourcesPage() {
       ) : resources.length === 0 ? (
         <EmptyState />
       ) : tab === "people" ? (
-        <PeopleTable resources={resources} />
+        <PeopleTable
+          resources={resources}
+          onRemoved={() => setRecargarTick((n) => n + 1)}
+        />
       ) : tab === "roles" ? (
         <AggTable
           rows={byDiscipline}
@@ -360,7 +387,40 @@ export default function ResourcesPage() {
   );
 }
 
-function PeopleTable({ resources }: { resources: CapacityResource[] }) {
+function PeopleTable({
+  resources,
+  onRemoved,
+}: {
+  resources: CapacityResource[];
+  onRemoved: () => void;
+}) {
+  const [quitando, setQuitando] = useState<string | null>(null);
+  const [errorQuitar, setErrorQuitar] = useState<string | null>(null);
+
+  async function quitar(actorId: string, nombre: string) {
+    if (
+      !confirmarDestructivo({
+        objeto: `el recurso «${nombre}»`,
+        consecuencia: "Si tiene proyectos, acciones o riesgos activos asignados, se rechaza.",
+        reversibilidad: "recuperable",
+      })
+    ) {
+      return;
+    }
+    setQuitando(actorId);
+    setErrorQuitar(null);
+    try {
+      await deleteActor(actorId);
+      onRemoved();
+    } catch (e) {
+      setErrorQuitar(
+        e instanceof ApiError ? e.message : "No se pudo quitar el recurso.",
+      );
+    } finally {
+      setQuitando(null);
+    }
+  }
+
   // ENH-198: filtro por área y sub-área (equipo) sobre la lista de
   // personas — "ver por área (ej. IT, o sub-área IT Arquitectura)".
   const [areaFilter, setAreaFilter] = useState("");
@@ -447,6 +507,7 @@ function PeopleTable({ resources }: { resources: CapacityResource[] }) {
           <col style={{ width: 104 }} />
           <col style={{ width: 90 }} />
           <col style={{ width: 84 }} />
+          <col style={{ width: 76 }} />
         </colgroup>
         <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)] shadow-[var(--linea-surco)]">
           <tr>
@@ -533,6 +594,7 @@ function PeopleTable({ resources }: { resources: CapacityResource[] }) {
             >
               Sin FTE
             </SortableTh>
+            <th className="h-8.5 pr-3.5 text-right">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -608,10 +670,27 @@ function PeopleTable({ resources }: { resources: CapacityResource[] }) {
                   <span className="font-mono text-[12.5px] text-[var(--text-faint)]">0</span>
                 )}
               </td>
+              <td className="pr-3.5 text-right">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void quitar(r.actor_id, r.name)}
+                  disabled={quitando === r.actor_id}
+                  loading={quitando === r.actor_id}
+                >
+                  Quitar
+                </Button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {errorQuitar ? (
+        <div className="border-t border-[var(--border-subtle)] p-3">
+          <Banner variant="danger">{errorQuitar}</Banner>
+        </div>
+      ) : null}
     </div>
   );
 }

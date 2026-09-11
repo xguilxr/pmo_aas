@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-97 documentos vivos · 70 archivados · 2761 secciones indexadas.
+97 documentos vivos · 70 archivados · 2763 secciones indexadas.
 
 ## gestion
 
@@ -27,7 +27,7 @@ revisar_cada: nunca
 | [`project-management/CRITERIOS-DE-ACEPTACION.md`](project-management/CRITERIOS-DE-ACEPTACION.md) | El hueco que había · La regla · Lo que este control NO comprueba · Para el trabajo de producto que no toca … | 2026-08-07 | 107 |
 | [`project-management/HANDOFF.md`](project-management/HANDOFF.md) | Qué se estaba haciendo, y por qué · Dónde retomar · Qué va a morder · Decisiones del owner de esta sesión | 2026-09-11 | 42 |
 | [`project-management/LESSONS.md`](project-management/LESSONS.md) | Lecciones vivas | 2026-08-12 | 26 |
-| [`project-management/REVAMP-V2-FEEDBACK.md`](project-management/REVAMP-V2-FEEDBACK.md) | Cómo se usa · Puntos registrados · Plan de implementación | 2026-09-10 | 521 |
+| [`project-management/REVAMP-V2-FEEDBACK.md`](project-management/REVAMP-V2-FEEDBACK.md) | Cómo se usa · Puntos registrados · Plan de implementación | 2026-09-10 | 526 |
 | [`project-management/REVAMP-V2-PLAN.md`](project-management/REVAMP-V2-PLAN.md) | 1. Navegación objetivo · 2. Estados · 3. Entidades, fases y campos · 4. Flujo operativo | 2026-09-11 | 507 |
 | [`project-management/SPRINT-BACKLOG.md`](project-management/SPRINT-BACKLOG.md) | 📤 Salido de SPRINT.md el 2026-08-28 · ⏸️ Deferred — re-evaluación post EP020 · ✅ DONE · 📋 Backlog v2.0 (pos… | 2026-08-28 | 152 |
 | [`project-management/SPRINT-DONE-HISTORY.md`](project-management/SPRINT-DONE-HISTORY.md) | Ronda 2026-08-27 — Revamp de diseño v2 (batch del owner, sin US) · Ronda 2026-08-06 — Ola 2, `SEG-04` y ver… | 2026-08-12 | 609 |
@@ -48,8 +48,8 @@ revisar_cada: nunca
 
 | Documento | De qué trata | Revisado | Líneas |
 |---|---|---|---|
-| [`epics/DB-CHANGES.md`](epics/DB-CHANGES.md) | Migraciones aplicadas (v1.0) · EP001 — Auth / usuarios · EP002 — Jerarquía org · EP003 — Solicitudes y Proj… | 2026-08-29 | 1406 |
-| [`epics/DECISIONS.md`](epics/DECISIONS.md) | DEC-001 — Tracking multi-sesión con GitHub Issues + archivos MD · DEC-002 — ❌ SUPERSEDED por DEC-013 · DEC-… | 2026-08-29 | 747 |
+| [`epics/DB-CHANGES.md`](epics/DB-CHANGES.md) | Migraciones aplicadas (v1.0) · EP001 — Auth / usuarios · EP002 — Jerarquía org · EP003 — Solicitudes y Proj… | 2026-08-29 | 1439 |
+| [`epics/DECISIONS.md`](epics/DECISIONS.md) | DEC-001 — Tracking multi-sesión con GitHub Issues + archivos MD · DEC-002 — ❌ SUPERSEDED por DEC-013 · DEC-… | 2026-08-29 | 776 |
 | [`epics/EP001-auth-users.md`](epics/EP001-auth-users.md) | Modelo actual (post-Sprint 6 / DEC-024) · Objetivo de negocio (v1.0, histórico) · Roles involucrados · User… | 2026-08-29 | 628 |
 | [`epics/EP002-org-hierarchy.md`](epics/EP002-org-hierarchy.md) | Objetivo de negocio · Roles involucrados · User Stories existentes · # PENDING — User Stories nuevas | 2026-09-11 | 384 |
 | [`epics/EP003-project-requests.md`](epics/EP003-project-requests.md) | Objetivo de negocio · Roles · User Stories · Notas técnicas | 2026-08-29 | 308 |
@@ -81,7 +81,7 @@ revisar_cada: nunca
 | [`architecture/mapa-backend.md`](architecture/mapa-backend.md) | Estructura · Modelos por dominio (archivo → tablas clave) · Routers (api/v1/endpoints/) — 1 línea cada uno … | 2026-08-19 | 119 |
 | [`architecture/mapa-frontend.md`](architecture/mapa-frontend.md) | Stack · Tokens (globals.css) — los que se usan al escribir UI · Rutas (grupo `(app)`) · Componentes reutili… | 2026-08-19 | 184 |
 | [`architecture/modelo-amenazas.md`](architecture/modelo-amenazas.md) | 0. Método, y una advertencia sobre él · 1. Arquitectura de la que deriva · 2. Amenazas · 3. Cómo se revisa | 2026-08-29 | 556 |
-| [`architecture/navigation.md`](architecture/navigation.md) | 1. Árbol de navegación · 2. Superficies de navegación · 3. Inventario de páginas · 4. Flujos de navegación … | 2026-09-11 | 550 |
+| [`architecture/navigation.md`](architecture/navigation.md) | 1. Árbol de navegación · 2. Superficies de navegación · 3. Inventario de páginas · 4. Flujos de navegación … | 2026-09-11 | 551 |
 | [`architecture/security-multitenant.md`](architecture/security-multitenant.md) | 1. Modelo de tenancy real · 2. Autenticación · 3. Autorización — modelo capability-based (DEC-024 / US-076)… | 2026-08-29 | 329 |
 | [`architecture/stack.md`](architecture/stack.md) | Frontend — Next.js 15 + React 19 + TypeScript · Backend — FastAPI + Python 3.12 · Base de datos — PostgreSQ… | 2026-08-29 | 280 |
 | [`conformidad/README.md`](conformidad/README.md) | Lo que está vivo · El expediente, en orden · Lo que este expediente enseñó · Los otros dos marcos | 2026-08-06 | 120 |
