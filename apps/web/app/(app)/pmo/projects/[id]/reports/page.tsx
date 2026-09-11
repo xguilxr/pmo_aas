@@ -2612,7 +2612,7 @@ function ReportCreateAIView({ projectId }: { projectId: string }) {
     const blob = new Blob([previewHtml], { type: "text/html;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `Reporte-IA-${new Date().toISOString().slice(0, 10)}.html`;
+    a.download = `reporte-ia-${new Date().toISOString().slice(0, 10)}.html`;
     a.click();
   }
 

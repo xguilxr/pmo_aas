@@ -97,14 +97,13 @@ export default function AuditLogsPage() {
             compliance.
           </p>
         </div>
-        <a
-          href={xlsxHref}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="inline-flex h-8 items-center gap-1.75 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-[13px] font-medium text-[var(--text-primary)] shadow-[var(--relieve-control)] hover:bg-[var(--color-subtle)]"
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => window.open(xlsxHref, "_blank", "noreferrer,noopener")}
         >
           <Icono nombre="download" size={15} /> Exportar Excel
-        </a>
+        </Button>
       </header>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}

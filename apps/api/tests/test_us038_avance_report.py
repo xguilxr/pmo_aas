@@ -121,10 +121,10 @@ async def test_us038_generate_and_pdf(client, db_session):
     assert r.status_code == 200, r.text
     assert r.headers["content-type"] == "application/pdf"
     assert r.content.startswith(b"%PDF")
-    # ENH-014: nombre = "Reporte de Avance - {project_name} - {datetime}.pdf"
+    # nombre = "reporte-avance-{project-slug}-{YYYY-MM-DD}.pdf"
     disposition = r.headers.get("content-disposition", "")
     assert disposition.startswith("attachment;")
-    assert "Reporte de Avance - Proyecto_P-0001 - " in disposition
+    assert "reporte-avance-proyecto-p-0001-" in disposition
     assert disposition.rstrip().endswith(".pdf") or ".pdf" in disposition
 
 
@@ -219,7 +219,7 @@ async def test_enh014_avance_preview_inline_disposition(client, db_session):
     assert dl.content.startswith(b"%PDF")
     disposition = dl.headers.get("content-disposition", "")
     assert disposition.startswith("inline;")
-    assert "Reporte de Avance - Proyecto_P-0010 - " in disposition
+    assert "reporte-avance-proyecto-p-0010-" in disposition
 
 
 @pytest.mark.asyncio
