@@ -48,7 +48,7 @@ class UserRead(BaseModel):
 
 
 class ScopeAssignmentItem(BaseModel):
-    scope_type: Literal["organization", "program", "project"]
+    scope_type: Literal["organization", "portfolio", "program", "project"]
     scope_id: UUID
 
     model_config = {"from_attributes": True}

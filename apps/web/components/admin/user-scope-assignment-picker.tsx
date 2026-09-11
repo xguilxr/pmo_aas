@@ -14,7 +14,14 @@ import {
   type ScopeAssignmentItem,
   type ScopeType,
 } from "@/lib/api/admin";
-import { listOrganizations, listPrograms, type Organization, type Program } from "@/lib/api/organizations";
+import {
+  listOrganizations,
+  listPortfolios,
+  listPrograms,
+  type Organization,
+  type Portfolio,
+  type Program,
+} from "@/lib/api/organizations";
 import { listProjects, type Project } from "@/lib/api/projects";
 
 // ---------------------------------------------------------------------------
@@ -25,8 +32,12 @@ type LoadState<T> = { status: "idle" } | { status: "loading" } | { status: "done
 
 type TreeState = {
   orgs: LoadState<Organization[]>;
+  portfolios: Record<string, LoadState<Portfolio[]>>;
+  // ENH-204 (afecta US-167): proyectos de la org sin portafolio asignado.
+  noPortfolioProjects: Record<string, LoadState<Project[]>>;
   programs: Record<string, LoadState<Program[]>>;
   projects: Record<string, LoadState<Project[]>>;
+  // Proyectos colgando directo de un portafolio, sin programa.
   noProgProjects: Record<string, LoadState<Project[]>>;
   expanded: Set<string>;
 };
@@ -34,12 +45,16 @@ type TreeState = {
 type TreeAction =
   | { type: "orgs_loading" }
   | { type: "orgs_done"; orgs: Organization[] }
-  | { type: "progs_loading"; orgId: string }
-  | { type: "progs_done"; orgId: string; progs: Program[] }
+  | { type: "ports_loading"; orgId: string }
+  | { type: "ports_done"; orgId: string; ports: Portfolio[] }
+  | { type: "no_port_loading"; orgId: string }
+  | { type: "no_port_done"; orgId: string; projs: Project[] }
+  | { type: "progs_loading"; portId: string }
+  | { type: "progs_done"; portId: string; progs: Program[] }
   | { type: "projs_loading"; progId: string }
   | { type: "projs_done"; progId: string; projs: Project[] }
-  | { type: "no_prog_loading"; orgId: string }
-  | { type: "no_prog_done"; orgId: string; projs: Project[] }
+  | { type: "no_prog_loading"; portId: string }
+  | { type: "no_prog_done"; portId: string; projs: Project[] }
   | { type: "toggle"; key: string };
 
 function treeReducer(state: TreeState, action: TreeAction): TreeState {
@@ -48,18 +63,26 @@ function treeReducer(state: TreeState, action: TreeAction): TreeState {
       return { ...state, orgs: { status: "loading" } };
     case "orgs_done":
       return { ...state, orgs: { status: "done", data: action.orgs } };
+    case "ports_loading":
+      return { ...state, portfolios: { ...state.portfolios, [action.orgId]: { status: "loading" } } };
+    case "ports_done":
+      return { ...state, portfolios: { ...state.portfolios, [action.orgId]: { status: "done", data: action.ports } } };
+    case "no_port_loading":
+      return { ...state, noPortfolioProjects: { ...state.noPortfolioProjects, [action.orgId]: { status: "loading" } } };
+    case "no_port_done":
+      return { ...state, noPortfolioProjects: { ...state.noPortfolioProjects, [action.orgId]: { status: "done", data: action.projs } } };
     case "progs_loading":
-      return { ...state, programs: { ...state.programs, [action.orgId]: { status: "loading" } } };
+      return { ...state, programs: { ...state.programs, [action.portId]: { status: "loading" } } };
     case "progs_done":
-      return { ...state, programs: { ...state.programs, [action.orgId]: { status: "done", data: action.progs } } };
+      return { ...state, programs: { ...state.programs, [action.portId]: { status: "done", data: action.progs } } };
     case "projs_loading":
       return { ...state, projects: { ...state.projects, [action.progId]: { status: "loading" } } };
     case "projs_done":
       return { ...state, projects: { ...state.projects, [action.progId]: { status: "done", data: action.projs } } };
     case "no_prog_loading":
-      return { ...state, noProgProjects: { ...state.noProgProjects, [action.orgId]: { status: "loading" } } };
+      return { ...state, noProgProjects: { ...state.noProgProjects, [action.portId]: { status: "loading" } } };
     case "no_prog_done":
-      return { ...state, noProgProjects: { ...state.noProgProjects, [action.orgId]: { status: "done", data: action.projs } } };
+      return { ...state, noProgProjects: { ...state.noProgProjects, [action.portId]: { status: "done", data: action.projs } } };
     case "toggle": {
       const next = new Set(state.expanded);
       if (next.has(action.key)) next.delete(action.key);
@@ -107,6 +130,8 @@ export function UserScopeAssignmentPicker({
 }) {
   const [tree, dispatch] = useReducer(treeReducer, {
     orgs: { status: "idle" },
+    portfolios: {},
+    noPortfolioProjects: {},
     programs: {},
     projects: {},
     noProgProjects: {},
@@ -144,13 +169,23 @@ export function UserScopeAssignmentPicker({
     return () => { cancelled = true; };
   }, [userId, isPM]);
 
-  async function ensurePrograms(orgId: string) {
-    if (tree.programs[orgId]) return;
-    dispatch({ type: "progs_loading", orgId });
-    const progs = await listPrograms({ organization_id: orgId, is_active: true }).catch(() => [] as Program[]);
-    dispatch({ type: "progs_done", orgId, progs });
-    const noProgs = await listProjects({ organization_id: orgId, no_program: true, limit: 100 }).catch(() => [] as Project[]);
-    dispatch({ type: "no_prog_done", orgId, projs: noProgs });
+  async function ensurePortfolios(orgId: string) {
+    if (tree.portfolios[orgId]) return;
+    dispatch({ type: "ports_loading", orgId });
+    const ports = await listPortfolios(orgId, { is_active: true }).catch(() => [] as Portfolio[]);
+    dispatch({ type: "ports_done", orgId, ports });
+    // US-200: proyectos de la org que todavía no cuelgan de ningún portafolio.
+    const noPorts = await listProjects({ organization_id: orgId, no_portfolio: true, limit: 100 }).catch(() => [] as Project[]);
+    dispatch({ type: "no_port_done", orgId, projs: noPorts });
+  }
+
+  async function ensurePrograms(portId: string) {
+    if (tree.programs[portId]) return;
+    dispatch({ type: "progs_loading", portId });
+    const progs = await listPrograms({ portfolio_id: portId, is_active: true }).catch(() => [] as Program[]);
+    dispatch({ type: "progs_done", portId, progs });
+    const noProgs = await listProjects({ portfolio_id: portId, no_program: true, limit: 100 }).catch(() => [] as Project[]);
+    dispatch({ type: "no_prog_done", portId, projs: noProgs });
   }
 
   async function ensureProjects(progId: string) {
@@ -215,9 +250,9 @@ export function UserScopeAssignmentPicker({
       <header>
         <h2 className="text-base font-semibold text-[var(--text-primary)]">Visibilidad PM</h2>
         <p className="text-xs text-[var(--text-tertiary)]">
-          Selecciona las organizaciones, programas o proyectos que este PM puede ver.
-          Una org seleccionada da visibilidad a todos sus programas y proyectos.
-          Sin asignaciones → no ve nada.
+          Selecciona las organizaciones, portafolios, programas o proyectos que este PM
+          puede ver. Cada nivel da visibilidad a todo lo que cuelga de él (hacia abajo
+          únicamente). Sin asignaciones → no ve nada.
         </p>
       </header>
 
@@ -236,8 +271,8 @@ export function UserScopeAssignmentPicker({
               const orgKey = `org:${org.id}`;
               const expanded = tree.expanded.has(orgKey);
               const orgChecked = hasAssignment(assignments, "organization", org.id);
-              const progs = tree.programs[org.id];
-              const noProgs = tree.noProgProjects[org.id];
+              const ports = tree.portfolios[org.id];
+              const noPorts = tree.noPortfolioProjects[org.id];
 
               return (
                 <li key={org.id}>
@@ -245,7 +280,7 @@ export function UserScopeAssignmentPicker({
                     <button
                       type="button"
                       aria-label={expanded ? "Colapsar" : "Expandir"}
-                      onClick={() => handleToggle(orgKey, () => { if (!expanded) void ensurePrograms(org.id); })}
+                      onClick={() => handleToggle(orgKey, () => { if (!expanded) void ensurePortfolios(org.id); })}
                       className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[var(--text-tertiary)]"
                     >
                       <Icono nombre={expanded ? "chevron-down" : "chevron-right"} size={14} />
@@ -266,56 +301,121 @@ export function UserScopeAssignmentPicker({
 
                   {expanded && (
                     <div className="ml-8 border-l border-[var(--border-default)]">
-                      {/* Programs */}
-                      {(!progs || progs.status === "loading") ? (
+                      {/* Portfolios */}
+                      {(!ports || ports.status === "loading") ? (
                         <div className="px-3 py-2"><Skeleton className="h-3 w-32" /></div>
-                      ) : progs.status === "done" ? (
+                      ) : ports.status === "done" ? (
                         <>
-                          {progs.data.map((prog) => {
-                            const progKey = `prog:${prog.id}`;
-                            const progExpanded = tree.expanded.has(progKey);
-                            const progChecked = hasAssignment(assignments, "program", prog.id);
-                            const projs = tree.projects[prog.id];
+                          {ports.data.map((port) => {
+                            const portKey = `port:${port.id}`;
+                            const portExpanded = tree.expanded.has(portKey);
+                            const portChecked = hasAssignment(assignments, "portfolio", port.id);
+                            const progs = tree.programs[port.id];
+                            const noProgs = tree.noProgProjects[port.id];
 
                             return (
-                              <div key={prog.id}>
+                              <div key={port.id}>
                                 <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--color-muted)]">
                                   <button
                                     type="button"
-                                    aria-label={progExpanded ? "Colapsar" : "Expandir"}
-                                    onClick={() => handleToggle(progKey, () => { if (!progExpanded) void ensureProjects(prog.id); })}
+                                    aria-label={portExpanded ? "Colapsar" : "Expandir"}
+                                    onClick={() => handleToggle(portKey, () => { if (!portExpanded) void ensurePrograms(port.id); })}
                                     className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[var(--text-tertiary)]"
                                   >
-                                    <Icono nombre={progExpanded ? "chevron-down" : "chevron-right"} size={14} />
+                                    <Icono nombre={portExpanded ? "chevron-down" : "chevron-right"} size={14} />
                                   </button>
                                   <Checkbox
-                                    checked={progChecked}
+                                    checked={portChecked}
                                     onChange={(e) =>
-                                      setAssignments((prev) => toggleAssignment(prev, "program", prog.id, e.target.checked))
+                                      setAssignments((prev) => toggleAssignment(prev, "portfolio", port.id, e.target.checked))
                                     }
                                   />
-                                  <span className="text-sm text-[var(--text-primary)]">{prog.name}</span>
+                                  <span className="text-sm text-[var(--text-primary)]">{port.name}</span>
                                 </div>
 
-                                {progExpanded && (
+                                {portExpanded && (
                                   <div className="ml-8 border-l border-[var(--border-default)]">
-                                    {(!projs || projs.status === "loading") ? (
+                                    {(!progs || progs.status === "loading") ? (
                                       <div className="px-3 py-1.5"><Skeleton className="h-3 w-28" /></div>
-                                    ) : projs.status === "done" ? (
-                                      projs.data.length === 0 ? (
-                                        <p className="px-3 py-1.5 text-xs text-[var(--text-tertiary)]">Sin proyectos</p>
-                                      ) : (
-                                        projs.data.map((proj) => (
-                                          <ProjectRow
-                                            key={proj.id}
-                                            proj={proj}
-                                            checked={hasAssignment(assignments, "project", proj.id)}
-                                            onChange={(checked) =>
-                                              setAssignments((prev) => toggleAssignment(prev, "project", proj.id, checked))
-                                            }
-                                          />
-                                        ))
-                                      )
+                                    ) : progs.status === "done" ? (
+                                      <>
+                                        {progs.data.map((prog) => {
+                                          const progKey = `prog:${prog.id}`;
+                                          const progExpanded = tree.expanded.has(progKey);
+                                          const progChecked = hasAssignment(assignments, "program", prog.id);
+                                          const projs = tree.projects[prog.id];
+
+                                          return (
+                                            <div key={prog.id}>
+                                              <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--color-muted)]">
+                                                <button
+                                                  type="button"
+                                                  aria-label={progExpanded ? "Colapsar" : "Expandir"}
+                                                  onClick={() => handleToggle(progKey, () => { if (!progExpanded) void ensureProjects(prog.id); })}
+                                                  className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[var(--text-tertiary)]"
+                                                >
+                                                  <Icono nombre={progExpanded ? "chevron-down" : "chevron-right"} size={14} />
+                                                </button>
+                                                <Checkbox
+                                                  checked={progChecked}
+                                                  onChange={(e) =>
+                                                    setAssignments((prev) => toggleAssignment(prev, "program", prog.id, e.target.checked))
+                                                  }
+                                                />
+                                                <span className="text-sm text-[var(--text-primary)]">{prog.name}</span>
+                                              </div>
+
+                                              {progExpanded && (
+                                                <div className="ml-8 border-l border-[var(--border-default)]">
+                                                  {(!projs || projs.status === "loading") ? (
+                                                    <div className="px-3 py-1.5"><Skeleton className="h-3 w-28" /></div>
+                                                  ) : projs.status === "done" ? (
+                                                    projs.data.length === 0 ? (
+                                                      <p className="px-3 py-1.5 text-xs text-[var(--text-tertiary)]">Sin proyectos</p>
+                                                    ) : (
+                                                      projs.data.map((proj) => (
+                                                        <ProjectRow
+                                                          key={proj.id}
+                                                          proj={proj}
+                                                          checked={hasAssignment(assignments, "project", proj.id)}
+                                                          onChange={(checked) =>
+                                                            setAssignments((prev) => toggleAssignment(prev, "project", proj.id, checked))
+                                                          }
+                                                        />
+                                                      ))
+                                                    )
+                                                  ) : null}
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+
+                                        {/* No-program projects (colgando directo del portafolio) */}
+                                        {noProgs?.status === "done" && noProgs.data.length > 0 && (
+                                          <div>
+                                            <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[var(--text-tertiary)]">
+                                              <span className="ml-6">Sin programa</span>
+                                            </div>
+                                            <div className="ml-8 border-l border-[var(--border-default)]">
+                                              {noProgs.data.map((proj) => (
+                                                <ProjectRow
+                                                  key={proj.id}
+                                                  proj={proj}
+                                                  checked={hasAssignment(assignments, "project", proj.id)}
+                                                  onChange={(checked) =>
+                                                    setAssignments((prev) => toggleAssignment(prev, "project", proj.id, checked))
+                                                  }
+                                                />
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {progs.data.length === 0 && (noProgs?.status !== "done" || noProgs.data.length === 0) && (
+                                          <p className="px-3 py-1.5 text-xs text-[var(--text-tertiary)]">Sin programas ni proyectos</p>
+                                        )}
+                                      </>
                                     ) : null}
                                   </div>
                                 )}
@@ -323,14 +423,14 @@ export function UserScopeAssignmentPicker({
                             );
                           })}
 
-                          {/* No-program projects */}
-                          {noProgs?.status === "done" && noProgs.data.length > 0 && (
+                          {/* No-portfolio projects (colgando directo de la org) */}
+                          {noPorts?.status === "done" && noPorts.data.length > 0 && (
                             <div>
                               <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[var(--text-tertiary)]">
-                                <span className="ml-6">Sin programa</span>
+                                <span className="ml-6">Sin portafolio</span>
                               </div>
                               <div className="ml-8 border-l border-[var(--border-default)]">
-                                {noProgs.data.map((proj) => (
+                                {noPorts.data.map((proj) => (
                                   <ProjectRow
                                     key={proj.id}
                                     proj={proj}
@@ -344,8 +444,8 @@ export function UserScopeAssignmentPicker({
                             </div>
                           )}
 
-                          {progs.data.length === 0 && (noProgs?.status !== "done" || noProgs.data.length === 0) && (
-                            <p className="px-3 py-1.5 text-xs text-[var(--text-tertiary)]">Sin programas ni proyectos</p>
+                          {ports.data.length === 0 && (noPorts?.status !== "done" || noPorts.data.length === 0) && (
+                            <p className="px-3 py-1.5 text-xs text-[var(--text-tertiary)]">Sin portafolios ni proyectos</p>
                           )}
                         </>
                       ) : null}
