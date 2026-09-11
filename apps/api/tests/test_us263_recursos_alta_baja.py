@@ -116,3 +116,41 @@ async def test_quitar_actor_con_participacion_activa_se_rechaza(client, db_sessi
 
     d = await client.delete(f"/api/v1/actors/{actor_id}", headers=auth["_authz"])
     assert d.status_code in (400, 409, 422), d.text
+
+
+@pytest.mark.asyncio
+async def test_quitar_actor_con_participacion_en_proyecto_cerrado_no_se_rechaza(client, db_session):
+    """BUG (owner, 2026-09-11): el check original contaba cualquier
+    `is_active=True` sin filtrar proyecto cerrado/borrado — un actor sin
+    nada visible en la UI se quedaba bloqueado por una participación en un
+    proyecto ya cerrado (`is_active` de la participación no se limpia al
+    cerrar un proyecto). Debe poder darse de baja igual."""
+    tenant, auth, org_a, _org_b = await _setup(client, db_session)
+    r = await client.post(
+        "/api/v1/actors",
+        json={"name": "Marta Solis", "email": "marta@example.com", "organization_id": org_a},
+        headers=auth["_authz"],
+    )
+    actor_id = r.json()["id"]
+
+    org = (await db_session.execute(select(Organization).where(Organization.id == org_a))).scalar_one()
+    project = Project(
+        tenant_id=tenant.id,
+        organization_id=org.id,
+        folio="PRJ-US263-CERRADO",
+        name="Proyecto ya cerrado",
+        phase="cerrado",
+    )
+    db_session.add(project)
+    await db_session.flush()
+    participation = ProjectParticipation(
+        tenant_id=tenant.id,
+        project_id=project.id,
+        actor_id=actor_id,
+        is_active=True,
+    )
+    db_session.add(participation)
+    await db_session.commit()
+
+    d = await client.delete(f"/api/v1/actors/{actor_id}", headers=auth["_authz"])
+    assert d.status_code == 204, d.text

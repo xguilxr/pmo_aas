@@ -107,6 +107,28 @@ export async function apiFetch<T = unknown>(path: string, opts: RequestOptions =
   return data as T;
 }
 
+/**
+ * FASE-9 (revamp v2, pasada 1) — un único parser de `Content-Disposition`
+ * para toda descarga vía blob. Antes cada endpoint repetía o se saltaba
+ * este parseo (ver BUG en `modules.ts`: `a.download = ""` cae al filename
+ * de la `blob:` URL, que no tiene extensión).
+ */
+export function nombreDeDescarga(res: Response, fallback: string): string {
+  const header = res.headers.get("content-disposition");
+  if (!header) return fallback;
+  const utf8 = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(header);
+  if (utf8 && utf8[1]) {
+    try {
+      return decodeURIComponent(utf8[1].trim());
+    } catch {
+      // ignora errores de decode y cae al filename simple
+    }
+  }
+  const simple = /filename\s*=\s*"?([^";]+)"?/i.exec(header);
+  if (simple && simple[1]) return simple[1].trim();
+  return fallback;
+}
+
 function safeJsonParse(text: string): unknown {
   try {
     return JSON.parse(text);

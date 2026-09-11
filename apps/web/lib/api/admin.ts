@@ -139,7 +139,7 @@ export function setExcludedOrganizations(
 }
 
 // US-167/169 — Scope assignments para PM users.
-export type ScopeType = "organization" | "program" | "project";
+export type ScopeType = "organization" | "portfolio" | "program" | "project";
 
 export type ScopeAssignmentItem = {
   scope_type: ScopeType;

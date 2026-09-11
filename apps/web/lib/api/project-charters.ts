@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, nombreDeDescarga } from "@/lib/api";
 
 // Sección 4 del charter — derivada desde el proyecto (read-only).
 export type CharterSection4 = {
@@ -133,10 +133,11 @@ export async function downloadCharter(
     throw new Error(`Falló la descarga (HTTP ${res.status})`);
   }
   const blob = await res.blob();
+  const filename = nombreDeDescarga(res, `charter-${projectId}.${format}`);
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = blobUrl;
-  a.download = "";
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();

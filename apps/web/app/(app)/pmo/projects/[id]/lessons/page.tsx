@@ -159,7 +159,7 @@ export default function LessonsPage() {
       }
       const cd = res.headers.get("Content-Disposition") ?? "";
       const match = /filename="([^"]+)"/.exec(cd);
-      const name = match ? match[1] : `lecciones-${id}.xlsx`;
+      const name = match ? match[1] : `lecciones-${id}-${new Date().toISOString().slice(0, 10)}.xlsx`;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

@@ -94,10 +94,10 @@ async def test_us039_generate_and_groups(client, db_session):
     assert r.status_code == 200, r.text
     assert r.headers["content-type"] == "application/pdf"
     assert r.content.startswith(b"%PDF")
-    # ENH-014: nombre = "Reporte de Seguimiento - {project_name} - {datetime}.pdf"
+    # nombre = "reporte-seguimiento-{project-slug}-{YYYY-MM-DD}.pdf"
     disposition = r.headers.get("content-disposition", "")
     assert disposition.startswith("attachment;")
-    assert "Reporte de Seguimiento - Proyecto_SP-0001 - " in disposition
+    assert "reporte-seguimiento-proyecto-sp-0001-" in disposition
     assert ".pdf" in disposition
 
 
@@ -189,7 +189,7 @@ async def test_enh014_seguimiento_preview_inline_disposition(client, db_session)
     assert dl.content.startswith(b"%PDF")
     disposition = dl.headers.get("content-disposition", "")
     assert disposition.startswith("inline;")
-    assert "Reporte de Seguimiento - Proyecto_SP-0010 - " in disposition
+    assert "reporte-seguimiento-proyecto-sp-0010-" in disposition
 
 
 @pytest.mark.asyncio

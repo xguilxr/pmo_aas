@@ -95,16 +95,22 @@ async def test_plan_vs_actual_filter_phase(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_plan_vs_actual_csv_export(client, db_session):
+async def test_plan_vs_actual_xlsx_export(client, db_session):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
     t, auth, org_id = await _setup(client, db_session)
     await _seed_projects(db_session, str(t.id), org_id)
-    r = await client.get("/api/v1/dashboard/plan-vs-actual/export.csv", headers=auth["_authz"])
+    r = await client.get("/api/v1/dashboard/plan-vs-actual/export.xlsx", headers=auth["_authz"])
     assert r.status_code == 200
-    content = r.content.decode()
-    assert "folio" in content
-    assert "health" in content
+    wb = load_workbook(BytesIO(r.content))
+    ws = wb["Plan vs real"]
+    header = [c.value for c in ws[1]]
+    assert "folio" in header
+    assert "health" in header
     # 4 filas + header
-    assert content.count("\r\n") >= 4 or content.count("\n") >= 4
+    assert ws.max_row >= 5
 
 
 @pytest.mark.asyncio

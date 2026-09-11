@@ -36,13 +36,13 @@ def artifact_filename(project_name: str | None, kind: str, ext: str) -> str:
 
 
 def raid_display_filename(project_name: str | None) -> str:
-    """ENH-152: filename legible `RAID-[Nombre Proyecto].xlsx`.
+    """`raid-{project-slug}-{YYYY-MM-DD}.xlsx` (minúsculas, sin espacios).
 
-    A diferencia de `artifact_filename` (que slugifica), preserva
-    mayúsculas, espacios y acentos del nombre del proyecto; sólo elimina
-    los caracteres ilegales en un filename. Fallback `RAID-proyecto.xlsx`.
-    El `Content-Disposition` ya expone `filename*` UTF-8 para los acentos.
+    Antes preservaba mayúsculas/espacios (ENH-152); normalizado al patrón
+    `<que>-<contexto>-<YYYY-MM-DD>.<ext>` usado por el resto de descargas.
     """
-    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", project_name or "")
-    name = re.sub(r"\s+", " ", name).strip()
-    return f"RAID-{name or 'proyecto'}.xlsx"
+    import datetime as _dt
+
+    slug = slugify_project_name(project_name)
+    stamp = _dt.date.today().isoformat()
+    return f"raid-{slug}-{stamp}.xlsx"

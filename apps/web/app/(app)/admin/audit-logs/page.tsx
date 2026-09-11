@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
-import { auditLogsCsvUrl, listAuditLogs, type AuditLogEntry } from "@/lib/api/admin-panel";
+import { auditLogsXlsxUrl, listAuditLogs, type AuditLogEntry } from "@/lib/api/admin-panel";
 
 const ENTITY_TYPES = [
   "user",
@@ -74,7 +74,7 @@ export default function AuditLogsPage() {
   }, [action, entityType, userId, dateFrom, dateTo, page]);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
-  const csvHref = useMemo(() => auditLogsCsvUrl(apiBase), [apiBase]);
+  const xlsxHref = useMemo(() => auditLogsXlsxUrl(apiBase), [apiBase]);
 
   return (
     <div className="space-y-5">
@@ -97,14 +97,13 @@ export default function AuditLogsPage() {
             compliance.
           </p>
         </div>
-        <a
-          href={csvHref}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="inline-flex h-8 items-center gap-1.75 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-3 text-[13px] font-medium text-[var(--text-primary)] shadow-[var(--relieve-control)] hover:bg-[var(--color-subtle)]"
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => window.open(xlsxHref, "_blank", "noreferrer,noopener")}
         >
-          <Icono nombre="download" size={15} /> Exportar CSV
-        </a>
+          <Icono nombre="download" size={15} /> Exportar Excel
+        </Button>
       </header>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}

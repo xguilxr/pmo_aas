@@ -1,4 +1,3 @@
-import csv
 import io
 from datetime import date, timedelta
 from typing import Any, TypeVar
@@ -971,8 +970,8 @@ def _plan_progress_for(p: Project) -> int:
     return max(0, min(100, int(razon_a_pct(elapsed, total, decimales=0))))
 
 
-@router.get("/plan-vs-actual/export.csv")
-async def plan_vs_actual_csv(
+@router.get("/plan-vs-actual/export.xlsx")
+async def plan_vs_actual_xlsx(
     organization_id: UUID | None = Query(default=None),
     portfolio_id: UUID | None = Query(default=None),
     program_id: UUID | None = Query(default=None),
@@ -980,27 +979,42 @@ async def plan_vs_actual_csv(
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
 ):
-    # El CSV es la misma tabla: se delega para que no puedan divergir — un
-    # export que filtra distinto de la pantalla es un informe que no cuadra.
+    """US-272 (FASE-9, revamp v2, pasada 1) — XLSX en vez de CSV, mismo
+    formato que el resto de las descargas del producto."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+
+    from app.core.tipografia import aplicar_a_workbook
+
+    # La misma tabla que la pantalla: se delega para que no puedan divergir
+    # — un export que filtra distinto de la pantalla es un informe que no
+    # cuadra.
     data = await plan_vs_actual(
         organization_id, portfolio_id, program_id, phase, cu, db
     )
-    buf = io.StringIO()
-    writer = csv.DictWriter(
-        buf,
-        fieldnames=[
-            "folio", "name", "pm_name", "end_date", "budget_plan",
-            "budget_actual", "progress_plan", "progress_actual", "health",
-        ],
-    )
-    writer.writeheader()
+    campos = [
+        "folio", "name", "pm_name", "end_date", "budget_plan",
+        "budget_actual", "progress_plan", "progress_actual", "health",
+    ]
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Plan vs real"
+    ws.append(campos)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
     for row in data:
-        writer.writerow({k: row.get(k, "") or "" for k in writer.fieldnames})
+        ws.append([row.get(k, "") or "" for k in campos])
+    ws.freeze_panes = "A2"
+    aplicar_a_workbook(wb)
+
+    buf = io.BytesIO()
+    wb.save(buf)
     buf.seek(0)
     return StreamingResponse(
-        iter([buf.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=plan_vs_actual.csv"},
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="plan-vs-real.xlsx"'},
     )
 
 

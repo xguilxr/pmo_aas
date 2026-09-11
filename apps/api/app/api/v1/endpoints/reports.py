@@ -300,18 +300,14 @@ class LookAheadGenerate(BaseModel):
 _DEFAULT_PERIOD_DAYS = 7
 
 
-def _sanitize_filename_part(value: str) -> str:
-    """Replace whitespace with underscore and strip forbidden filename chars."""
-    cleaned = re.sub(r"\s+", "_", value.strip())
-    cleaned = re.sub(r"[\\/:*?\"<>|]", "", cleaned)
-    return cleaned or "sin_nombre"
-
-
 def _report_filename(tipo: str, project_name: str, ts: datetime) -> str:
-    """Build filename per ENH-014: `Reporte de {Tipo} - {Nombre} - {datetime}.pdf`."""
-    safe_name = _sanitize_filename_part(project_name)
-    stamp = ts.strftime("%Y-%m-%d_%H-%M-%S")
-    return f"Reporte de {tipo} - {safe_name} - {stamp}.pdf"
+    """Build filename: `reporte-{tipo}-{proyecto}-{YYYY-MM-DD}.pdf` (minúsculas, sin espacios)."""
+    from app.services.filename_slug import slugify_project_name
+
+    tipo_slug = slugify_project_name(tipo, fallback="reporte")
+    name_slug = slugify_project_name(project_name)
+    stamp = ts.strftime("%Y-%m-%d")
+    return f"reporte-{tipo_slug}-{name_slug}-{stamp}.pdf"
 
 
 def _pdf_response(pdf: bytes, filename: str, *, inline: bool = False) -> Response:

@@ -1,11 +1,15 @@
 """US-167 — Asignaciones de visibilidad positivas para usuarios PM.
 
 Por defecto los usuarios con role_type='user' (PM) no ven nada hasta que
-se les asigna explícitamente acceso a una org, programa o proyecto.
-La visibilidad hereda hacia abajo:
-- Org → todos sus programas y proyectos.
-- Program → todos sus proyectos (y la org queda visible como contexto).
-- Project → solo ese proyecto (org y programa quedan visibles como contexto).
+se les asigna explícitamente acceso a una org, portafolio, programa o
+proyecto. La visibilidad hereda hacia abajo:
+- Org → todos sus portafolios, programas y proyectos.
+- Portfolio (ENH-204 — afecta US-167): todos sus programas y proyectos
+  (org visible como contexto). No hereda a otros portafolios de la misma org.
+- Program → todos sus proyectos (org y portafolio quedan visibles como
+  contexto).
+- Project → solo ese proyecto (org, portafolio y programa quedan visibles
+  como contexto).
 
 Admin y pm_sr ignoran esta tabla — siempre ven todo.
 """
@@ -19,7 +23,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, new_uuid
 
-ScopeType = Literal["organization", "program", "project"]
+ScopeType = Literal["organization", "portfolio", "program", "project"]
 
 
 class UserScopeAssignment(Base):
