@@ -325,21 +325,27 @@ async def test_treemap_anida_el_portafolio_como_nivel_propio(client, db_session)
 
 
 @pytest.mark.asyncio
-async def test_plan_vs_actual_csv_filtra_igual_que_la_pantalla(client, db_session):
+async def test_plan_vs_actual_xlsx_filtra_igual_que_la_pantalla(client, db_session):
     """Un export que filtra distinto de la tabla es un informe que no cuadra."""
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
     e = await _escenario(client, db_session)
     h = e["auth"]["_authz"]
 
     r = await client.get(
-        f"/api/v1/dashboard/plan-vs-actual/export.csv?portfolio_id={e['pf_a'].id}",
+        f"/api/v1/dashboard/plan-vs-actual/export.xlsx?portfolio_id={e['pf_a'].id}",
         headers=h,
     )
     assert r.status_code == 200, r.text
-    cuerpo = r.text
+    wb = load_workbook(BytesIO(r.content))
+    ws = wb["Plan vs real"]
+    nombres = {row[1].value for row in ws.iter_rows(min_row=2)}
     for nombre in ("P1", "P2", "P3"):
-        assert nombre in cuerpo
+        assert nombre in nombres
     for nombre in ("P4", "P5"):
-        assert f",{nombre}," not in cuerpo
+        assert nombre not in nombres
 
 
 # ---------------------------------------------------------------------------

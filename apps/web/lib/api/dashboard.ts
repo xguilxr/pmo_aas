@@ -266,9 +266,9 @@ export function getPlanVsActual(
   return apiFetch<PlanVsActualRow[]>(`/api/v1/dashboard/plan-vs-actual${qs(params)}`);
 }
 
-export function planVsActualCsvUrl(
+export function planVsActualXlsxUrl(
   apiBase: string,
   params: PlanVsActualParams = {},
 ): string {
-  return `${apiBase.replace(/\/+$/, "")}/api/v1/dashboard/plan-vs-actual/export.csv${qs(params)}`;
+  return `${apiBase.replace(/\/+$/, "")}/api/v1/dashboard/plan-vs-actual/export.xlsx${qs(params)}`;
 }
