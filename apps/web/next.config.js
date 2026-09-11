@@ -23,6 +23,14 @@ const nextConfig = {
         destination: "/pmo?tab=board",
         permanent: true,
       },
+      // FASE-6 (revamp v2, US-D): la clase "resources" se reubica en
+      // /pmo/resources — regla específica antes de la genérica de abajo.
+      {
+        source: "/pmo/imports",
+        has: [{ type: "query", key: "kind", value: "resources" }],
+        destination: "/pmo/resources?tab=importar",
+        permanent: true,
+      },
       {
         source: "/pmo/imports",
         destination: "/pmo?tab=importar",

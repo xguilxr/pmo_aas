@@ -111,32 +111,79 @@ export function Importador({ kind }: { kind: ClaseDeImportacion }) {
   // Paso actual del flujo — solo presentación, no gobierna nada.
   const paso: PasoImport = resultado ? 4 : preview ? 3 : archivo || subiendo ? 2 : 1;
 
+  const [descargando, setDescargando] = useState(false);
+
   /**
    * La plantilla se genera en el navegador desde las columnas que el backend
    * declara. No es un archivo estático: uno se queda viejo el día que se añade
    * una columna, y el usuario descubre el desajuste al subirlo.
+   *
+   * FASE-6 (US-D) — XLSX en vez de CSV: hoja "Plantilla" con encabezados y
+   * ejemplo, hoja "Instrucciones" con los campos obligatorios, misma fuente
+   * del sistema que el resto de los Excel (US-193).
    */
   const descargarPlantilla = useCallback(
-    (soloObligatorias: boolean) => {
+    async (soloObligatorias: boolean) => {
       const cols = soloObligatorias ? obligatorias : columnas;
-      if (!cols.length) return;
-      const encabezados = cols.map((c) => c.label).join(",");
-      // Una fila de ejemplo con los valores admitidos, cuando el vocabulario es
-      // cerrado. Sin ella, «Tipo» es una columna vacía que hay que adivinar.
-      const ejemplo = cols
-        .map((c) => (c.values.length ? c.values[0] : ""))
-        .join(",");
-      const csv = `﻿${encabezados}\n${ejemplo}\n`;
-      const url = URL.createObjectURL(
-        new Blob([csv], { type: "text/csv;charset=utf-8" }),
-      );
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `plantilla-${kind}${soloObligatorias ? "-minima" : ""}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (!cols.length || descargando) return;
+      setDescargando(true);
+      try {
+        const [ExcelJS, { aplicarFuente }] = await Promise.all([
+          import("exceljs").then((m) => m.default),
+          import("@/lib/plan-template"),
+        ]);
+        const wb = new ExcelJS.Workbook();
+        wb.creator = "PMO aaS";
+
+        const wsPlantilla = wb.addWorksheet("Plantilla");
+        wsPlantilla.columns = cols.map((c) => ({
+          header: c.label,
+          key: c.key,
+          width: Math.max(16, c.label.length + 4),
+        }));
+        wsPlantilla.getRow(1).font = { bold: true };
+        wsPlantilla.addRow(
+          Object.fromEntries(
+            cols.map((c) => [c.key, c.values.length ? c.values[0] : ""]),
+          ),
+        );
+
+        const wsInstrucciones = wb.addWorksheet("Instrucciones");
+        wsInstrucciones.columns = [
+          { header: "Columna", key: "col", width: 26 },
+          { header: "Obligatoria", key: "req", width: 14 },
+          { header: "Valores admitidos", key: "vals", width: 50 },
+        ];
+        wsInstrucciones.getRow(1).font = { bold: true };
+        for (const c of columnas) {
+          wsInstrucciones.addRow({
+            col: c.label,
+            req: c.required ? "Sí" : "No",
+            vals: c.values.length ? c.values.join(", ") : "Libre",
+          });
+        }
+
+        aplicarFuente(wsPlantilla);
+        aplicarFuente(wsInstrucciones);
+
+        const buf = await wb.xlsx.writeBuffer();
+        const url = URL.createObjectURL(
+          new Blob([buf], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          }),
+        );
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `plantilla-${kind}${soloObligatorias ? "-minima" : ""}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } finally {
+        setDescargando(false);
+      }
     },
-    [kind, columnas, obligatorias],
+    [kind, columnas, obligatorias, descargando],
   );
 
   async function subir() {
@@ -292,7 +339,7 @@ export function Importador({ kind }: { kind: ClaseDeImportacion }) {
               type="button"
               variant="secondary"
               onClick={() => descargarPlantilla(false)}
-              disabled={!columnas.length}
+              disabled={!columnas.length || descargando}
             >
               <Icono nombre="download" size={15} />
               Plantilla completa
@@ -301,7 +348,7 @@ export function Importador({ kind }: { kind: ClaseDeImportacion }) {
               type="button"
               variant="secondary"
               onClick={() => descargarPlantilla(true)}
-              disabled={!obligatorias.length}
+              disabled={!obligatorias.length || descargando}
               title="Solo las columnas obligatorias — la misma plantilla sin lo opcional"
             >
               <Icono nombre="download" size={15} />

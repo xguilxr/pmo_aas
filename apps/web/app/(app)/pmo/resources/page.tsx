@@ -18,6 +18,7 @@
  */
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { healthTone } from "@/components/health-panel";
@@ -34,6 +35,7 @@ import { confirmarDestructivo } from "@/lib/confirmar";
 import { deleteActor } from "@/lib/api/areas";
 import { ActorFormModal } from "@/components/actor-form-modal";
 import { CapacidadSemanal } from "@/components/capacidad-semanal";
+import { Importador } from "@/components/importador";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import {
   getCapacityConflicts,
@@ -68,14 +70,15 @@ const PESTANAS: { v: Pestana; label: string }[] = [
   { v: "capacidad", label: "Capacidad" },
 ];
 
-/** Las secciones de dentro del catálogo — las cuatro de US-183. */
-type Tab = "people" | "roles" | "areas" | "conflicts";
+/** Las secciones de dentro del catálogo — las cuatro de US-183 + importar (FASE-6, US-D). */
+type Tab = "people" | "roles" | "areas" | "conflicts" | "import";
 
 const TABS: { v: Tab; label: string }[] = [
   { v: "people", label: "Personas" },
   { v: "roles", label: "Roles" },
   { v: "areas", label: "Áreas y Equipos" },
   { v: "conflicts", label: "Conflictos" },
+  { v: "import", label: "Importar" },
 ];
 
 function fmtPct(n: number | null | undefined): string {
@@ -107,11 +110,14 @@ export default function ResourcesPage() {
   // suma todos sus proyectos, y eso lo resuelve el servidor.
   const { efectiva, activaObj } = useOrganizacionActiva();
   const orgFiltro = efectiva || undefined;
+  const searchParams = useSearchParams();
   const [pestana, setPestana] = useState<Pestana>("catalogo");
   const [mostrarAlta, setMostrarAlta] = useState(false);
   const [recargarTick, setRecargarTick] = useState(0);
   const [win, setWin] = useState<CapacityWindow>("week");
-  const [tab, setTab] = useState<Tab>("people");
+  const [tab, setTab] = useState<Tab>(() =>
+    searchParams.get("tab") === "importar" ? "import" : "people",
+  );
   const [semanas, setSemanas] = useState(12);
   const [carga, setCarga] = useState<CargaSemanalResponse | null>(null);
   const [cargandoCarga, setCargandoCarga] = useState(true);
@@ -344,12 +350,14 @@ export default function ResourcesPage() {
         })}
       </div>
 
-      {loading ? (
+      {loading && tab !== "import" ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
+      ) : tab === "import" ? (
+        <Importador kind="resources" />
       ) : resources.length === 0 ? (
         <EmptyState />
       ) : tab === "people" ? (
