@@ -374,6 +374,10 @@ que existir antes de arrancar. Cada fase = 1 branch `claude/revamp-v2-fN-*`,
 1 sesión, CI verde y merge antes de la siguiente. Migraciones consecutivas,
 nunca en paralelo (CLAUDE.md §8).
 
+**Runbook por fase** (archivos, líneas, pasos, TC y commits, para ejecutar
+sin interpretar): [`revamp-v2/README.md`](revamp-v2/README.md) →
+`FASE-0.md` … `FASE-9.md`. Lo de abajo es el resumen; el runbook manda.
+
 | Fase | Nombre | Puntos | Tamaño | Gate | Epics |
 |---|---|---|---|---|---|
 | 0 | Bugs visibles | 13 | S | ninguno | EP005, EP006 |
@@ -441,7 +445,9 @@ columnas de detalle las fija W6.
 (D1 confirma que la clave es el correo). UI: quitar/poner recurso, % asignado
 visible (`allocation_pct` de `PARTICIPATION`, ya existe), import con
 plantilla XLSX que crea actores nuevos y valida existentes por esa clave.
-Import de recursos sale de `/pmo/imports` y entra aquí.
+El importador de recursos **ya existe** (`importacion.py`, `kind =
+projects | resources`, UI en `/pmo/imports`): se reubica en Recursos y se
+le cambia la plantilla de CSV a XLSX; no se construye de cero.
 
 **Fase 7 — Admin y Cuenta.** `/admin/hierarchy` (W7): árbol con mover
 proyecto entre programas, crear/borrar portafolio-programa-proyecto, dar de
@@ -479,12 +485,13 @@ cierre.
 
 | # | Decisión | Bloquea | Opción recomendada |
 |---|---|---|---|
-| D1 | Clave de unicidad del recurso: `(organization_id, email)` | Fase 6 | Sí, correo. Los actores sin correo (proveedores) piden uno al importar |
+| D1 | Clave de unicidad del recurso. Hoy ya existe `uq_actors_tenant_email` = `(tenant_id, email)`: un correo **no** puede estar en dos organizaciones del mismo tenant, lo contrario de lo que pide el punto 5 | Fase 6 | Cambiar a `(tenant_id, organization_id, email)` con migración (FASE-6, commit 1). Los actores sin correo piden uno al importar |
 | D2 | Qué rol ve "todas las organizaciones" | Fase 2 | `role_type = admin` del tenant; el resto solo su organización |
 | D3 | Portafolio-programa base: fila sembrada por organización, o "sin portafolio" calculado | Fase 4 | Sembrado (migración): así el Gantt y la lista siempre tienen dónde agrupar |
 | D4 | Dónde queda `/admin/areas` (áreas, equipos, roles de proyecto) | Fase 7 | Dentro de Recursos, como pestaña |
 | D5 | BYOK vs proveedor fijo, y cobro de excedente de tokens | Plan e IA | Sin recomendación: decisión de producto (punto 11) |
 | D6 | Contenido del reporte de Cambios y columnas de detalle de Proyectos | Fases 5, 8 | Se cierran en W5 y W6 |
+| D7 | Logo de PMO-aaS para el header: no existe ningún asset en `apps/web/public/` (solo `icons/`) | Fase 1 | El owner entrega SVG; mientras, la marca es texto `PMO · aaS` (FASE-1, commit 2) |
 
 ---
 
