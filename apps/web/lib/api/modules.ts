@@ -1,4 +1,4 @@
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, nombreDeDescarga } from "@/lib/api";
 
 function qs(params: Record<string, unknown>): string {
   const usp = new URLSearchParams();
@@ -504,21 +504,6 @@ export type DocumentDownloadInfo = {
  *
  * Devuelve `null` si no encuentra nada parseable.
  */
-function parseContentDispositionFilename(header: string | null): string | null {
-  if (!header) return null;
-  const utf8 = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(header);
-  if (utf8 && utf8[1]) {
-    try {
-      return decodeURIComponent(utf8[1].trim());
-    } catch {
-      // ignora errores de decode y cae al filename simple
-    }
-  }
-  const simple = /filename\s*=\s*"?([^";]+)"?/i.exec(header);
-  if (simple && simple[1]) return simple[1].trim();
-  return null;
-}
-
 export function getDocumentDownloadUrl(
   documentId: string,
 ): Promise<DocumentDownloadInfo> {
@@ -551,13 +536,7 @@ export async function openDocumentForDownload(
       throw new Error(`Falló la descarga (HTTP ${res.status})`);
     }
     const blob = await res.blob();
-    // BUG: con `a.download = ""` el browser cae al filename de la URL.
-    // En `blob:` URLs no hay filename → Chrome guesses `.file`. Hay que
-    // parsear `Content-Disposition` y settear `a.download` al filename
-    // real (con extensión) para que se descargue correctamente.
-    const filename =
-      parseContentDispositionFilename(res.headers.get("content-disposition")) ??
-      "documento";
+    const filename = nombreDeDescarga(res, "documento");
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = blobUrl;
