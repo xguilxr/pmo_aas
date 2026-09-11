@@ -24,6 +24,7 @@ import { ProgramModal } from "@/components/program-modal";
 import { PortfolioForm } from "@/components/portfolio-form";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import { ApiError } from "@/lib/api";
+import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   deletePortfolio,
   deleteProgram,
@@ -114,7 +115,14 @@ export default function PmoConfigPage() {
   }
 
   async function borrarPortafolio(pf: Portfolio) {
-    if (!confirm(`¿Borrar el portafolio "${pf.name}"?`)) return;
+    if (
+      !confirmarDestructivo({
+        objeto: `el portafolio «${pf.name}»`,
+        consecuencia: "Sus programas y proyectos pasan al portafolio «General».",
+        reversibilidad: "recuperable",
+      })
+    )
+      return;
     try {
       await deletePortfolio(pf.id);
       await cargar();
@@ -124,7 +132,14 @@ export default function PmoConfigPage() {
   }
 
   async function borrarPrograma(pg: Program) {
-    if (!confirm(`¿Borrar el programa "${pg.name}"?`)) return;
+    if (
+      !confirmarDestructivo({
+        objeto: `el programa «${pg.name}»`,
+        consecuencia: "Sus proyectos pasan al programa «General» del portafolio.",
+        reversibilidad: "recuperable",
+      })
+    )
+      return;
     try {
       await deleteProgram(pg.id);
       await cargar();
