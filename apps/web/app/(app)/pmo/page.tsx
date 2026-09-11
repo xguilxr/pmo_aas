@@ -101,6 +101,9 @@ export default function PortafolioVistaMaestra() {
   const [error, setError] = useState<string | null>(null);
 
   const [proyectosRoadmap, setProyectosRoadmap] = useState<Project[]>([]);
+  // FASE-4 (revamp v2) — año del roadmap trimestral. Piso 2026 (owner: "todo
+  // a partir del 26 hacia adelante"), sin techo.
+  const [anioRoadmap, setAnioRoadmap] = useState(() => Math.max(2026, new Date().getFullYear()));
   const [healthMatrix, setHealthMatrix] = useState<HealthMatrixResponse | null>(null);
   const [evalTarget, setEvalTarget] = useState<{ id: string; name: string } | null>(null);
   const [healthReportBusy, setHealthReportBusy] = useState(false);
@@ -554,7 +557,12 @@ export default function PortafolioVistaMaestra() {
           aria-label="Roadmap trimestral"
           className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
         >
-          <RoadmapTrimestral proyectos={proyectosRoadmap} portafolios={portfolios} />
+          <RoadmapTrimestral
+            proyectos={proyectosRoadmap}
+            portafolios={portfolios}
+            year={anioRoadmap}
+            onYearChange={setAnioRoadmap}
+          />
         </section>
       ) : null}
 
