@@ -83,7 +83,8 @@ flowchart TB
         subgraph ADMIN ["/admin — admin tenant"]
             ADM_HOME["/admin"]:::admin
             ADM_TEN["/admin/tenant"]:::admin
-            ADM_AI["/admin/ai"]:::admin
+            ADM_PLAN["/admin/plan<br/>(tabs Plan · IA — FASE-7)"]:::admin
+            ADM_HIER["/admin/hierarchy<br/>(FASE-7)"]:::admin
             ADM_ORG["/admin/organizations"]:::admin
             ADM_USR["/admin/users"]:::admin
             ADM_PERM["/admin/permissions"]:::admin
@@ -336,8 +337,8 @@ Total: **76 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 |---|---|---|
 | `/admin` | Landing con 7 paneles. | Sidebar admin |
 | `/admin/tenant` | Branding, dominio, config, stats (consolidó `/admin/settings` y `/admin/supervision` via tabs). | Sidebar + panel |
-| `/admin/ai` | Provider de IA (modo `byo`). | Sidebar + panel |
-| `/admin/organizations` | CRUD organizaciones. | Sidebar + panel |
+| `/admin/hierarchy` | FASE-7 (US-A): árbol organización → portafolio → programa → proyecto de todo el tenant — mover, crear, borrar (reusa `org-hierarchy-section.tsx`). Reemplaza a `/admin/organizations` en el sidebar. | Sidebar + panel |
+| `/admin/organizations` | CRUD organizaciones (alta/edición); ya no está en el sidebar, se enlaza desde `/admin/hierarchy`. | Panel |
 | `/admin/organizations/new` | Nueva organización. | Botón |
 | `/admin/organizations/[id]` | Panel de la org: portafolios, programas, proyectos y usuarios con rol. | Click en row |
 | `/admin/organizations/[id]/edit` | Editar organización + jerarquía Portafolio ⊃ Programa (`org-hierarchy-section.tsx`). | Botón en detalle |
@@ -345,7 +346,7 @@ Total: **76 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/admin/users/new` | Nuevo usuario. | Botón |
 | `/admin/users/[id]` | Detalle usuario, roles, reset pwd. | Click en row |
 | `/admin/permissions` | Matriz roles × permisos. | Sidebar + panel |
-| `/admin/plan` | US-221: plan de suscripción del inquilino — límites y consumo, solo lectura (escribir el tier es de superadmin). | Sidebar + panel |
+| `/admin/plan` | US-221: plan de suscripción del inquilino — límites y consumo, solo lectura (escribir el tier es de superadmin). FASE-7 (US-C) le agregó la pestaña "IA" (`?tab=ia`, antes `/admin/ai`, que ahora redirige). | Sidebar + panel |
 | `/admin/areas` | Directorio de áreas/equipos/actores. | Panel del landing |
 | `/admin/audit-logs` | Bitácora con filtros + export CSV. | Sidebar + panel |
 
@@ -526,7 +527,6 @@ de reemplazo hasta que su fase las absorba (`REVAMP-V2-FEEDBACK.md` §2.2):
 | `/admin/areas` | Ninguno todavía. | Pendiente (D4) |
 | `/pmo/raid` | `<Link>` arriba del contenido de `/pmo/reports`. | FASE-8 |
 | `/pmo/changes` | `<Link>` arriba del contenido de `/pmo/reports`. | FASE-8 |
-| `/admin/ai` | `<Link>` "Configurar IA" en `/admin/plan`. | FASE-7 |
 
 ---
 

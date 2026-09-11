@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * FASE-7 (revamp v2, US-C) — Plan e IA en una sola página con pestañas.
+ * Antes vivía en `/admin/ai`, ahora es la pestaña "IA" de `/admin/plan`
+ * (`admin/plan/page.tsx`). No cambia la lógica de proveedor (D5 sigue
+ * abierta): esta fase solo junta las dos páginas.
+ */
 import {
   type FormEvent,
   type ReactNode,
@@ -10,7 +16,6 @@ import {
 import { ConsumoDeIAPanel } from "@/components/consumo-de-ia";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
@@ -46,7 +51,7 @@ const MODE_DESCRIPTION: Record<TenantAIMode, string> = {
   byo: "Conecta OpenAI, Claude, Gemini, Perplexity, Microsoft Copilot M365 (Azure OpenAI) o cualquier endpoint OpenAI-compatible. El costo corre por tu cuenta.",
 };
 
-export default function TenantAdminAIPage() {
+export function ConfiguracionIA() {
   const [data, setData] = useState<TenantAIProviderRead | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -147,7 +152,6 @@ export default function TenantAdminAIPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <header className="space-y-2">
-        <Breadcrumb items={[{ href: "/admin", label: "Admin" }, { label: "IA" }]} />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -156,9 +160,9 @@ export default function TenantAdminAIPage() {
                 size={20}
                 className="text-[var(--color-accent)]"
               />
-              <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
+              <h2 className="text-[16px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
                 Configuración de IA
-              </h1>
+              </h2>
             </div>
             <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
               Elige cómo procesa minutas y reportes tu tenant. Los cambios

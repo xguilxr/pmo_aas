@@ -16,6 +16,12 @@ const nextConfig = {
         destination: "/admin/tenant?tab=config",
         permanent: true,
       },
+      // FASE-7 (revamp v2, US-C): IA se funde con Plan en una sola página.
+      {
+        source: "/admin/ai",
+        destination: "/admin/plan?tab=ia",
+        permanent: true,
+      },
       // FASE-4 (revamp v2, US-C): Board e Importar de proyectos se absorben
       // como pestañas de /pmo.
       {

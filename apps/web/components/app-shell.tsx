@@ -123,8 +123,9 @@ const GRUPOS_NAV: GrupoNav[] = [
 // iconos: construirlo en el módulo lo evaluaría antes del render.
 // (ENH-190 hacía configurable el label "Organizaciones"; se retiró en DEC-032.)
 // US-247/248 — «Permisos» sale del árbol (solo lectura, DEC-024; sigue
-// accesible por URL). «IA» sale: `/admin/ai` se enlaza desde Plan hasta que
-// la fase 7 lo funda ahí. Label raíz pasa de "Configuraciones" a "Admin":
+// accesible por URL). «IA» sale: FASE-7 (US-C) la fundió con «Plan e IA»
+// (`/admin/plan?tab=ia`; `/admin/ai` redirige). Label raíz pasa de
+// "Configuraciones" a "Admin":
 // ese rótulo ahora lo lleva el `RotuloDeGrupo` del bloque (paso 3).
 function buildAdminNav(): NavItem {
   return {

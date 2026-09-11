@@ -23,10 +23,10 @@ const PANELS = [
     icon: "settings",
   },
   {
-    href: "/admin/ai",
-    label: "IA",
+    href: "/admin/plan",
+    label: "Plan e IA",
     description:
-      "Proveedor de IA, API key y configuración de prompts del tenant.",
+      "Plan de suscripción y proveedor de IA, API key y prompts del tenant.",
     icon: "info",
   },
   {
