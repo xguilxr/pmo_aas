@@ -140,7 +140,8 @@ function buildAdminNav(): NavItem {
       p.startsWith("/admin/settings") ||
       p.startsWith("/admin/tenant") ||
       p.startsWith("/admin/plan") ||
-      p.startsWith("/admin/organizations"),
+      p.startsWith("/admin/organizations") ||
+      p.startsWith("/admin/hierarchy"),
     children: [
       {
         id: "tenant-mgmt",
@@ -163,9 +164,10 @@ function buildAdminNav(): NavItem {
         id: "orgs-mgmt",
         label: "Organizaciones y portafolios",
         icono: "building",
-        href: "/admin/organizations",
+        href: "/admin/hierarchy",
         match: (p) =>
-          p.startsWith("/admin/organizations") && !p.includes("/panel"),
+          p.startsWith("/admin/hierarchy") ||
+          (p.startsWith("/admin/organizations") && !p.includes("/panel")),
       },
       {
         // US-221 — el plan va antes de Auditoría: es configuración de la

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Icono } from "@/components/ui/icono";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +30,7 @@ import {
   type Portfolio,
   type Program,
 } from "@/lib/api/organizations";
+import { listProjects, updateProject, type Project } from "@/lib/api/projects";
 import { HardDeleteButton } from "@/components/hard-delete-button";
 import { cn } from "@/lib/cn";
 
@@ -119,6 +121,53 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
   const [confirmarPortafolio, setConfirmarPortafolio] = useState<Portfolio | null>(null);
   const [confirmarPrograma, setConfirmarPrograma] = useState<Program | null>(null);
 
+  // FASE-7 (revamp v2, US-A) — "mover proyecto de programa" vive aquí y no
+  // en /pmo/config: esta es la vista de todo el tenant, program por program,
+  // y admin es quien reorganiza la jerarquía completa.
+  const [todosLosProgramas, setTodosLosProgramas] = useState<Program[]>([]);
+  const [proyectos, setProyectos] = useState<Project[]>([]);
+  const [moviendoId, setMoviendoId] = useState<string | null>(null);
+  const [errorMover, setErrorMover] = useState<string | null>(null);
+
+  async function refrescarProyectosYProgramas() {
+    try {
+      const [progs, projs] = await Promise.all([
+        listPrograms({ organization_id: orgId }),
+        listProjects({ organization_id: orgId, limit: 500 }),
+      ]);
+      setTodosLosProgramas(progs);
+      setProyectos(projs);
+    } catch {
+      // Silencioso: la lista de proyectos por programa es un extra sobre el
+      // árbol, no el árbol mismo — un fallo aquí no debe tapar portafolios
+      // y programas, que sí cargaron.
+    }
+  }
+
+  useEffect(() => {
+    void refrescarProyectosYProgramas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
+
+  async function moverProyecto(project: Project, programId: string) {
+    const destino = todosLosProgramas.find((p) => p.id === programId);
+    setMoviendoId(project.id);
+    setErrorMover(null);
+    try {
+      await updateProject(project.id, {
+        program_id: programId,
+        portfolio_id: destino?.portfolio_id ?? project.portfolio_id,
+      });
+      await refrescarProyectosYProgramas();
+    } catch (err) {
+      setErrorMover(
+        err instanceof ApiError ? err.message : "No se pudo mover el proyecto",
+      );
+    } finally {
+      setMoviendoId(null);
+    }
+  }
+
   // MCS DAT-11 — los conteos de programas y proyectos son derivados, se
   // calculan al leer. «Vivo» no es una excusa para no declararlo: es
   // precisamente lo que hay que declarar, porque el número de esta pantalla
@@ -184,6 +233,11 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
       {error ? (
         <div className="p-4">
           <Banner variant="danger">{error}</Banner>
+        </div>
+      ) : null}
+      {errorMover ? (
+        <div className="p-4 pt-0">
+          <Banner variant="danger">{errorMover}</Banner>
         </div>
       ) : null}
 
@@ -372,6 +426,43 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                         </li>
                       ))
                     )}
+                    {abierto &&
+                      proyectos
+                        .filter((p) => todosLosProgramas.some(
+                          (prog) => prog.id === p.program_id && prog.portfolio_id === portafolio.id,
+                        ))
+                        .map((project) => (
+                          <li
+                            key={project.id}
+                            className="flex items-center gap-2 py-1.5 pl-16 pr-3 text-[12.5px]"
+                          >
+                            <Icono
+                              nombre="file-text"
+                              size={13}
+                              className="flex-none text-[var(--text-faint)]"
+                            />
+                            <span className="min-w-0 flex-1 truncate text-[var(--text-secondary)]">
+                              {project.folio} · {project.name}
+                            </span>
+                            <Select
+                              value={project.program_id ?? ""}
+                              onChange={(e) => void moverProyecto(project, e.target.value)}
+                              disabled={moviendoId === project.id}
+                              className="h-7 w-48 text-[12px]"
+                            >
+                              <option value="" disabled>
+                                Mover a…
+                              </option>
+                              {todosLosProgramas
+                                .filter((p) => p.portfolio_id === portafolio.id)
+                                .map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name}
+                                  </option>
+                                ))}
+                            </Select>
+                          </li>
+                        ))}
                   </ul>
                 ) : null}
               </li>
