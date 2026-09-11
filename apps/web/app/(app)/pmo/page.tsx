@@ -398,6 +398,18 @@ export default function PortafolioVistaMaestra() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/* US-247 — FASE-1: Board e Importar salen del sidebar; se
+              enlazan aquí hasta que la fase 4 los absorba. */}
+          <Link href="/pmo/board">
+            <Button type="button" variant="secondary" size="sm">
+              Board
+            </Button>
+          </Link>
+          <Link href="/pmo/imports">
+            <Button type="button" variant="secondary" size="sm">
+              Importar proyectos
+            </Button>
+          </Link>
           {esVistaAdmin ? (
             <Button
               type="button"

@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-29
+revisado: 2026-09-11
 revisar_cada: 180d
 ---
 
@@ -176,40 +176,35 @@ y el valor por default.
 
 ### 2.1 Sidebar principal (rutas expuestas)
 
-US-204 lo parte en grupos con rótulo (`GRUPOS_NAV` en `app-shell.tsx`). El
-criterio del corte es de quién es la pregunta: **Organización** son las vistas
-que se leen por organización; **Transversal**, las que cruzan proyectos o son de
-quien las recibe.
+FASE-1 del revamp v2 (`REVAMP-V2-PLAN.md` §1) lo baja de 3 grupos/12 entradas
+a 2 grupos/8 entradas (`GRUPOS_NAV` + el bloque «Configuraciones» en
+`app-shell.tsx`). El grupo `transversal` se disuelve: RAID y Cambios pasan a
+enlaces dentro de Reportes (fase 8 los sube a tabs); Minutas y Notificaciones
+salen del sidebar (la campana sigue llevando a notificaciones). `Board` e
+`Importar` se absorben en `/pmo` (match por prefijo).
 
 ```mermaid
 flowchart LR
     subgraph ORG ["ORGANIZACIÓN - todos"]
         N1["Dashboard<br/>/dashboard"]
-        N2["Portafolio<br/>/pmo<br/>(vista maestra)"]
-        N2b["Board<br/>/pmo/board"]
-        N3["Proyectos<br/>/pmo/projects"]
-        N3b["Importar<br/>/pmo/imports"]
-        N4["Solicitudes<br/>/pmo/requests"]
+        N2["PMO<br/>/pmo<br/>(+ board, imports, programs, organizations)"]
         N5["Recursos<br/>/pmo/resources"]
-        N6["Reportes<br/>/pmo/reports"]
+        N4["Solicitudes<br/>/pmo/requests"]
+        N6["Reportes<br/>/pmo/reports<br/>(+ raid, changes)"]
+        N3["Proyectos<br/>/pmo/projects"]
     end
 
-    subgraph TRANS ["TRANSVERSAL - todos"]
-        T1["RAID<br/>/pmo/raid"]
-        T2["Cambios<br/>/pmo/changes"]
-        T3["Minutas<br/>/pmo/minutes"]
-        T4["Notificaciones<br/>/notifications"]
+    subgraph CFG_NAV ["CONFIGURACIONES - todos"]
+        C1["Cuenta<br/>/account"]
     end
 
-    subgraph ADMIN_NAV ["ADMIN - admin"]
+    subgraph ADMIN_NAV ["ADMIN - admin (dentro de Configuraciones)"]
         A0["/admin"]
-        A1["/admin/tenant"]
-        A2["/admin/ai"]
-        A3["/admin/organizations"]
-        A4["/admin/users"]
-        A5["/admin/permissions"]
-        A5b["/admin/plan"]
-        A6["/admin/audit-logs"]
+        A1["Branding<br/>/admin/tenant"]
+        A4["Usuarios<br/>/admin/users"]
+        A3["Organizaciones y portafolios<br/>/admin/organizations"]
+        A5b["Plan e IA<br/>/admin/plan"]
+        A6["Auditoría<br/>/admin/audit-logs"]
     end
 
     subgraph SUPER_NAV ["PLATAFORMA - is_superadmin"]
@@ -517,6 +512,22 @@ No son huérfanas. Su único punto de entrada es no-obvio:
 - **0 huérfanas reales** post-cleanup.
 - **6 páginas con acceso indirecto único** documentadas arriba (alcanzables pero difíciles de descubrir).
 - Cleanup del `page.tsx` muerto: ejecutado en el commit de este cambio.
+
+### 6.5 Huérfanas de FASE-1 (revamp v2, temporal)
+
+FASE-1 saca estas rutas del sidebar sin borrarlas. Cada una tiene un enlace
+de reemplazo hasta que su fase las absorba (`REVAMP-V2-FEEDBACK.md` §2.2):
+
+| Ruta | Enlace de reemplazo | Se resuelve en |
+|---|---|---|
+| `/pmo/minutes` | Ninguno — no forma parte del rediseño; queda solo por URL. | Pendiente (D4) |
+| `/admin/permissions` | Ninguno — solo lectura, DEC-024. Queda solo por URL. | No aplica |
+| `/admin/areas` | Ninguno todavía. | Pendiente (D4) |
+| `/pmo/board` | `<Link>` en el header de `/pmo`. | FASE-4 |
+| `/pmo/imports` | `<Link>` en el header de `/pmo`. | FASE-4 |
+| `/pmo/raid` | `<Link>` arriba del contenido de `/pmo/reports`. | FASE-8 |
+| `/pmo/changes` | `<Link>` arriba del contenido de `/pmo/reports`. | FASE-8 |
+| `/admin/ai` | `<Link>` "Configurar IA" en `/admin/plan`. | FASE-7 |
 
 ---
 

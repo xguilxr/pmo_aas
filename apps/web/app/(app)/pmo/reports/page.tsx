@@ -80,6 +80,23 @@ export default function TenantReportsPage() {
         </p>
       </header>
 
+      {/* US-247 — FASE-1: RAID y Cambios salen del sidebar; se enlazan
+          aquí hasta que la fase 8 los absorba. */}
+      <div className="flex flex-wrap items-center gap-3 text-[13px]">
+        <Link
+          href="/pmo/raid"
+          className="text-[var(--color-accent)] hover:underline"
+        >
+          RAID de la organización
+        </Link>
+        <Link
+          href="/pmo/changes"
+          className="text-[var(--color-accent)] hover:underline"
+        >
+          Cambios de la organización
+        </Link>
+      </div>
+
       {/* Bandeja con pestañas de nivel — filete inferior 2px en la activa,
           mismo patrón que /pmo/requests y el RAID de proyecto. */}
       <div

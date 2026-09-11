@@ -20,6 +20,7 @@
  * captura por inquilino, y donde no se capturó la pantalla lo dice — en vez de
  * pintar un cero, que diría «no puedes crear ninguna».
  */
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Banner } from "@/components/ui/banner";
@@ -84,6 +85,15 @@ export default function PlanPage() {
           />
         ) : null}
       </header>
+
+      {/* US-247 — FASE-1: la sección IA del sidebar se disuelve en esta
+          pantalla hasta que la fase 7 la funda con Plan. */}
+      <Link
+        href="/admin/ai"
+        className="text-[13px] text-[var(--color-accent)] hover:underline"
+      >
+        Configurar IA
+      </Link>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
