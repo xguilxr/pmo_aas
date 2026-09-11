@@ -9,12 +9,11 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChartCard } from "@/components/chart-card";
 import {
   Bars,
   Heatmap,
-  Legend,
   PALETTE,
-  Pie,
   RiskMatrix,
   TrendLines,
   Treemap,
@@ -415,15 +414,6 @@ function DashboardInner() {
       label: etiquetaTipo(k),
       value: Number(v) || 0,
       color: PALETTE.accent,
-    }));
-  }, [charts]);
-
-  const healthData = useMemo(() => {
-    const entries = charts ? toEntries(charts.portfolio_health) : [];
-    return entries.map(([k, v]) => ({
-      label: etiquetaSalud(k),
-      value: Number(v) || 0,
-      color: colorSalud(k),
     }));
   }, [charts]);
 
@@ -1068,23 +1058,6 @@ function TrendMini({
         {delta === 0 ? "Sin cambio" : `${delta > 0 ? "▲" : "▼"} ${valueFormat ? valueFormat(Math.abs(delta)) : Math.abs(delta)} vs. semana previa`}
       </p>
     </div>
-  );
-}
-
-function ChartCard({
-  title,
-  children,
-  loading,
-}: {
-  title: string;
-  children: React.ReactNode;
-  loading?: boolean;
-}) {
-  return (
-    <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-      <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">{title}</h2>
-      {loading ? <Skeleton className="h-[180px] w-full" /> : children}
-    </article>
   );
 }
 
