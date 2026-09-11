@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-29
+revisado: 2026-09-11
 revisar_cada: 90d
 ---
 
@@ -466,20 +466,26 @@ pantallas.
 
 De los mockups aprobados el 2026-08-19, artboard «Dashboard ejecutivo».
 
-**Las cuatro filas:**
+**Las cinco filas:**
 
-1. **Seis tarjetas** — activos, salud, plan vs real, presupuesto, riesgos
-   severos, sobreasignados. Cada una con su pie: el número solo no acciona
-   nada. «7 riesgos severos» es un estado; «7, 2 sin responsable» es una tarea.
-2. **Tres listas cortas** — top en riesgo, top con atraso, top sobrecarga de
+1. **Cómo va la cartera** — Rueda de salud (dona con total de proyectos
+   activos al centro y leyenda), Hero de avance (plan vs real + tendencia de
+   avance, ahora visible para todos y no solo admin), Semáforo consolidado
+   (las cinco dimensiones de salud 5+1 agregadas para la cartera).
+2. **Cuatro tarjetas KPI** — Proyectos activos, Presupuesto, Riesgos severos,
+   Sobreasignados. Cada una con su pie: el número solo no acciona nada. «7 riesgos
+   severos» es un estado; «7, 2 sin responsable» es una tarea. Pueden llevar
+   sparkline mínima bajo la cifra.
+3. **Tres listas cortas** — top en riesgo, top con atraso, top sobrecarga de
    recursos. Existen porque un agregado dice que algo pasa y una lista dice
    **dónde**. Cinco filas como máximo: una de veintitrés vuelve a ser la tabla
    que ya está abajo, y entonces no ordena nada.
-3. **Cuatro distribuciones** — por salud, por fase, por programa, por sponsor.
-   Las dos últimas son nuevas: son las preguntas que un comité hace («¿quién
-   coordina esto?», «¿quién lo pidió?») y que las dos primeras no contestan.
-4. **Tendencia y semáforo consolidado** — las cinco dimensiones de salud 5+1
-   agregadas para la cartera.
+4. **Tres distribuciones** — por fase, por programa, por sponsor. Las barras son
+   finas (más angostas, punta redondeada). Ya no incluye «Por salud» (fusionada
+   en la Rueda de salud).
+5. **Tendencias y portafolio** (solo admin) — Riesgos abiertos y Proyectos
+   activos. Ya no incluye la tendencia de «Avance promedio» (visible para todos
+   en el Hero de la fila 1).
 
 **Criterios de aceptación:**
 - [x] `GET /dashboard/kpis` añade `plan_progress_avg`,
