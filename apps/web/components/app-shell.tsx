@@ -581,25 +581,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <Link
             href={homeHref}
-            className="flex min-w-0 items-center gap-3"
+            className="flex min-w-0 items-center"
             aria-label="Inicio"
           >
-            {logoSrc ? (
-              <span className="flex h-11 w-[200px] flex-none items-center overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={logoSrc}
-                  alt={brandName}
-                  className="h-full w-auto max-w-full object-contain object-left"
-                />
-              </span>
-            ) : (
-              <span className="truncate text-[15px] font-semibold tracking-tight text-[var(--color-primary)]">
-                {brandName}
-              </span>
-            )}
-            <span className="whitespace-nowrap text-[13px] font-medium tracking-tight text-[var(--text-tertiary)]">
-              PMO-aaS
+            <span className="whitespace-nowrap text-[15px] font-semibold tracking-tight text-[var(--color-primary)]">
+              PMO · aaS
             </span>
           </Link>
           {/* US-205 — el contexto de organización, una vez y aquí. El mockup lo
@@ -613,16 +599,19 @@ export function AppShell({ children }: { children: ReactNode }) {
           {userReady && user && !user.is_superadmin ? (
             <>
               <SwitcherDeInquilino />
+              <span className="hidden lg:inline text-[13px] text-[var(--text-tertiary)]">
+                Organización:
+              </span>
               <SwitcherDeOrganizacion />
             </>
           ) : null}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="hidden sm:flex flex-1 justify-center px-4">
           <button
             type="button"
             aria-label="Buscar"
             title="Buscar (⌘K)"
-            className="hidden sm:flex h-8 w-[260px] items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2.5 text-left shadow-[var(--hundido)]"
+            className="flex h-8 w-full max-w-[560px] items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2.5 text-left shadow-[var(--hundido)]"
           >
             <Icono nombre="search" size={15} className="text-[var(--text-faint)]" />
             <span className="flex-1 truncate text-[13px] text-[var(--text-faint)]">Buscar</span>
@@ -630,6 +619,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               ⌘K
             </kbd>
           </button>
+        </div>
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             aria-label="Buscar"
@@ -638,6 +629,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Icono nombre="search" size={15} />
           </button>
+          {logoSrc ? (
+            <span className="hidden md:flex h-8 max-w-[140px] items-center overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={logoSrc}
+                alt={brandName}
+                className="h-full w-auto object-contain"
+              />
+            </span>
+          ) : null}
           {userReady && user ? <NotificationBell /> : null}
           <UserMenu user={user} variant="surface" />
         </div>
