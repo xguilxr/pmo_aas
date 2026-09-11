@@ -714,7 +714,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <div
             className={cn(
-              "flex h-12 items-center px-2",
+              "flex h-12 items-center px-2 lg:hidden",
               collapsed ? "justify-end lg:justify-center" : "justify-end",
             )}
           >
