@@ -131,8 +131,9 @@ deja anotado, lo retoma después, no es parte de este punto de navegación.
 
 #### 2.4 Encabezado (barra superior)
 
-- La barra (y el primer rótulo del sidebar) debe arrancar justo debajo de la
-  línea que separa el header del resto — actualmente hay un espacio/salto ahí.
+- [x] La barra (y el primer rótulo del sidebar) debe arrancar justo debajo
+  de la línea que separa el header del resto — actualmente hay un
+  espacio/salto ahí. Hecho — FASE-0, BUG-097, commit `ff87f92`.
 - El logo del tenant deja el lugar donde hoy dice "PMO-aaS": ese lugar pasa a
   decir **"Organización:"** seguido del dropdown de organizaciones que ya
   existe.
@@ -402,21 +403,21 @@ aquí. Cierra el recorrido completo de la sección Admin (punto 10 + 11 + 12).
 
 ### 13. Páginas de detalle de proyecto — bug de tabla (wrap) en RAID + estado activo de tabs
 
-**Estado:** pendiente
+**Estado:** hecho — FASE-0, commits `eaba151` (BUG-095), `431d7fd` (BUG-096).
 **Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
 Cambia de tema: pasa de la navegación/administración a las páginas de
 detalle de un proyecto individual, empezando por RAID.
 
-- [ ] **Bug visual en las tablas de RAID** (detalle de proyecto): el
+- [x] **Bug visual en las tablas de RAID** (detalle de proyecto): el
   wrap de texto hace que algunos elementos se encimen unos sobre otros —
   no se ve como una tabla normal. El owner no está seguro si es bug o
-  diseño, pero pide **quitar el wrap** en esas tablas.
-- [ ] **Estado activo inconsistente en los tabs** (la barra de navegación
+  diseño, pero pide **quitar el wrap** en esas tablas. BUG-096.
+- [x] **Estado activo inconsistente en los tabs** (la barra de navegación
   horizontal, arriba, dentro del detalle de proyecto): algunos tabs sí
   se rellenan de negro cuando están seleccionados (mismo estilo que el
   item activo del sidebar), pero otros no. Hay que **unificar**: todos los
   tabs deben indicar visualmente, de la misma manera, en cuál está parado
-  el usuario.
+  el usuario. BUG-095.
 
 **Screenshot de referencia:** pendiente de que el owner lo adjunte.
 
