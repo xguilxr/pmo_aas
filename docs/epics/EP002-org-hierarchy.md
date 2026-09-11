@@ -2,7 +2,7 @@
 tipo: epica
 responsable: propietario
 estado: vigente
-revisado: 2026-08-12
+revisado: 2026-09-11
 revisar_cada: 90d
 ---
 
@@ -291,6 +291,14 @@ Detalle, alternativas y qué pasa con los inquilinos que la tenían puesta:
 - [x] `programs.portfolio_id` obligatorio; `projects.portfolio_id` opcional (el proyecto puede colgar directo del portafolio, o no estar clasificado todavía).
 - [x] **Regla de consistencia**: con programa asignado, el portafolio del proyecto es el del programa. Al asignar programa se autocompleta; un par contradictorio se rechaza. Un proyecto que reportara al programa A contando en el portafolio B no es un dato raro, es un dato mentiroso: la vista ejecutiva de B mostraría un proyecto que su programa no reporta.
 - [x] Los programas que ya existían quedaron en el «Portafolio General» de su organización (migración 0108).
+- [x] FASE-4 del revamp v2 (DEC-037): un proyecto creado **sin** portafolio ni
+  programa (`POST /projects` directo, o al crear el proyecto desde una
+  solicitud aprobada sin clasificar) ya no queda huérfano — cae en el
+  «Programa General» del «Portafolio General» de su organización,
+  `services/jerarquia.py::programa_general()`, creado al vuelo igual que
+  `portafolio_general()` (mismo criterio de DEC-030, extendido a programa).
+  Sin backfill: una organización con huérfanos de antes de FASE-4 se resuelve
+  sola en cuanto alguien crea ahí un proyecto nuevo sin clasificar.
 - [ ] CRUD por API y UI → **US-199** y **US-200**.
 
 **Test Cases:**
@@ -298,7 +306,7 @@ Detalle, alternativas y qué pasa con los inquilinos que la tenían puesta:
 - `TC-198.2` (integration) — Proyecto con programa de otro portafolio → rechazado.
 - `TC-198.3` (integration) — Migración con programas existentes: todos con «Portafolio General» de **su** organización; los proyectos heredan el portafolio de su programa; el proyecto sin programa se queda sin portafolio.
 
-**Decisiones:** ADR-037 (jerarquía nueva, irreversible) · DEC-030 («Portafolio General» como destino por defecto).
+**Decisiones:** ADR-037 (jerarquía nueva, irreversible) · DEC-030 («Portafolio General» como destino por defecto) · DEC-037 (extiende el criterio a «Programa General», FASE-4 revamp v2).
 
 ---
 

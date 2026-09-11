@@ -94,6 +94,57 @@ async def portafolio_general(
     return creado
 
 
+#: FASE-4 del revamp v2 (DEC-037) — el programa gemelo de
+#: `NOMBRE_PORTAFOLIO_GENERAL`, para el mismo caso: un proyecto que se crea
+#: sin programa.
+NOMBRE_PROGRAMA_GENERAL = "Programa General"
+
+
+async def programa_general(
+    db: AsyncSession,
+    *,
+    tenant_id: UUID | str,
+    organization_id: UUID | str,
+    created_by: UUID | str | None = None,
+) -> Program:
+    """El «Programa General» de esa organización; lo crea (con su portafolio
+    general) si no existe.
+
+    DEC-037 — mismo criterio que `portafolio_general()`: un proyecto sin
+    programa asignado necesita, igual que el Gantt y la lista de PMO (fase 4),
+    un sitio real donde agruparse. No se siembra por migración: se crea la
+    primera vez que un proyecto de esa organización lo necesita.
+    """
+    tid, oid = str(tenant_id), str(organization_id)
+    pf = await portafolio_general(
+        db, tenant_id=tid, organization_id=oid, created_by=created_by
+    )
+    existente = (
+        await db.execute(
+            select(Program).where(
+                Program.tenant_id == tid,
+                Program.portfolio_id == pf.id,
+                Program.name == NOMBRE_PROGRAMA_GENERAL,
+            )
+        )
+    ).scalar_one_or_none()
+    if existente is not None:
+        if not existente.is_active:
+            existente.is_active = True
+            await db.flush()
+        return existente
+
+    creado = Program(
+        tenant_id=tid,
+        organization_id=oid,
+        portfolio_id=pf.id,
+        name=NOMBRE_PROGRAMA_GENERAL,
+    )
+    db.add(creado)
+    await db.flush()
+    return creado
+
+
 async def resolver_portafolio(
     db: AsyncSession,
     *,

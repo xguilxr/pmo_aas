@@ -713,25 +713,34 @@ roto el aislamiento que la fase 2 del revamp construye.
 **Implementación:** FASE-2 del revamp v2 (`docs/project-management/revamp-v2/FASE-2.md`),
 `components/organizacion-activa.tsx`. Origen: owner por chat, 2026-09-11.
 
-## DEC-037 — El portafolio-programa base se siembra por migración, no se calcula (EP002, revamp v2 §4)
-**Fecha:** 2026-09-11
-**Decisión:** Cada organización tiene una fila real de portafolio "General"
-y una de programa "General" (hijo del anterior), creadas por migración de
-Alembic al momento en que la organización existe (alta de organización nueva
-y backfill de las existentes). Los proyectos sin portafolio/programa
-asignado cuelgan de ese par por default — no de un valor calculado ni de
-`NULL` interpretado como "general" en cada consulta.
+## DEC-037 — El portafolio-programa base se crea al vuelo, reusando `portafolio_general()` (EP002, revamp v2 §4)
+**Fecha:** 2026-09-11 (revisada el mismo día — ver nota)
+**Decisión:** Cada organización tiene una fila real de portafolio "Portafolio
+General" y una de programa "Programa General" (hijo del anterior). Se crean
+**al vuelo**, la primera vez que hacen falta — no por migración —, extendiendo
+el patrón que ya existe en `app/services/jerarquia.py::portafolio_general()`
+(US-198) con una función gemela `programa_general()`. Los proyectos sin
+portafolio/programa asignado, al crearse (`POST /projects` y la aprobación de
+solicitud en `project_requests.py`), se cuelgan de ese par por default.
+**Nota — revisión de la misma sesión:** la primera redacción de este DEC decía
+"se siembra por migración, no se calcula", con un portafolio nuevo
+`code = "BASE"`. Al implementarlo se encontró que `portafolio_general()` ya
+existe y resuelve el mismo problema para programas (US-198): crea
+"Portafolio General" la primera vez que alguien da de alta un programa sin
+portafolio. Sembrar un "Base" aparte habría dejado **dos** portafolios
+genéricos por organización con el mismo propósito. Se corrige aquí en vez de
+dejar un DEC que no describe lo que se construyó.
 **Rationale:** el Gantt y la lista de PMO (fase 4) necesitan agrupar por
-portafolio→programa siempre, incluidos los proyectos huérfanos; calcular
-"sin portafolio" al vuelo en cada endpoint es la misma cuenta repetida en
-cada lugar que agrupa, con el riesgo de que uno la haga distinto. Una fila
-sembrada es una organización más en la jerarquía, ya soportada, y el
-Gantt/la lista no necesitan una rama de código para el caso "sin asignar".
+portafolio→programa siempre, incluidos los proyectos huérfanos. Reusar
+`portafolio_general()` da esa garantía sin duplicar el concepto ni escribir
+una migración de backfill: una organización que nunca tiene un proyecto
+huérfano nunca gana la fila, y la primera que lo necesita la crea igual que ya
+pasa con programas.
 **Consecuencia aceptada:** el portafolio/programa "General" no se puede
-borrar (mismo trato que se le dio en W3): borrarlo dejaría proyectos sin
-dónde agrupar.
-**Reversible:** parcialmente — la migración es aditiva (crea filas), pero
-una vez que hay proyectos colgando de "General" quitar la fila requiere
-reasignarlos primero.
+borrar mientras tenga proyectos colgando (mismo trato que W3 le da). No hay
+backfill: una organización con proyectos huérfanos de antes de este cambio
+sigue sin portafolio hasta que alguien la edite o cree un proyecto nuevo sin
+especificar uno — ahí se resuelve sola.
+**Reversible:** sí — no hay migración de schema; es lógica de aplicación.
 **Implementación:** FASE-4 del revamp v2 (`docs/project-management/revamp-v2/FASE-4.md`),
 wireframe W3 aprobado. Origen: owner por chat, 2026-09-11 («Sí, confirmo D3»).
