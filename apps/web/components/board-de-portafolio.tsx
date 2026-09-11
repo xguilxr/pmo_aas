@@ -26,6 +26,10 @@
  * Para cambiarlo hay que generar el reporte, y a eso lleva el enlace de la
  * tarjeta. Un board que acepta un arrastre que no persiste es peor que uno que
  * no lo acepta.
+ *
+ * FASE-4 (revamp v2, US-C) — vivía en `/pmo/board`, ahora es la pestaña
+ * "Board" de `/pmo`. Sin `Breadcrumb` ni `<h1>` propios: los da la página
+ * que lo monta.
  */
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -33,7 +37,6 @@ import { useEffect, useMemo, useState } from "react";
 import { colorSalud } from "@/components/dashboard-charts";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Icono } from "@/components/ui/icono";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { useOrgFiltro } from "@/components/organizacion-activa";
@@ -67,7 +70,7 @@ const QUE_HACER: Record<string, string> = {
   al_dia: "Nada que perseguir",
 };
 
-export default function PortfolioBoardPage() {
+export function BoardDePortafolio() {
   const orgFiltro = useOrgFiltro();
   const cadencia = useCadenciaDeReporte();
   const [board, setBoard] = useState<Board | null>(null);
@@ -108,14 +111,8 @@ export default function PortfolioBoardPage() {
   );
 
   return (
-    <div className="space-y-4 p-4">
-      <Breadcrumb
-        items={[{ href: "/pmo", label: "Portafolio" }, { label: "Board" }]}
-      />
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-primary)]">
-          Portfolio Board
-        </h1>
+    <div className="space-y-4">
+      <div>
         {leido && (
           <MarcaDeDatos
             periodo="vivo"
@@ -136,7 +133,7 @@ export default function PortfolioBoardPage() {
             </>
           ) : null}
         </p>
-      </header>
+      </div>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 

@@ -259,7 +259,7 @@ del sidebar admin + un panel adicional para Áreas:
 
 ## 3. Inventario de páginas
 
-Total: **77 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08) + `/admin/plan` (US-221) + `/pmo/imports` (US-216). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
+Total: **75 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08) + `/admin/plan` (US-221). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano); FASE-4 (revamp v2) borró 2 más: `/pmo/board`, `/pmo/imports` (absorbidas como pestañas de `/pmo`, con redirect).
 
 ### 3.1 Rutas públicas (5)
 
@@ -285,8 +285,7 @@ Total: **77 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 
 | URL | Propósito |
 |---|---|
-| `/pmo` | Vista maestra del portafolio: una fila por proyecto con las 16 columnas del mockup, header y primera columna fijos, columnas configurables y XLSX (US-207, US-210, US-211). |
-| `/pmo/board` | Portfolio Board: los proyectos por estatus de reporte, en cuatro columnas de urgencia (US-219). |
+| `/pmo` | Vista maestra del portafolio: una fila por proyecto con las 16 columnas del mockup, header y primera columna fijos, columnas configurables y XLSX (US-207, US-210, US-211). FASE-4 (revamp v2): pestañas Portafolio · Board · Importar proyectos (`?tab=board`\|`importar`); el Gantt trimestral navega por año. |
 | `/pmo/organizations/[id]` | Detalle de organización: programas + proyectos + reportes. |
 | `/pmo/organizations/[id]/reports` | Reportes scope organización. |
 | `/pmo/programs/[id]` | Detalle de programa. |
@@ -294,7 +293,6 @@ Total: **77 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/pmo/projects` | Listado de proyectos (filtros: fase, salud, búsqueda). |
 | `/pmo/projects/new` | Crear proyecto. |
 | `/pmo/projects/[id]` | Hub del proyecto: header, KPIs, links a módulos. Sub-tabs internos: `Resumen` · `Equipo` · `Avance` · `Presupuesto` · `Actividad` · `Stakeholders` (este último solo si el charter tiene sponsor / líder de negocio / líder técnico). |
-| `/pmo/imports` | US-216: importación masiva de proyectos y recursos a nivel organización — sube Excel/CSV, mapea columnas, preview (no escribe) → confirm. |
 | `/pmo/requests` | Listado de solicitudes de proyecto. |
 | `/pmo/requests/new` | Nueva solicitud. |
 | `/pmo/requests/[id]` | Detalle de solicitud + aprobación → crea proyecto. |
@@ -487,6 +485,8 @@ muertos que el redirect cubría se **borraron** en este commit:
 | `/admin/supervision` | `/admin/tenant?tab=stats` | ✅ (US-036) |
 | `/admin/settings` | `/admin/tenant?tab=config` | ✅ (US-036) |
 | `/admin/organizations/[id]/panel` | `/admin/organizations/[id]` | ✅ (BUG-019) |
+| `/pmo/board` | `/pmo?tab=board` | ✅ (FASE-4) |
+| `/pmo/imports` | `/pmo?tab=importar` | ✅ (FASE-4) |
 
 El resto de las legacy URLs (`/admin/projects/**`, `/admin/programs/**`,
 `/admin/raid/**`, `/admin/requests/**`, `/admin/changes`,
@@ -523,8 +523,6 @@ de reemplazo hasta que su fase las absorba (`REVAMP-V2-FEEDBACK.md` §2.2):
 | `/pmo/minutes` | Ninguno — no forma parte del rediseño; queda solo por URL. | Pendiente (D4) |
 | `/admin/permissions` | Ninguno — solo lectura, DEC-024. Queda solo por URL. | No aplica |
 | `/admin/areas` | Ninguno todavía. | Pendiente (D4) |
-| `/pmo/board` | `<Link>` en el header de `/pmo`. | FASE-4 |
-| `/pmo/imports` | `<Link>` en el header de `/pmo`. | FASE-4 |
 | `/pmo/raid` | `<Link>` arriba del contenido de `/pmo/reports`. | FASE-8 |
 | `/pmo/changes` | `<Link>` arriba del contenido de `/pmo/reports`. | FASE-8 |
 | `/admin/ai` | `<Link>` "Configurar IA" en `/admin/plan`. | FASE-7 |

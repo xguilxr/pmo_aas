@@ -26,6 +26,12 @@
  * Tienen su propio importador, en el plan de cada proyecto, porque un WBS es del
  * proyecto: el `1.2` de uno no es el `1.2` de otro. Se dice en la pantalla para
  * que nadie suba un plan aquí y no entienda el 415.
+ *
+ * FASE-4 (revamp v2, US-C) — vivía en `/pmo/imports`, ahora es la pestaña
+ * "Importar proyectos" de `/pmo`. `kind` fija qué se importa: el selector
+ * "Qué se importa" que antes dejaba cambiar de clase se retira — la clase
+ * `resources` se reubica en `/pmo/resources` en la fase 6, con su propio
+ * punto de entrada.
  */
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -34,7 +40,6 @@ import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Icono } from "@/components/ui/icono";
-import { Select } from "@/components/ui/select";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -75,13 +80,12 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export default function ImportsPage() {
+export function Importador({ kind }: { kind: ClaseDeImportacion }) {
   // US-205 — la organización se elige en el header y todo opera dentro de ella.
   // Esta pantalla no trae su propio selector: importar «en todas» no significa
   // nada —un proyecto vive en una organización— y `/pmo/imports` no está entre
   // las rutas que agregan, así que `efectiva` siempre es una concreta.
   const { efectiva: orgId, activaObj, cargando, vacio } = useOrganizacionActiva();
-  const [clase, setClase] = useState<ClaseDeImportacion>("projects");
   const [columnas, setColumnas] = useState<ColumnaDeImportacion[]>([]);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewDeImportacion | null>(null);
@@ -91,16 +95,13 @@ export default function ImportsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getImportColumns(clase)
+    getImportColumns(kind)
       .then((r) => setColumnas(r.columns))
       .catch(() => setColumnas([]));
-    // Cambiar de clase invalida lo anterior: las columnas de un proyecto no son
-    // las de una persona, y dejar el preview en pantalla lo haría leer como si
-    // aplicara a la clase nueva.
     setPreview(null);
     setResultado(null);
     setArchivo(null);
-  }, [clase]);
+  }, [kind]);
 
   const obligatorias = useMemo(
     () => columnas.filter((c) => c.required),
@@ -131,11 +132,11 @@ export default function ImportsPage() {
       );
       const a = document.createElement("a");
       a.href = url;
-      a.download = `plantilla-${clase}${soloObligatorias ? "-minima" : ""}.csv`;
+      a.download = `plantilla-${kind}${soloObligatorias ? "-minima" : ""}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     },
-    [clase, columnas, obligatorias],
+    [kind, columnas, obligatorias],
   );
 
   async function subir() {
@@ -144,7 +145,7 @@ export default function ImportsPage() {
     setError(null);
     setResultado(null);
     try {
-      setPreview(await previewImport(clase, orgId, archivo));
+      setPreview(await previewImport(kind, orgId, archivo));
     } catch (e) {
       setPreview(null);
       setError(
@@ -184,7 +185,7 @@ export default function ImportsPage() {
 
   if (cargando) {
     return (
-      <div className="space-y-3 p-6">
+      <div className="space-y-3">
         <span
           aria-hidden
           className="block h-8 w-64 animate-pulse rounded bg-[var(--color-muted)]"
@@ -198,23 +199,11 @@ export default function ImportsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4.5 p-6">
-      <header className="flex flex-col gap-1.25">
-        <nav className="flex items-center gap-1.75 text-[13px] text-[var(--text-tertiary)]">
-          <Link href="/pmo/projects" className="text-[var(--text-secondary)] hover:underline">
-            Proyectos
-          </Link>
-          <Icono nombre="chevron-right" size={14} className="text-[var(--border-strong)]" />
-          <span className="font-medium text-[var(--text-primary)]">Importar</span>
-        </nav>
-        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
-          Onboarding masivo
-        </h1>
-        <p className="text-[13px] text-[var(--text-tertiary)]">
-          Carga una cartera completa desde Excel o CSV. El archivo se valida
-          entero antes de crear nada.
-        </p>
-      </header>
+    <div className="flex flex-col gap-4.5">
+      <p className="text-[13px] text-[var(--text-tertiary)]">
+        Carga {CLASE_IMPORTACION_LABEL[kind].toLowerCase()} desde Excel o CSV.
+        El archivo se valida entero antes de crear nada.
+      </p>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
@@ -271,27 +260,16 @@ export default function ImportsPage() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2">
-            <label className="flex flex-col gap-2 text-[11px] text-[var(--text-tertiary)]">
+            <div className="flex flex-col gap-2 text-[11px] text-[var(--text-tertiary)]">
               Qué se importa
-              <Select
-                value={clase}
-                onChange={(e) =>
-                  setClase(e.target.value as ClaseDeImportacion)
-                }
-              >
-                {(
-                  Object.keys(CLASE_IMPORTACION_LABEL) as ClaseDeImportacion[]
-                ).map((k) => (
-                  <option key={k} value={k}>
-                    {CLASE_IMPORTACION_LABEL[k]}
-                  </option>
-                ))}
-              </Select>
+              <p className="text-[13px] font-medium text-[var(--text-primary)]">
+                {CLASE_IMPORTACION_LABEL[kind]}
+              </p>
               <span className="leading-[1.5] text-[var(--text-faint)]">
                 Los planes se importan desde el plan de cada proyecto: un
                 código WBS es del proyecto, el «1.2» de uno no es el de otro.
               </span>
-            </label>
+            </div>
             <div className="flex flex-col gap-2 text-[11px] text-[var(--text-tertiary)]">
               Organización de destino
               <p className="text-[13px] font-medium text-[var(--text-primary)]">
@@ -300,7 +278,7 @@ export default function ImportsPage() {
               <span className="leading-[1.5] text-[var(--text-faint)]">
                 Se cambia en el selector del header. Los duplicados se buscan
                 dentro de ella
-                {clase === "resources"
+                {kind === "resources"
                   ? "; las personas son del inquilino entero, porque su carga de"
                     + " capacidad se calcula por persona"
                   : ""}
@@ -394,7 +372,7 @@ export default function ImportsPage() {
                   {resultado.skipped_invalid} con errores y{" "}
                   {resultado.skipped_duplicate} ya existentes quedaron fuera.
                 </span>
-                {clase === "projects" ? (
+                {kind === "projects" ? (
                   <Link href="/pmo" className="underline">
                     Ver la cartera
                   </Link>

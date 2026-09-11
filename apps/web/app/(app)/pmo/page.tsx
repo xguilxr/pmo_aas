@@ -39,8 +39,10 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Icono } from "@/components/ui/icono";
 import { Select } from "@/components/ui/select";
+import { BoardDePortafolio } from "@/components/board-de-portafolio";
 import { HealthDimensionMatrix } from "@/components/health-panel";
 import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
+import { Importador } from "@/components/importador";
 import { ProgramModal } from "@/components/program-modal";
 import { RoadmapTrimestral } from "@/components/roadmap-trimestral";
 import { VistaMaestra } from "@/components/vista-maestra";
@@ -48,6 +50,7 @@ import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { aplicarFuente, XLSX_FONT } from "@/lib/plan-template";
 import {
   downloadPmoStatusReport,
@@ -94,6 +97,12 @@ export default function PortafolioVistaMaestra() {
   );
   const [phaseFilter, setPhaseFilter] = useState(searchParams.get("phase") ?? "");
   const [healthFilter, setHealthFilter] = useState(searchParams.get("health") ?? "");
+
+  // FASE-4 (revamp v2, US-C) — Board e Importar viven aquí como pestañas.
+  const tab = (searchParams.get("tab") ?? "portafolio") as
+    | "portafolio"
+    | "board"
+    | "importar";
 
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -155,6 +164,16 @@ export default function PortafolioVistaMaestra() {
         setHealthFilter(cambio.health);
         set("health", cambio.health);
       }
+      router.replace(usp.toString() ? `/pmo?${usp}` : "/pmo", { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const cambiarTab = useCallback(
+    (siguiente: "portafolio" | "board" | "importar") => {
+      const usp = new URLSearchParams(searchParams.toString());
+      if (siguiente === "portafolio") usp.delete("tab");
+      else usp.set("tab", siguiente);
       router.replace(usp.toString() ? `/pmo?${usp}` : "/pmo", { scroll: false });
     },
     [router, searchParams],
@@ -411,18 +430,6 @@ export default function PortafolioVistaMaestra() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* US-247 — FASE-1: Board e Importar salen del sidebar; se
-              enlazan aquí hasta que la fase 4 los absorba. */}
-          <Link href="/pmo/board">
-            <Button type="button" variant="secondary" size="sm">
-              Board
-            </Button>
-          </Link>
-          <Link href="/pmo/imports">
-            <Button type="button" variant="secondary" size="sm">
-              Importar proyectos
-            </Button>
-          </Link>
           {esVistaAdmin ? (
             <Button
               type="button"
@@ -457,6 +464,41 @@ export default function PortafolioVistaMaestra() {
         </div>
       </header>
 
+      {/* FASE-4 (revamp v2, US-C) — Board e Importar como pestañas de /pmo,
+          patrón de `project-tabs-bar.tsx` (mismas clases de activo). */}
+      <div
+        role="tablist"
+        aria-label="Secciones de PMO"
+        className="flex flex-wrap items-center gap-5 border-b border-[var(--border-default)] shadow-[var(--linea-surco)]"
+      >
+        {(
+          [
+            { v: "portafolio", label: "Portafolio" },
+            { v: "board", label: "Board" },
+            { v: "importar", label: "Importar proyectos" },
+          ] as const
+        ).map((t) => {
+          const activo = tab === t.v;
+          return (
+            <button
+              key={t.v}
+              type="button"
+              role="tab"
+              aria-selected={activo}
+              onClick={() => cambiarTab(t.v)}
+              className={cn(
+                "-mb-px flex h-9 items-center gap-1.5 border-b-2 text-[13px] transition-colors",
+                activo
+                  ? "border-[var(--color-accent)] font-semibold text-[var(--text-primary)]"
+                  : "border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-primary)]",
+              )}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
       <ProgramModal
         open={showProgramModal}
         onClose={() => setShowProgramModal(false)}
@@ -469,6 +511,11 @@ export default function PortafolioVistaMaestra() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {reportError ? <Banner variant="danger">{reportError}</Banner> : null}
 
+      {tab === "board" ? <BoardDePortafolio /> : null}
+      {tab === "importar" ? <Importador kind="projects" /> : null}
+
+      {tab === "portafolio" ? (
+        <>
       {/* Los cuatro filtros del mockup. La organización no está: se elige en el
           header (US-205) y aquí sería el mismo control dos veces. */}
       <section
@@ -630,6 +677,8 @@ export default function PortafolioVistaMaestra() {
               .catch(() => {});
           }}
         />
+      ) : null}
+        </>
       ) : null}
     </div>
   );

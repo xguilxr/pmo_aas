@@ -16,6 +16,18 @@ const nextConfig = {
         destination: "/admin/tenant?tab=config",
         permanent: true,
       },
+      // FASE-4 (revamp v2, US-C): Board e Importar de proyectos se absorben
+      // como pestañas de /pmo.
+      {
+        source: "/pmo/board",
+        destination: "/pmo?tab=board",
+        permanent: true,
+      },
+      {
+        source: "/pmo/imports",
+        destination: "/pmo?tab=importar",
+        permanent: true,
+      },
       // US-075 (DEC-022): recursos de negocio salen de /admin/* y
       // viven bajo /pmo/*. Redirects 301 mantienen bookmarks viejos
       // y deep-links de audit logs / emails generados pre-refactor.
