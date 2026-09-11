@@ -44,13 +44,6 @@ const PANELS = [
     icon: "users",
   },
   {
-    href: "/admin/areas",
-    label: "Áreas",
-    description:
-      "Catálogo Áreas → Equipos → Actores reutilizable a través de proyectos.",
-    icon: "share",
-  },
-  {
     href: "/admin/permissions",
     label: "Permisos",
     description:

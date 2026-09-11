@@ -36,6 +36,7 @@ import { deleteActor } from "@/lib/api/areas";
 import { ActorFormModal } from "@/components/actor-form-modal";
 import { CapacidadSemanal } from "@/components/capacidad-semanal";
 import { Importador } from "@/components/importador";
+import { AreasAndTeamsPanel } from "@/components/directory/AreasAndTeamsPanel";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import {
   getCapacityConflicts,
@@ -115,9 +116,12 @@ export default function ResourcesPage() {
   const [mostrarAlta, setMostrarAlta] = useState(false);
   const [recargarTick, setRecargarTick] = useState(0);
   const [win, setWin] = useState<CapacityWindow>("week");
-  const [tab, setTab] = useState<Tab>(() =>
-    searchParams.get("tab") === "importar" ? "import" : "people",
-  );
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = searchParams.get("tab");
+    if (t === "importar") return "import";
+    if (t === "areas") return "areas";
+    return "people";
+  });
   const [semanas, setSemanas] = useState(12);
   const [carga, setCarga] = useState<CargaSemanalResponse | null>(null);
   const [cargandoCarga, setCargandoCarga] = useState(true);
@@ -358,6 +362,28 @@ export default function ResourcesPage() {
         </div>
       ) : tab === "import" ? (
         <Importador kind="resources" />
+      ) : tab === "areas" ? (
+        // FASE-7 (revamp v2, US-D, D4) — `/admin/areas` se funde aquí:
+        // catálogo (crear/editar/borrar áreas, equipos y roles de proyecto)
+        // primero, agregados de capacidad debajo. No depende de que ya
+        // existan recursos — por eso va antes del gate de `resources.length`.
+        <div className="space-y-6">
+          <AreasAndTeamsPanel organizationId={orgFiltro} />
+          <div className="space-y-5">
+            <section className="space-y-2">
+              <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
+                Áreas — capacidad
+              </h2>
+              <AggTable rows={byArea} labelKey="name" labelHeader="Área" />
+            </section>
+            <section className="space-y-2">
+              <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
+                Equipos — capacidad
+              </h2>
+              <AggTable rows={byTeam} labelKey="name" labelHeader="Equipo" />
+            </section>
+          </div>
+        </div>
       ) : resources.length === 0 ? (
         <EmptyState />
       ) : tab === "people" ? (
@@ -371,21 +397,6 @@ export default function ResourcesPage() {
           labelKey="discipline"
           labelHeader="Función"
         />
-      ) : tab === "areas" ? (
-        <div className="space-y-5">
-          <section className="space-y-2">
-            <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
-              Áreas
-            </h2>
-            <AggTable rows={byArea} labelKey="name" labelHeader="Área" />
-          </section>
-          <section className="space-y-2">
-            <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
-              Equipos
-            </h2>
-            <AggTable rows={byTeam} labelKey="name" labelHeader="Equipo" />
-          </section>
-        </div>
       ) : (
         <ConflictsView conflicts={conflicts} />
       )}

@@ -773,3 +773,21 @@ primero o el `downgrade` falla por choque de unicidad.
 **Implementación:** FASE-6 del revamp v2 (`docs/project-management/revamp-v2/FASE-6.md`),
 migración sobre `actors` + `DB-CHANGES.md`. Origen: owner por chat,
 2026-09-11 («Confirmo d1»).
+
+## DEC-039 — `/admin/areas` se muda a `/pmo/resources` como pestaña (EP007/EP017, revamp v2 §9)
+**Fecha:** 2026-09-11
+**Decisión:** áreas, equipos y roles de proyecto dejan de vivir en
+`/admin/areas` (hijo de `buildAdminNav()`) y pasan a ser una pestaña más de
+`/pmo/resources`, junto a Catálogo, Capacidad e Importar.
+**Rationale:** áreas y equipos son datos de directorio de recursos, no de
+administración del tenant — están más cerca de "quién hay" (Recursos) que
+de "quién puede hacer qué" (Admin). Es la opción recomendada en
+`REVAMP-V2-PLAN.md` §7 (D4).
+**Consecuencia aceptada:** `/admin/areas` deja de existir; cualquier
+bookmark o deep-link necesita un redirect 301 (`next.config.js`, patrón ya
+usado en FASE-4 para `/pmo/board` e `/pmo/imports`).
+**Reversible:** sí — es una reubicación de UI, sin cambio de schema ni de
+endpoints.
+**Implementación:** FASE-7 del revamp v2 (`docs/project-management/revamp-v2/FASE-7.md`),
+commit 4. Origen: owner por chat, 2026-09-11 (AskUserQuestion, "Dentro de
+Recursos, como pestaña").

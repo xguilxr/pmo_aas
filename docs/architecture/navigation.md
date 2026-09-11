@@ -88,7 +88,6 @@ flowchart TB
             ADM_ORG["/admin/organizations"]:::admin
             ADM_USR["/admin/users"]:::admin
             ADM_PERM["/admin/permissions"]:::admin
-            ADM_AREAS["/admin/areas"]:::admin
             ADM_AUDIT["/admin/audit-logs"]:::admin
         end
 
@@ -169,8 +168,8 @@ una columna de organización precisamente para poder mostrar varias a la vez).
 > de la API. El claim `active_organization_id` en el JWT es US-214.
 
 Las pantallas que **leen** del contexto: `/dashboard`, `/pmo/projects`,
-`/pmo/requests`, `/pmo/reports`, `/admin/areas` y las cuatro vistas cross vía
-`tenant-cross-filters.tsx`. Los formularios (`project-form`, `program-modal`,
+`/pmo/requests`, `/pmo/reports`, `/pmo/resources` (pestaña "Áreas y Equipos",
+antes `/admin/areas`) y las cuatro vistas cross vía `tenant-cross-filters.tsx`. Los formularios (`project-form`, `program-modal`,
 `request-form`) conservan su `<Select>` porque ahí la organización es un
 **campo** de lo que se crea, no un filtro; lo que toman del contexto es la lista
 y el valor por default.
@@ -347,7 +346,6 @@ Total: **76 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/admin/users/[id]` | Detalle usuario, roles, reset pwd. | Click en row |
 | `/admin/permissions` | Matriz roles × permisos. | Sidebar + panel |
 | `/admin/plan` | US-221: plan de suscripción del inquilino — límites y consumo, solo lectura (escribir el tier es de superadmin). FASE-7 (US-C) le agregó la pestaña "IA" (`?tab=ia`, antes `/admin/ai`, que ahora redirige). | Sidebar + panel |
-| `/admin/areas` | Directorio de áreas/equipos/actores. | Panel del landing |
 | `/admin/audit-logs` | Bitácora con filtros + export CSV. | Sidebar + panel |
 
 ### 3.5 `/superadmin/**` — plataforma (14)
@@ -524,7 +522,6 @@ de reemplazo hasta que su fase las absorba (`REVAMP-V2-FEEDBACK.md` §2.2):
 |---|---|---|
 | `/pmo/minutes` | Ninguno — no forma parte del rediseño; queda solo por URL. | Pendiente (D4) |
 | `/admin/permissions` | Ninguno — solo lectura, DEC-024. Queda solo por URL. | No aplica |
-| `/admin/areas` | Ninguno todavía. | Pendiente (D4) |
 | `/pmo/raid` | `<Link>` arriba del contenido de `/pmo/reports`. | FASE-8 |
 | `/pmo/changes` | `<Link>` arriba del contenido de `/pmo/reports`. | FASE-8 |
 

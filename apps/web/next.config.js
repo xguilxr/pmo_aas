@@ -22,6 +22,12 @@ const nextConfig = {
         destination: "/admin/plan?tab=ia",
         permanent: true,
       },
+      // FASE-7 (revamp v2, US-D, D4): áreas y equipos se mudan a Recursos.
+      {
+        source: "/admin/areas",
+        destination: "/pmo/resources?tab=areas",
+        permanent: true,
+      },
       // FASE-4 (revamp v2, US-C): Board e Importar de proyectos se absorben
       // como pestañas de /pmo.
       {
