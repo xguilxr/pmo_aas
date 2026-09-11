@@ -1114,6 +1114,8 @@ async def delete_actor(
     """Soft-delete del actor (marca `deleted_at` + `is_active=False`)."""
     from datetime import UTC, datetime
 
+    from app.dominio.proyecto import FASES_TERMINALES
+    from app.models.project import Project
     from app.models.project_participation import ProjectParticipation
 
     tenant_id = _tenant(cu)
@@ -1131,20 +1133,34 @@ async def delete_actor(
     # FASE-6 (revamp v2, US-B) — quitar un recurso con proyectos activos
     # dejaría esas participaciones apuntando a un actor invisible: el
     # backend lo rechaza en vez de perder la asignación en silencio.
-    n_participaciones = (
+    #
+    # BUG (owner, 2026-09-11): el check original contaba CUALQUIER
+    # `is_active=True`, sin filtrar proyecto borrado (soft-delete) ni fase
+    # terminal (cerrado/cancelado) — un actor sin nada visible en la UI se
+    # quedaba bloqueado por una participación en un proyecto ya cerrado o
+    # eliminado. El mensaje decía "proyectos... abiertos"; el query no lo
+    # cumplía. Se acota a proyectos vivos y en fase no terminal, y el
+    # mensaje nombra el primero para poder verificarlo sin adivinar.
+    bloqueantes = (
         await db.execute(
-            select(func.count()).where(
+            select(Project.folio, Project.name)
+            .join(ProjectParticipation, ProjectParticipation.project_id == Project.id)
+            .where(
                 ProjectParticipation.actor_id == str(actor_id),
                 ProjectParticipation.is_active.is_(True),
+                Project.deleted_at.is_(None),
+                Project.phase.notin_(FASES_TERMINALES),
             )
+            .limit(5)
         )
-    ).scalar_one()
-    if n_participaciones > 0:
+    ).all()
+    if bloqueantes:
+        listado = ", ".join(f"{folio} — {name}" for folio, name in bloqueantes)
         raise business_rule(
             mensaje(
-                que="El actor tiene participaciones activas en proyectos",
+                que="El actor tiene participaciones activas en proyectos abiertos",
                 porque="Quitarlo dejaría esas asignaciones apuntando a un recurso que ya no existe.",
-                accion="Quítalo de sus proyectos, acciones y riesgos abiertos antes de darlo de baja.",
+                accion=f"Quítalo de estos proyectos primero: {listado}.",
             )
         )
     a.deleted_at = datetime.now(UTC)
