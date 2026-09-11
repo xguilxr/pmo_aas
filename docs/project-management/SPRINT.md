@@ -17,14 +17,14 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso: fase 7
-(admin y cuenta) — W7/W8 aprobados, necesita decisión **D4** (dónde queda
-`/admin/areas`) (`docs/project-management/revamp-v2/FASE-7.md`).
+**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso: fase 8
+(reportes: RAID/Cambios/Organización) — W5 aprobado, D6 cerrada en W5
+(`docs/project-management/revamp-v2/FASE-8.md`).
 
 - [x] Feedback: 15 puntos en `REVAMP-V2-FEEDBACK.md` (2026-09-10/11)
 - [x] Plan + diagramas: `REVAMP-V2-PLAN.md` · runbooks `revamp-v2/FASE-0..9`
 - [x] Wireframes W1–W8: canvas `revamp-v2-wireframes` — todos OK
-- [x] Fases 0-6 (BUG-095..097, US-248..264, DEC-036..038) → [ ] 7…8 (con
+- [x] Fases 0-7 (BUG-095..097, US-248..268, DEC-036..039) → [ ] 8 (con
   wireframe) → 9
 - [ ] Mobile, sin revisar ninguna pantalla
 
@@ -32,8 +32,9 @@ revisar_cada: 30d
 
 ## ⏳ ESPERANDO al owner
 
-- [ ] **Decisiones D4/D6/D7** (plan §7; D1 cerrada DEC-038, D2 cerrada
-  DEC-036, D3 cerrada DEC-037). D4 bloquea la 7.
+- [ ] **Decisión D7** (logo PMO-aaS, plan §7; D1 cerrada DEC-038, D2 cerrada
+  DEC-036, D3 cerrada DEC-037, D4 cerrada DEC-039, D6 cerrada en W5). No
+  bloquea ninguna fase — mientras, la marca es texto.
 - [ ] **Leer el registro del despliegue** de `0110`, `0111` y `0115`: las
   migraciones ya corrieron; falta mirar lo que dejaron escrito.
 - [ ] **Cómo se traza un batch.** US-203–222 se mergearon sin issues: o se

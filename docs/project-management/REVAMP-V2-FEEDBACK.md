@@ -328,7 +328,7 @@ La página en general está bien (confirma), con dos ajustes:
 
 ### 9. Configuraciones → Cuenta — las acciones del dropdown del usuario
 
-**Estado:** pendiente (bajo detalle — confirma alcance, falta precisar contenido)
+**Estado:** hecho (FASE-7, revamp v2, 2026-09-11 — wireframe W8).
 **Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
 
 "Cuenta" (punto 2.2) es la página a la que hoy se llega por el dropdown del
@@ -337,9 +337,11 @@ confirma que el contenido de esa página son, básicamente, esas mismas
 acciones — no agrega detalle nuevo sobre qué campos o funciones debe tener
 más allá de lo que ya existe en ese dropdown.
 
-- [ ] Verificar qué opciones tiene hoy el dropdown de "administrar cuenta" y
-  confirmarlas/trasladarlas como el contenido de la página Cuenta del nuevo
-  sidebar.
+- [x] `/account` trae, en orden: Datos personales, Preferencias
+  (idioma/tema — `PreferenciasDeInterfaz`, compartido con el dropdown del
+  avatar), Notificaciones, Seguridad (cambio de contraseña), Mis datos, y
+  Sesión (cerrar sesión, misma acción que el dropdown). Nada del dropdown
+  se pierde: idioma/tema y "cerrar sesión" siguen ahí también.
 
 **Screenshot de referencia:** pendiente de que el owner lo adjunte.
 
@@ -347,27 +349,23 @@ más allá de lo que ya existe en ese dropdown.
 
 ### 10. Configuraciones → Admin — acceso, branding, usuarios (borrado real), jerarquía
 
-**Estado:** pendiente
+**Estado:** hecho (FASE-7, revamp v2, 2026-09-11 — wireframe W7).
 **Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
 
 **Acceso:** esta sección completa (Admin, punto 2.2) es **solo para el
 administrador del tenant**. No es a nivel de organización — es a nivel de
 tenant.
 
-- [ ] **Branding**: lo que ya existe hoy — sin cambios de alcance.
-- [ ] **Usuarios**: lo que ya existe hoy, con un cambio:
-  - [ ] Poder **eliminar** usuarios de verdad. Hoy solo se pueden
-    **desactivar** — el owner marca que necesita el borrado real, no solo
-    desactivación.
-- [ ] **Organizaciones, Portafolios, Programas y Proyectos** (gestión
-  jerárquica): desde acá el admin del tenant puede:
-  - Reasignar: por ejemplo, mover un proyecto de un programa a otro.
-  - Crear/borrar programas, proyectos, portafolios (todo el árbol).
-  - Esto es **exclusivo del administrador**, para todo lo que es a nivel
-    de organización hacia abajo (organización, portafolio, programa,
-    proyecto).
-  - Y a nivel de **tenant**: el admin puede configurar y **dar de baja
-    organizaciones completas** — también exclusivo del admin.
+- [x] **Branding**: sin cambios de alcance.
+- [x] **Usuarios**: borrado real ya existía (US-088,
+  `DELETE /admin/users/{id}/permanent`, confirmación por nombre); FASE-7
+  le agregó la ficha de amenaza que faltaba (AM-17,
+  `docs/architecture/modelo-amenazas.md`).
+- [x] **Organizaciones, Portafolios, Programas y Proyectos**: `/admin/hierarchy`
+  — árbol de todo el tenant con mover proyecto de programa, crear/editar/
+  archivar/borrado permanente de portafolios y programas, y dar de baja
+  organizaciones completas (todo exclusivo del admin del tenant, mismo
+  `Depends` que ya usaban los endpoints de borrado).
 
 **Nota:** no tocó en este punto Plan e IA ni Auditoría — quedan pendientes
 de que el owner los dicte por separado.

@@ -27,11 +27,11 @@ revisar_cada: nunca
 | [`project-management/CRITERIOS-DE-ACEPTACION.md`](project-management/CRITERIOS-DE-ACEPTACION.md) | El hueco que había · La regla · Lo que este control NO comprueba · Para el trabajo de producto que no toca … | 2026-08-07 | 107 |
 | [`project-management/HANDOFF.md`](project-management/HANDOFF.md) | Qué se estaba haciendo, y por qué · Dónde retomar · Qué va a morder · Decisiones del owner de esta sesión | 2026-09-11 | 42 |
 | [`project-management/LESSONS.md`](project-management/LESSONS.md) | Lecciones vivas | 2026-08-12 | 26 |
-| [`project-management/REVAMP-V2-FEEDBACK.md`](project-management/REVAMP-V2-FEEDBACK.md) | Cómo se usa · Puntos registrados · Plan de implementación | 2026-09-10 | 517 |
+| [`project-management/REVAMP-V2-FEEDBACK.md`](project-management/REVAMP-V2-FEEDBACK.md) | Cómo se usa · Puntos registrados · Plan de implementación | 2026-09-10 | 515 |
 | [`project-management/REVAMP-V2-PLAN.md`](project-management/REVAMP-V2-PLAN.md) | 1. Navegación objetivo · 2. Estados · 3. Entidades, fases y campos · 4. Flujo operativo | 2026-09-11 | 507 |
 | [`project-management/SPRINT-BACKLOG.md`](project-management/SPRINT-BACKLOG.md) | 📤 Salido de SPRINT.md el 2026-08-28 · ⏸️ Deferred — re-evaluación post EP020 · ✅ DONE · 📋 Backlog v2.0 (pos… | 2026-08-28 | 152 |
 | [`project-management/SPRINT-DONE-HISTORY.md`](project-management/SPRINT-DONE-HISTORY.md) | Ronda 2026-08-27 — Revamp de diseño v2 (batch del owner, sin US) · Ronda 2026-08-06 — Ola 2, `SEG-04` y ver… | 2026-08-12 | 609 |
-| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · ⏳ ESPERANDO al owner · 📥 INBOX · 📦 Lo demás | 2026-09-11 | 60 |
+| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · ⏳ ESPERANDO al owner · 📥 INBOX · 📦 Lo demás | 2026-09-11 | 61 |
 | [`project-management/revamp-v2/FASE-0.md`](project-management/revamp-v2/FASE-0.md) | Preparación · Corrección 1 — tabs del detalle de proyecto no se marcan activos · Corrección 2 — tabla RAID … | 2026-09-11 | 181 |
 | [`project-management/revamp-v2/FASE-1.md`](project-management/revamp-v2/FASE-1.md) | Preparación · Commit 1 — sidebar (US-A) · Commit 2 — header (US-B) · Verificación antes de push | 2026-09-11 | 231 |
 | [`project-management/revamp-v2/FASE-2.md`](project-management/revamp-v2/FASE-2.md) | Preparación · Hechos verificados · Paso 1 — las tres páginas transversales (3 commits) · Paso 2 — regla D2:… | 2026-09-11 | 155 |
