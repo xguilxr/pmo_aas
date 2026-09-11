@@ -53,7 +53,6 @@ PAGINAS = RAIZ / "apps" / "web" / "app" / "(app)"
 #: ancho tampoco se rellena mejor.
 ACOTADAS: dict[str, str] = {
     "account": "formulario de cuenta",
-    "admin/ai": "formulario de proveedor de IA",
     "admin/organizations/[id]/edit": "formulario de organización",
     "admin/organizations/new": "formulario de alta",
     "admin/tenant": "formulario de ajustes del inquilino",
