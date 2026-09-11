@@ -127,6 +127,14 @@ Configuraciones
 
 #### 2.3 Filtro por organización activa (nota aparte, no es de navegación)
 
+**Estado:** hecho — FASE-2, commits `c41bd76` (US-250, D2/DEC-036) y
+`b3870d3` (US-251, diagnóstico). `/pmo/raid`, `/pmo/changes` y
+`/pmo/minutes` ya filtraban por la organización activa (`TenantCrossFilters`
+la inyecta del contexto); no hizo falta tocarlas. Limpieza de los datos
+duplicados de Recursos, diferida a fase 6 (D1): `US-251` deja el script de
+diagnóstico, pendiente de correr contra la base de desarrollo (no hay
+`DATABASE_URL` en este entorno).
+
 Con una organización seleccionada, **todo** el contenido de **todas** las
 páginas debe filtrar solo esa organización. El owner marca que ahora mismo
 los Recursos se ven mezclados entre organizaciones por las migraciones —lo

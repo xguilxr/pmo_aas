@@ -17,13 +17,13 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso:
-[`revamp-v2/FASE-2.md`](revamp-v2/FASE-2.md).
+**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso: fase 3
+(dashboard) — necesita wireframe **W1** aprobado (`docs/project-management/revamp-v2/FASE-3.md`).
 
 - [x] Feedback: 15 puntos en `REVAMP-V2-FEEDBACK.md` (2026-09-10/11)
 - [x] Plan + diagramas: `REVAMP-V2-PLAN.md` · runbooks `revamp-v2/FASE-0..9`
-- [x] Fase 0 (BUG-095/096/097) → [x] 1 (US-248/249) → [ ] 2 (filtro org,
-  sin wireframe) → 3…8 (con wireframe) → 9
+- [x] Fase 0 (BUG-095/096/097) → [x] 1 (US-248/249) → [x] 2 (US-250/251) →
+  [ ] 3…8 (con wireframe) → 9
 - [ ] Mobile, sin revisar ninguna pantalla
 
 ---
@@ -32,8 +32,8 @@ revisar_cada: 30d
 
 - [ ] **Wireframes W1–W8** (plan §5): gate de las fases 3–8. Se hacen con la
   skill `design` y se aprueban en el canvas.
-- [ ] **Decisiones D1–D7** (plan §7). Ninguna bloquea las fases 0–1; D2
-  bloquea la 2, D3 la 4, D1 la 6, D4 la 7.
+- [ ] **Decisiones D1/D3/D4/D6/D7** (plan §7; D2 cerrada, DEC-036). D3
+  bloquea la 4, D1 la 6, D4 la 7.
 - [ ] **Leer el registro del despliegue** de `0110`, `0111` y `0115`: las
   migraciones ya corrieron; falta mirar lo que dejaron escrito.
 - [ ] **Cómo se traza un batch.** US-203–222 se mergearon sin issues: o se
