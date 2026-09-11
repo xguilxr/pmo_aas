@@ -2,40 +2,40 @@
 tipo: gestion
 responsable: propietario
 estado: vigente
-revisado: 2026-08-28
+revisado: 2026-09-11
 revisar_cada: 30d
 ---
 
 # HANDOFF.md — puente a la próxima sesión
 
-**2026-08-28** · rama `claude/platform-rundown-indexation-pn4a1q` · lo derivado:
+**2026-09-11** · rama `claude/magical-hypatia-7ekyal` · lo derivado:
 `python scripts/estado.py`
 
 ## Qué se estaba haciendo, y por qué
 
-Auditoría de la memoria del proyecto. 40 de 91 documentos vivos no tenían ruta
-de entrada desde el contexto permanente —glosario y fichas de indicador entre
-ellos—, así que cada sesión los re-derivaba del código. Se indexó por sección
-(US-243), léxico y no vectorial: el corpus tiene vocabulario controlado y un
-vector no se revisa en un PR. Salió además US-224, el catálogo de plantillas.
+El owner mergeó el rediseño parcial (#607) y no vio cambios: se había
+implementado 3 de 7 piezas. En vez de seguir a ciegas, se registró todo su
+feedback (15 puntos) antes de tocar código, y de ahí salió un plan con
+diagramas y un runbook por fase escrito para modelos pequeños. El orden es
+del owner: diagramas → wireframes → código.
 
 ## Dónde retomar
 
-Abrir PR de esta rama contra `main` (suite en verde) y resolver lo de
-ESPERANDO en `SPRINT.md`.
+Abrir PR de esta rama (16 commits, solo docs) y mergear. Luego rama nueva
+desde `main` y ejecutar `revamp-v2/FASE-0.md` tal cual. Las fases 3–8
+esperan wireframes del owner (`SPRINT.md` → ESPERANDO).
 
 ## Qué va a morder
 
-`proximo_id.py` **se queda corto sin `gh`**: dijo US-240 cuando #599–601 ya la
-habían tomado. Avisa, pero el aviso se pasa por alto.
+- La unicidad de actores ya existe **por tenant**, no por organización:
+  FASE-6 la cambia con migración y hay duplicados reales que resolver
+  antes (plan §7, D1).
+- `#607` está mergeado y esta rama sigue sobre esa historia: el PR nuevo
+  solo debe mostrar los commits de docs. Si aparecen más, rebasar.
+- La tabla RAID envuelve a dos líneas **a propósito** (comentario en el
+  código); el owner igual pidió quitarlo. FASE-0 lo hace, no discutir.
 
-Los 40 documentos con deriva **no se arreglan con un gate**: `check_docs.py`
-define `revisado` como declaración humana, y sincronizarlo con git automatiza
-la mentira que el campo existe para impedir.
+## Decisiones del owner de esta sesión
 
-## Decisiones del owner
-
-- **Las migraciones no se «despliegan» aparte**: el `CMD` del contenedor `api`
-  las corre al arrancar, así que `0105`–`0115` se aplicaron al mergear. Queda
-  **leer el registro** de `0110`, `0111` y `0115`.
-- **El revamp v2 sigue abierto**: el styling está, el diseño no.
+Todas en `REVAMP-V2-FEEDBACK.md` (15 puntos) y `REVAMP-V2-PLAN.md` §7
+(D1–D7 abiertas). Ninguna cerrada aún en `DECISIONS.md`.
