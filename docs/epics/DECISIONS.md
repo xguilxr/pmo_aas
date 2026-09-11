@@ -712,3 +712,26 @@ roto el aislamiento que la fase 2 del revamp construye.
 **Reversible:** sí — es una condición de rol en el provider, sin migración.
 **Implementación:** FASE-2 del revamp v2 (`docs/project-management/revamp-v2/FASE-2.md`),
 `components/organizacion-activa.tsx`. Origen: owner por chat, 2026-09-11.
+
+## DEC-037 — El portafolio-programa base se siembra por migración, no se calcula (EP002, revamp v2 §4)
+**Fecha:** 2026-09-11
+**Decisión:** Cada organización tiene una fila real de portafolio "General"
+y una de programa "General" (hijo del anterior), creadas por migración de
+Alembic al momento en que la organización existe (alta de organización nueva
+y backfill de las existentes). Los proyectos sin portafolio/programa
+asignado cuelgan de ese par por default — no de un valor calculado ni de
+`NULL` interpretado como "general" en cada consulta.
+**Rationale:** el Gantt y la lista de PMO (fase 4) necesitan agrupar por
+portafolio→programa siempre, incluidos los proyectos huérfanos; calcular
+"sin portafolio" al vuelo en cada endpoint es la misma cuenta repetida en
+cada lugar que agrupa, con el riesgo de que uno la haga distinto. Una fila
+sembrada es una organización más en la jerarquía, ya soportada, y el
+Gantt/la lista no necesitan una rama de código para el caso "sin asignar".
+**Consecuencia aceptada:** el portafolio/programa "General" no se puede
+borrar (mismo trato que se le dio en W3): borrarlo dejaría proyectos sin
+dónde agrupar.
+**Reversible:** parcialmente — la migración es aditiva (crea filas), pero
+una vez que hay proyectos colgando de "General" quitar la fila requiere
+reasignarlos primero.
+**Implementación:** FASE-4 del revamp v2 (`docs/project-management/revamp-v2/FASE-4.md`),
+wireframe W3 aprobado. Origen: owner por chat, 2026-09-11 («Sí, confirmo D3»).
