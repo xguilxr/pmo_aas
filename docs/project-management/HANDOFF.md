@@ -8,34 +8,29 @@ revisar_cada: 30d
 
 # HANDOFF.md — puente a la próxima sesión
 
-**2026-09-11** · rama `claude/magical-hypatia-7ekyal` · lo derivado:
+**2026-09-11** · rama `claude/handoff-review-development-e02aq2` · lo derivado:
 `python scripts/estado.py`
 
 ## Qué se estaba haciendo, y por qué
 
-El owner mergeó el rediseño parcial (#607) y no vio cambios: se había
-implementado 3 de 7 piezas. En vez de seguir a ciegas, se registró todo su
-feedback (15 puntos) antes de tocar código, y de ahí salió un plan con
-diagramas y un runbook por fase escrito para modelos pequeños. El orden es
-del owner: diagramas → wireframes → código.
+Ejecución autónoma de las fases 6-8 del revamp v2 (`revamp-v2/FASE-6..8.md`).
+El owner mergeó PR #610 a `main`. Esta rama siguió viva con un commit de
+handoff arriba de eso, y GitHub abrió PR #611 solo para ese resto.
 
 ## Dónde retomar
 
-Abrir PR de esta rama (16 commits, solo docs) y mergear. Luego rama nueva
-desde `main` y ejecutar `revamp-v2/FASE-0.md` tal cual. Las fases 3–8
-esperan wireframes del owner (`SPRINT.md` → ESPERANDO).
+Revisar/cerrar PR #611 (o dejar que se autocierre al no tener diff real
+contra `main`). Luego: fase 9 (`revamp-v2/FASE-9.md`) — 3 PRs propios de
+code review transversal con `code-review --comment`, sobre `main`.
 
 ## Qué va a morder
 
-- La unicidad de actores ya existe **por tenant**, no por organización:
-  FASE-6 la cambia con migración y hay duplicados reales que resolver
-  antes (plan §7, D1).
-- `#607` está mergeado y esta rama sigue sobre esa historia: el PR nuevo
-  solo debe mostrar los commits de docs. Si aparecen más, rebasar.
-- La tabla RAID envuelve a dos líneas **a propósito** (comentario en el
-  código); el owner igual pidió quitarlo. FASE-0 lo hace, no discutir.
+- Gates de arquitectura (`check_ancho.py`, `check_org_activa.py`,
+  `check_frescura.py`) tenían excepciones a rutas que FASE-7 borró/movió
+  (`/admin/ai`, `TenantActorsPanel.tsx`) — ya corregidas. Si aparece otro
+  "ruta ya no existe", es el mismo patrón.
 
 ## Decisiones del owner de esta sesión
 
-Todas en `REVAMP-V2-FEEDBACK.md` (15 puntos) y `REVAMP-V2-PLAN.md` §7
-(D1–D7 abiertas). Ninguna cerrada aún en `DECISIONS.md`.
+D4 (dónde queda `/admin/areas`): "Dentro de Recursos, como pestaña" →
+`DEC-039`.
