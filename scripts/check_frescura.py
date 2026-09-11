@@ -82,10 +82,6 @@ FUERA_DE_ALCANCE: dict[str, str] = {
         "cálculo: la ficha lo dice («valor declarado, no se calcula»). Un campo "
         "de una fila no tiene periodo, igual que no lo tiene un nombre."
     ),
-    "components/directory/TenantActorsPanel.tsx": (
-        "`project_capacity_pct` es un atributo declarado del recurso, igual que "
-        "el anterior. Su periodo sería el de la fila, que no existe."
-    ),
     "components/import-wizard.tsx": (
         "`task_count` es la previsualización del archivo que la persona acaba "
         "de elegir. Su «frescura» es el propio acto de elegirlo."

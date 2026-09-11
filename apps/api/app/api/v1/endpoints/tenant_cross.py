@@ -14,6 +14,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -332,15 +333,13 @@ async def export_tenant_raid(
     program_id: UUID | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
-):
+) -> StreamingResponse:
     """Excel de 4 hojas RAID (Riesgos/Acciones/Incidencias/Decisiones) de
     **todos** los proyectos que pasan los filtros — no uno solo. Mismo
     archivo que ve la tabla agrupada de la pestaña RAID de `/pmo/reports`."""
     from datetime import date
     from io import BytesIO
     from urllib.parse import quote
-
-    from fastapi.responses import StreamingResponse
 
     from app.models.area import Actor, Area
     from app.models.user import User
@@ -445,14 +444,13 @@ async def export_tenant_changes(
     status: str | None = Query(default=None),
     cu: CurrentUser = Depends(require_authenticated()),
     db: AsyncSession = Depends(get_db),
-):
+) -> StreamingResponse:
     """Excel de 1 hoja "Cambios" de todos los proyectos que pasan los
     filtros. Mismo archivo que ve la tabla de la pestaña Cambios."""
     from datetime import date
     from io import BytesIO
     from urllib.parse import quote
 
-    from fastapi.responses import StreamingResponse
     from openpyxl import Workbook
 
     from app.core.tipografia import aplicar_a_workbook

@@ -63,6 +63,7 @@ import {
   RISK_STATUS_LABEL,
 } from "@/lib/api/modules";
 import { KpiCard } from "@/components/kpi-card";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { HeroAvance, RuedaDeSalud } from "@/components/tablero-ejecutivo";
 import { healthTone } from "@/components/health-panel";
 import { getDashboardCharts, getDashboardKpis } from "@/lib/api/dashboard";
@@ -1300,6 +1301,7 @@ function CambiosReportsView() {
 function OrgSnapshotYArbol({ orgId }: { orgId: string }) {
   const [kpis, setKpis] = useState<import("@/lib/api/dashboard").DashboardKpis | null>(null);
   const [charts, setCharts] = useState<import("@/lib/api/dashboard").DashboardCharts | null>(null);
+  const leido = useLectura(kpis);
   const [loadingSnapshot, setLoadingSnapshot] = useState(true);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -1352,6 +1354,7 @@ function OrgSnapshotYArbol({ orgId }: { orgId: string }) {
 
   return (
     <div className="space-y-5">
+      {leido ? <MarcaDeDatos periodo="vivo" actualizado={leido} /> : null}
       <section aria-label="Cómo va la organización" className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
           <RuedaDeSalud
