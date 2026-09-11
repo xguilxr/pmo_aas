@@ -16,7 +16,7 @@ function parseType(v: string): RaidDetailType {
 }
 
 // BUG-052: tipo localizado para breadcrumb + map al param `kind` del
-// listado tenant (`/pmo/raid?kind=...`).
+// listado tenant (`/pmo/reports?tab=raid&kind=...`).
 const TYPE_META: Record<
   RaidDetailType,
   { label: string; kindParam: string }
@@ -31,7 +31,7 @@ function Inner() {
   const { type, raidId } = useParams<{ type: string; raidId: string }>();
   const resolved = parseType(type);
   const meta = TYPE_META[resolved];
-  const filteredHref = `/pmo/raid?kind=${meta.kindParam}`;
+  const filteredHref = `/pmo/reports?tab=raid&kind=${meta.kindParam}`;
   return (
     <RaidDetailPage
       raidType={resolved}
@@ -43,7 +43,7 @@ function Inner() {
             aria-label="Breadcrumb"
             className="text-[11px] text-[var(--text-tertiary)]"
           >
-            <Link href="/pmo/raid" className="hover:underline">
+            <Link href="/pmo/reports?tab=raid" className="hover:underline">
               RAID
             </Link>
             <span className="mx-1">/</span>

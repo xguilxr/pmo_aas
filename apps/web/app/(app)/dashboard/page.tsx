@@ -771,7 +771,7 @@ function DashboardInner() {
           loading={loadingKpis}
           tone="danger"
           hint={pieDeRiesgos}
-          href="/pmo/raid?kind=risks&severity_min=13"
+          href="/pmo/reports?tab=raid&kind=risks&severity_min=13"
         />
         <KpiCard
           label="Sobreasignados"

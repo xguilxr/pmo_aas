@@ -28,6 +28,19 @@ const nextConfig = {
         destination: "/pmo/resources?tab=areas",
         permanent: true,
       },
+      // FASE-8 (revamp v2, US-B/C): RAID y Cambios se absorben como
+      // pestañas de /pmo/reports. `/pmo/raid/:type/:raidId` (el detalle de
+      // un ítem) se queda — no está en esta regla.
+      {
+        source: "/pmo/raid",
+        destination: "/pmo/reports?tab=raid",
+        permanent: true,
+      },
+      {
+        source: "/pmo/changes",
+        destination: "/pmo/reports?tab=cambios",
+        permanent: true,
+      },
       // FASE-4 (revamp v2, US-C): Board e Importar de proyectos se absorben
       // como pestañas de /pmo.
       {

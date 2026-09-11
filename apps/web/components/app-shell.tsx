@@ -570,7 +570,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Topbar a sangre: se separa del cuerpo con filete + luz, sin sombra
           (Revamp v2 — el sidebar y el topbar dejan de flotar). */}
       <header
-        className="flex h-[56px] shrink-0 items-center justify-between gap-2 border-b border-[var(--border-default)] px-3 shadow-[var(--linea-surco)] lg:px-4"
+        className="print:hidden flex h-[56px] shrink-0 items-center justify-between gap-2 border-b border-[var(--border-default)] px-3 shadow-[var(--linea-surco)] lg:px-4"
       >
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -659,7 +659,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 flex h-full w-[216px] flex-col border-r border-[var(--chrome-border)] bg-[var(--chrome-bg)] transition-transform",
+            "print:hidden fixed inset-y-0 left-0 z-40 flex h-full w-[216px] flex-col border-r border-[var(--chrome-border)] bg-[var(--chrome-bg)] transition-transform",
             "lg:static lg:z-auto lg:h-auto lg:translate-x-0",
             collapsed ? "lg:w-[68px]" : "lg:w-[216px]",
             open ? "translate-x-0" : "-translate-x-full",
