@@ -73,6 +73,9 @@ import {
 
 /** La ruta agrega organizaciones, así que la columna que las distingue importa. */
 const COLUMNA_ORG = ["organization"] as const;
+// FASE-4 (revamp v2, US-B) — portafolio y programa siempre visibles: es el
+// orden fijo de la lista, no algo que el usuario deba encender.
+const COLUMNAS_JERARQUIA = ["portfolio", "program"] as const;
 
 export default function PortafolioVistaMaestra() {
   const router = useRouter();
@@ -243,10 +246,17 @@ export default function PortafolioVistaMaestra() {
   // La salud se filtra en el cliente y no en el servidor a propósito: el
   // endpoint no tiene el parámetro, la tabla ya está entera en memoria, y una
   // ida al servidor por cambiar un desplegable de tres opciones se nota.
-  const visibles = useMemo(
-    () => (healthFilter ? filas.filter((f) => f.health === healthFilter) : filas),
-    [filas, healthFilter],
-  );
+  const visibles = useMemo(() => {
+    const base = healthFilter ? filas.filter((f) => f.health === healthFilter) : filas;
+    // FASE-4 (revamp v2, US-B) — orden fijo portafolio → programa → nombre;
+    // "￿" manda los "sin portafolio"/"sin programa" al final.
+    return [...base].sort(
+      (a, b) =>
+        (a.portfolio_name ?? "￿").localeCompare(b.portfolio_name ?? "￿", "es") ||
+        (a.program_name ?? "￿").localeCompare(b.program_name ?? "￿", "es") ||
+        a.name.localeCompare(b.name, "es"),
+    );
+  }, [filas, healthFilter]);
 
   const puedeEditar = !permsLoading && canUpdate("projects");
 
@@ -572,7 +582,7 @@ export default function PortafolioVistaMaestra() {
         puedeEditar={puedeEditar}
         // La columna de organización solo distingue algo cuando el header
         // agrega; con una elegida repetiría el mismo valor en cada fila.
-        siempreVisibles={agrega ? COLUMNA_ORG : undefined}
+        siempreVisibles={agrega ? [...COLUMNAS_JERARQUIA, ...COLUMNA_ORG] : COLUMNAS_JERARQUIA}
         onSalud={(id, salud) => void guardar(id, { health_status: salud })}
         onPrioridad={(id, prioridad) => void guardar(id, { priority: prioridad })}
         onDesglose={(id, nombre) => setEvalTarget({ id, name: nombre })}
