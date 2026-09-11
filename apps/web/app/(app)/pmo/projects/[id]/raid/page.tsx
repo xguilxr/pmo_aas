@@ -1208,38 +1208,39 @@ function RisksSection({
           {" "}arriba para crear el primero.
         </div>
       ) : (
-        <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
-          {/* ENH-196: layout de 2 líneas por fila — toda la info visible
-              sin scroll horizontal (feedback cliente 16-jul). Columnas
-              combinadas con sort por chip; edición inline intacta. */}
-          <table className="w-full table-fixed text-[13px]">
+        <section className="overflow-x-auto rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+          {/* ENH-196: layout de 2 líneas por fila; BUG-096 quitó el wrap
+              porque con datos reales las celdas se encimaban — ahora la
+              tabla hace scroll horizontal. Columnas combinadas con sort
+              por chip; edición inline intacta. */}
+          <table className="w-full min-w-max text-[13px]">
             <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)] shadow-[var(--linea-surco)]">
               <tr>
-                <th className="h-8.5 w-[38%] px-3">
+                <th className="h-8.5 w-[38%] whitespace-nowrap px-3">
                   <span className="flex items-center gap-2">
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="folio" getter={(r) => r.folio}>Folio</SortChip>
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="title" getter={(r) => r.title}>Título</SortChip>
                   </span>
                 </th>
-                <th className="h-8.5 w-[19%] px-2">
+                <th className="h-8.5 w-[19%] whitespace-nowrap px-2">
                   <span className="flex items-center gap-2">
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="area" getter={(r) => (r as any).area?.name ?? ""}>Área</SortChip>
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="responsible" getter={(r) => r.responsible_name ?? ""}>Resp.</SortChip>
                   </span>
                 </th>
-                <th className="h-8.5 w-[17%] px-2">
+                <th className="h-8.5 w-[17%] whitespace-nowrap px-2">
                   <span className="flex items-center gap-2">
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="severity" getter={(r) => r.severity ?? 0}>Severidad</SortChip>
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="status" getter={(r) => r.status}>Estado</SortChip>
                   </span>
                 </th>
-                <th className="h-8.5 w-[18%] px-2">
+                <th className="h-8.5 w-[18%] whitespace-nowrap px-2">
                   <span className="flex items-center gap-2">
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="identified" getter={(r) => (r as any).identified_at ?? ""}>Creación</SortChip>
                     <SortChip<Risk> ctrl={riskSortCtrl} sortKey="due" getter={(r) => r.due_date ?? ""}>Compromiso</SortChip>
                   </span>
                 </th>
-                <th className="h-8.5 w-[8%] px-2 pr-3.5 text-right">Acciones</th>
+                <th className="h-8.5 w-[8%] whitespace-nowrap px-2 pr-3.5 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -1249,14 +1250,14 @@ function RisksSection({
                   className="border-b border-[var(--border-subtle)] align-top shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]"
                 >
                   {/* Línea 1: folio (link) · Línea 2: título editable. */}
-                  <td className="px-3 py-2">
+                  <td className="max-w-[32ch] whitespace-nowrap px-3 py-2">
                     <Link
                       href={`/pmo/projects/${projectId}/raid/${r.id}?type=risk`}
                       className="text-[12px] tracking-[0.01em] text-[var(--color-tertiary)] hover:text-[var(--color-accent)] hover:underline"
                     >
                       {r.folio}
                     </Link>
-                    <div className="text-[var(--color-primary)]">
+                    <div className="truncate text-[var(--color-primary)]" title={r.title}>
                       <InlineTextCell
                         value={r.title}
                         onChange={(v) => onPatch(r.id, { title: v })}
@@ -1265,7 +1266,7 @@ function RisksSection({
                       />
                     </div>
                   </td>
-                  <td className="px-2 py-2 text-[var(--color-secondary)]">
+                  <td className="whitespace-nowrap px-2 py-2 text-[var(--color-secondary)]">
                     <div className="grid gap-1">
                       <InlineSelectCell
                         value={r.area_id ?? ""}
@@ -1287,7 +1288,7 @@ function RisksSection({
                       />
                     </div>
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="whitespace-nowrap px-2 py-2">
                     <div className="grid gap-1">
                       {/* ENH-176: severidad = P × I, editable inline. */}
                       <div className="flex items-center gap-0.5">
@@ -1338,7 +1339,7 @@ function RisksSection({
                       </span>
                     </div>
                   </td>
-                  <td className="px-2 py-2 text-[var(--color-secondary)]">
+                  <td className="whitespace-nowrap px-2 py-2 text-[var(--color-secondary)]">
                     <div className="grid gap-1">
                       <InlineDateCell
                         value={r.identified_at}
@@ -1354,7 +1355,7 @@ function RisksSection({
                       />
                     </div>
                   </td>
-                  <td className="px-2 py-2 pr-3.5">
+                  <td className="whitespace-nowrap px-2 py-2 pr-3.5">
                     <RowActions
                       onPreview={() => setPreview(r)}
                       onEdit={() => onEdit(r)}
@@ -1455,37 +1456,38 @@ function IssuesSection({
   const displayLabel =
     issueType === "issue" ? INCIDENT_LABEL : ISSUE_TYPE_LABEL[issueType];
   return (
-    <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
-      {/* ENH-196: 2 líneas por fila — sin scroll horizontal, edición
-          inline directa (feedback cliente 16-jul, pág. 6). */}
-      <table className="w-full table-fixed text-[13px]">
+    <section className="overflow-x-auto rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+      {/* ENH-196: 2 líneas por fila; BUG-096 quitó el wrap porque con
+          datos reales las celdas se encimaban — ahora la tabla hace
+          scroll horizontal (feedback cliente 16-jul, pág. 6). */}
+      <table className="w-full min-w-max text-[13px]">
         <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--color-tertiary)] shadow-[var(--linea-surco)]">
           <tr>
-            <th className="h-8.5 w-[38%] px-3">
+            <th className="h-8.5 w-[38%] whitespace-nowrap px-3">
               <span className="flex items-center gap-2">
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="folio" getter={(r) => r.folio}>Folio</SortChip>
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="title" getter={(r) => r.title}>Título</SortChip>
               </span>
             </th>
-            <th className="h-8.5 w-[19%] px-2">
+            <th className="h-8.5 w-[19%] whitespace-nowrap px-2">
               <span className="flex items-center gap-2">
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="area" getter={(r) => (r as any).area?.name ?? ""}>Área</SortChip>
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="responsible" getter={(r) => r.responsible_name ?? ""}>Resp.</SortChip>
               </span>
             </th>
-            <th className="h-8.5 w-[17%] px-2">
+            <th className="h-8.5 w-[17%] whitespace-nowrap px-2">
               <span className="flex items-center gap-2">
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="priority" getter={(r) => (r as any).priority ?? 0}>Prioridad</SortChip>
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="status" getter={(r) => r.status}>Estado</SortChip>
               </span>
             </th>
-            <th className="h-8.5 w-[18%] px-2">
+            <th className="h-8.5 w-[18%] whitespace-nowrap px-2">
               <span className="flex items-center gap-2">
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="identified" getter={(r) => (r as any).reported_at ?? ""}>Creación</SortChip>
                 <SortChip<Issue> ctrl={issueSortCtrl} sortKey="committed" getter={(r) => (r as any).committed_date ?? ""}>Compromiso</SortChip>
               </span>
             </th>
-            <th className="h-8.5 w-[8%] px-2 pr-3.5 text-right">Acciones</th>
+            <th className="h-8.5 w-[8%] whitespace-nowrap px-2 pr-3.5 text-right">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -1495,14 +1497,14 @@ function IssuesSection({
               className="border-b border-[var(--border-subtle)] align-top shadow-[var(--linea-surco)] hover:bg-[var(--color-subtle)]"
             >
               {/* Línea 1: folio (link) · Línea 2: título editable. */}
-              <td className="px-3 py-2">
+              <td className="max-w-[32ch] whitespace-nowrap px-3 py-2">
                 <Link
                   href={`/pmo/projects/${projectId}/raid/${it.id}?type=${issueType === "action" ? "action" : issueType === "decision" ? "decision" : "incident"}`}
                   className="text-[12px] tracking-[0.01em] text-[var(--color-tertiary)] hover:text-[var(--color-accent)] hover:underline"
                 >
                   {it.folio}
                 </Link>
-                <div className="text-[var(--color-primary)]">
+                <div className="truncate text-[var(--color-primary)]" title={it.title}>
                   <InlineTextCell
                     value={it.title}
                     onChange={(v) => onPatch(it.id, { title: v })}
@@ -1511,7 +1513,7 @@ function IssuesSection({
                   />
                 </div>
               </td>
-              <td className="px-2 py-2 text-[var(--color-secondary)]">
+              <td className="whitespace-nowrap px-2 py-2 text-[var(--color-secondary)]">
                 <div className="grid gap-1">
                   <InlineSelectCell
                     value={it.area_id ?? ""}
@@ -1531,7 +1533,7 @@ function IssuesSection({
                   />
                 </div>
               </td>
-              <td className="px-2 py-2">
+              <td className="whitespace-nowrap px-2 py-2">
                 <div className="grid gap-1">
                   <span className="text-[var(--color-secondary)]">
                     <InlineSelectCell
@@ -1562,7 +1564,7 @@ function IssuesSection({
                   </span>
                 </div>
               </td>
-              <td className="px-2 py-2 text-[var(--color-secondary)]">
+              <td className="whitespace-nowrap px-2 py-2 text-[var(--color-secondary)]">
                 <div className="grid gap-1">
                   <InlineDateCell
                     value={it.reported_at ? it.reported_at.slice(0, 10) : null}
@@ -1582,7 +1584,7 @@ function IssuesSection({
                   />
                 </div>
               </td>
-              <td className="px-2 py-2">
+              <td className="whitespace-nowrap px-2 py-2">
                 <RowActions
                   onPreview={() => setPreview(it)}
                   onEdit={() => onEdit(it)}
