@@ -135,9 +135,11 @@ Configuraciones
 `b3870d3` (US-251, diagnóstico). `/pmo/raid`, `/pmo/changes` y
 `/pmo/minutes` ya filtraban por la organización activa (`TenantCrossFilters`
 la inyecta del contexto); no hizo falta tocarlas. Limpieza de los datos
-duplicados de Recursos, diferida a fase 6 (D1): `US-251` deja el script de
-diagnóstico, pendiente de correr contra la base de desarrollo (no hay
-`DATABASE_URL` en este entorno).
+duplicados de Recursos: FASE-6 (US-262, DEC-038/D1) puso la unicidad por
+organización; `scripts/fusionar_actores_duplicados.py --dry-run` (US-E)
+fusiona lo que quedó de antes de la migración, pendiente de que el owner lo
+corra con `--apply` contra la base de desarrollo (no hay `DATABASE_URL` en
+este entorno).
 
 Con una organización seleccionada, **todo** el contenido de **todas** las
 páginas debe filtrar solo esa organización. El owner marca que ahora mismo
@@ -225,38 +227,27 @@ del punto 1 en lo referente al roadmap — el resto de la lista del punto 1
 
 ### 5. Recursos — unicidad por organización, borrado, % asignado, import masivo
 
-**Estado:** pendiente
+**Estado:** hecho (FASE-6, revamp v2, 2026-09-11 — DEC-038 / D1).
 **Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
 
 **Lo que ya funciona y le gusta al owner (no tocar):** la información que
 se ve hoy — quién es el recurso, su organización/empresa (contempla
 proveedores externos, no solo empleados). Confirma que esto está bien.
 
-- [ ] **Porcentaje asignado**: dice que "creo que ya está" — verificar que el
-  dato exista y **se refleje** en la UI (puede ser un problema de visualización,
-  no de datos).
-- [ ] **Borrar / quitar recurso**: no existe la opción hoy. Falta poder
-  quitar o poner usuarios como recurso.
-- [ ] **Unicidad por organización** (la pieza central del punto): un recurso
-  es **estrictamente de una organización**. Hoy hay recursos duplicados
-  porque dos organizaciones se juntaron (mismo problema de datos que ya
-  había anotado en el punto 2.3) y aparecen en ambas — hay que limpiar eso.
-  - Un recurso solo puede asignarse a proyectos **dentro de su propia
-    organización**.
-  - Si la misma persona participa en otra organización, se tiene que volver
-    a dar de alta ahí — es un registro nuevo e independiente, no el mismo
-    recurso compartido entre organizaciones.
-  - La unicidad **no es por nombre** (puede haber personas con el mismo
-    nombre dentro de una organización) — el candidato es **correo
-    electrónico**, a validar cómo se implementa exactamente.
-- [ ] **Import masivo de recursos** (ya apuntado en el punto 2.2, ahora con
-  el detalle):
-  - Necesita una plantilla con los campos obligatorios para poder subir
-    correctamente.
-  - El sistema debe **crear** los usuarios que no existen todavía.
-  - El sistema debe **validar** (por el criterio de unicidad de arriba) los
-    que ya existen y **no volver a crearlos** — evitar duplicados en la
-    importación.
+- [x] **Porcentaje asignado**: ya estaba en `/api/v1/capacity/summary`
+  (`demand_pct`) y se refleja en `/pmo/resources` en la columna correspondiente,
+  con tono ámbar por encima del umbral de sobreasignación.
+- [x] **Borrar / quitar recurso**: botón "Nuevo recurso" y "Quitar" en
+  `/pmo/resources`. Quitar rechaza si el actor tiene participaciones activas
+  (US-263).
+- [x] **Unicidad por organización**: `UniqueConstraint(tenant_id,
+  organization_id, email)` (migración `20260911_0116`, US-262). El mismo
+  correo en otra organización del tenant crea un actor nuevo e independiente.
+  `scripts/fusionar_actores_duplicados.py --dry-run` limpia los duplicados
+  que quedaron de antes de la migración (US-E, el owner lo corre con `--apply`).
+- [x] **Import masivo de recursos**: pestaña "Importar" en `/pmo/resources`,
+  plantilla XLSX descargable desde ahí; valida "ya existe" por
+  `(tenant, organización, correo)` — igual que el alta manual (US-264).
 
 **Screenshot de referencia:** pendiente de que el owner lo adjunte.
 
