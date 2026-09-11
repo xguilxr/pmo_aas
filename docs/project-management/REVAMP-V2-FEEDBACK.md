@@ -54,7 +54,10 @@ Portafolio. El resto del spec —que es la parte que más se ve— no se tocó:
 
 ### 2. Barra de navegación (sidebar) — reestructuración completa
 
-**Estado:** pendiente
+**Estado:** 2.1/2.2/2.4 hechos — FASE-1, commits `f353f41` (US-248),
+`de45703` (US-249). Diferido de 2.2 (no bloqueante): el botón a la config de
+portafolios/programas y el portafolio-programa base van con `/admin/hierarchy`
+o `/pmo/config` (fase 7/4, D3). 2.3 sigue pendiente (fase 2).
 **Origen:** owner, sesión 2026-09-10 (dictado, sin screenshot todavía).
 
 #### 2.1 Estructura actual

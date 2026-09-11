@@ -18,12 +18,12 @@ revisar_cada: 30d
 ## 🔴 IN-PROGRESS
 
 **Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso:
-[`revamp-v2/FASE-1.md`](revamp-v2/FASE-1.md).
+[`revamp-v2/FASE-2.md`](revamp-v2/FASE-2.md).
 
 - [x] Feedback: 15 puntos en `REVAMP-V2-FEEDBACK.md` (2026-09-10/11)
 - [x] Plan + diagramas: `REVAMP-V2-PLAN.md` · runbooks `revamp-v2/FASE-0..9`
-- [x] Fase 0 (BUG-095/096/097) → [ ] 1 → [ ] 2 (sin wireframe) → 3…8 (con
-  wireframe) → 9
+- [x] Fase 0 (BUG-095/096/097) → [x] 1 (US-248/249) → [ ] 2 (filtro org,
+  sin wireframe) → 3…8 (con wireframe) → 9
 - [ ] Mobile, sin revisar ninguna pantalla
 
 ---
