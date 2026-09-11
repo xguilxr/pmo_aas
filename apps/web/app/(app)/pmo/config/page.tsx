@@ -314,11 +314,15 @@ export default function PmoConfigPage() {
                                       onChange={(e) => void moverProyecto(p, e.target.value)}
                                       className="h-7 w-[200px] text-[12px]"
                                     >
-                                      {programs.map((pg2) => (
-                                        <option key={pg2.id} value={pg2.id}>
-                                          {pg2.name}
-                                        </option>
-                                      ))}
+                                      {programs.length === 0 ? (
+                                        <option disabled>Sin programas</option>
+                                      ) : (
+                                        programs.map((pg2) => (
+                                          <option key={pg2.id} value={pg2.id}>
+                                            {pg2.name}
+                                          </option>
+                                        ))
+                                      )}
                                     </Select>
                                   </li>
                                 ))}

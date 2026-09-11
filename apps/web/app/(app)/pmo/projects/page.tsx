@@ -327,19 +327,27 @@ export default function ProjectsListPage() {
         <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] p-4">
           <FiltroMultiple
             label="Portafolio"
-            opciones={[
-              { value: "__sin__", label: "Sin portafolio" },
-              ...portfolios.map((p) => ({ value: p.id, label: p.name })),
-            ]}
+            opciones={
+              portfolios.length === 0
+                ? [{ value: "__sin__", label: "Sin portafolio" }]
+                : [
+                    { value: "__sin__", label: "Sin portafolio" },
+                    ...portfolios.map((p) => ({ value: p.id, label: p.name })),
+                  ]
+            }
             seleccion={portfolioIds}
             onChange={setPortfolioIds}
           />
           <FiltroMultiple
             label="Programa"
-            opciones={[
-              { value: "__sin__", label: "Sin programa" },
-              ...programs.map((p) => ({ value: p.id, label: p.name })),
-            ]}
+            opciones={
+              programs.length === 0
+                ? [{ value: "__sin__", label: "Sin programa" }]
+                : [
+                    { value: "__sin__", label: "Sin programa" },
+                    ...programs.map((p) => ({ value: p.id, label: p.name })),
+                  ]
+            }
             seleccion={programIds}
             onChange={setProgramIds}
           />
