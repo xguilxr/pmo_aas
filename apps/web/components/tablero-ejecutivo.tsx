@@ -286,6 +286,13 @@ export function ListaTop({
             const esUltimo = i === filas.length - 1;
             const contenido = (
               <>
+                {/* FASE-3 (revamp v2, US-C) — punto de salud a la izquierda,
+                    mismo tinte que la cifra. */}
+                <span
+                  aria-hidden
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: f.color ?? "var(--text-faint)" }}
+                />
                 <span className="min-w-0 flex-1 truncate" title={f.titulo}>
                   {f.titulo}
                 </span>

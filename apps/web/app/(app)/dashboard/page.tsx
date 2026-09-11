@@ -438,7 +438,7 @@ function DashboardInner() {
       .map(([k, v]) => ({
         label: k || "Sin programa",
         value: Number(v) || 0,
-        color: k ? PALETTE.accent : "var(--color-tertiary)",
+        color: k ? PALETTE.accent : "var(--text-faint)",
       }))
       .sort((a, b) => b.value - a.value);
   }, [charts]);
@@ -449,7 +449,7 @@ function DashboardInner() {
       .map(([k, v]) => ({
         label: k || "Sin sponsor",
         value: Number(v) || 0,
-        color: k ? PALETTE.accent : "var(--color-tertiary)",
+        color: k ? PALETTE.accent : "var(--text-faint)",
       }))
       .sort((a, b) => b.value - a.value);
   }, [charts]);
@@ -824,13 +824,13 @@ function DashboardInner() {
       <section aria-label="Distribuciones" className="grid gap-4 lg:grid-cols-3">
         {/* "Por salud" ya no va aquí: la fusiona la Rueda de salud arriba. */}
         <ChartCard title="Por fase" loading={loadingCharts}>
-          <Bars data={phasesData} ariaLabel="Proyectos por fase" />
+          <Bars data={phasesData} ariaLabel="Proyectos por fase" variant="fino" />
         </ChartCard>
         <ChartCard title="Por programa" loading={loadingCharts}>
-          <Bars data={programData} ariaLabel="Proyectos por programa" />
+          <Bars data={programData} ariaLabel="Proyectos por programa" variant="fino" />
         </ChartCard>
         <ChartCard title="Por sponsor" loading={loadingCharts}>
-          <Bars data={sponsorData} ariaLabel="Proyectos por sponsor" />
+          <Bars data={sponsorData} ariaLabel="Proyectos por sponsor" variant="fino" />
         </ChartCard>
       </section>
 
