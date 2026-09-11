@@ -17,23 +17,24 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Revamp v2 — ronda de limpieza.** Sin US activa. Siguiente paso: abrir
-PR de `claude/magical-hypatia-7ekyal` (solo docs) y arrancar
-[`revamp-v2/FASE-0.md`](revamp-v2/FASE-0.md) en rama nueva desde `main`.
+**Revamp v2 — ronda de limpieza.** Sin US activa. Fases 0-8 al día en
+`claude/handoff-review-development-e02aq2`, **nada mergeado a `main`
+todavía**. Fase 9 pide esa fase mergeada primero — son 3 PRs propios con
+`code-review --comment` (`revamp-v2/FASE-9.md`). Owner: revisar/mergear.
 
-- [x] Feedback: 15 puntos en `REVAMP-V2-FEEDBACK.md` (2026-09-10/11)
-- [x] Plan + diagramas: `REVAMP-V2-PLAN.md` · runbooks `revamp-v2/FASE-0..9`
-- [ ] Fases 0 → 1 → 2 (sin wireframe) → 3…8 (con wireframe) → 9
+- [x] Feedback: 14/15 hechos (`REVAMP-V2-FEEDBACK.md`); punto 11 (Plan e
+  IA) es decisión de producto sin cerrar (D5)
+- [x] Fases 0-8 (BUG-095..097, US-248..271, DEC-036..039) → [ ] 9 (mergear
+  primero) — runbooks en `revamp-v2/FASE-0..9`, wireframes W1–W8 OK
 - [ ] Mobile, sin revisar ninguna pantalla
 
 ---
 
 ## ⏳ ESPERANDO al owner
 
-- [ ] **Wireframes W1–W8** (plan §5): gate de las fases 3–8. Se hacen con la
-  skill `design` y se aprueban en el canvas.
-- [ ] **Decisiones D1–D7** (plan §7). Ninguna bloquea las fases 0–1; D2
-  bloquea la 2, D3 la 4, D1 la 6, D4 la 7.
+- [ ] **Decisión D7** (logo PMO-aaS, plan §7; D1 cerrada DEC-038, D2 cerrada
+  DEC-036, D3 cerrada DEC-037, D4 cerrada DEC-039, D6 cerrada en W5). No
+  bloquea ninguna fase — mientras, la marca es texto.
 - [ ] **Leer el registro del despliegue** de `0110`, `0111` y `0115`: las
   migraciones ya corrieron; falta mirar lo que dejaron escrito.
 - [ ] **Cómo se traza un batch.** US-203–222 se mergearon sin issues: o se
@@ -48,8 +49,8 @@ PR de `claude/magical-hypatia-7ekyal` (solo docs) y arrancar
 - [ ] **US-239** — clave de proyecto estilo Jira en la URL (mig. 0120).
 - [ ] **Hueco de compat**: `GET /projects` no normaliza `phase`/`type`.
   Ver `core/compatibilidad.py`.
-- [ ] **Pantalla del catálogo de IA** en `/admin/ai` — US-224 solo tiene
-  API. Coordinar con FASE-7 (Plan e IA en una página).
+- [ ] **Pantalla del catálogo de IA** en `/admin/plan?tab=ia` — US-224 solo
+  tiene API.
 
 ---
 

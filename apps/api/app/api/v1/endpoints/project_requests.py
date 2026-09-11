@@ -22,6 +22,7 @@ from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
 from app.services.folio import next_folio
 from app.services.jerarquia import (
+    programa_general,
     resolver_portafolio,
     validar_portafolio_de_organizacion,
 )
@@ -468,6 +469,21 @@ async def create_project_from_request(
     if pr.project_id:
         return {"project_id": str(pr.project_id), "idempotent": True}
 
+    # DEC-037 (FASE-4, revamp v2) — igual que en la creación directa
+    # (`POST /projects`): sin portafolio ni programa, el proyecto cae en el
+    # "Programa General" de la organización, no huérfano.
+    portfolio_id = pr.portfolio_id
+    program_id = pr.program_id
+    if portfolio_id is None and program_id is None:
+        general = await programa_general(
+            db,
+            tenant_id=tenant_id,
+            organization_id=str(pr.organization_id),
+            created_by=cu.user.id,
+        )
+        portfolio_id = general.portfolio_id
+        program_id = general.id
+
     folio = await next_folio(db, tenant_id=tenant_id, prefix="PRJ")
     project = Project(
         tenant_id=tenant_id,
@@ -475,8 +491,8 @@ async def create_project_from_request(
         # US-199 — el proyecto hereda la clasificación de su solicitud. Los dos
         # campos, no uno: heredar solo el programa dejaría el portafolio vacío
         # y la vista ejecutiva sin el proyecto recién aprobado.
-        portfolio_id=pr.portfolio_id,
-        program_id=pr.program_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
         folio=folio,
         name=pr.title,
         description=pr.description,
@@ -503,8 +519,8 @@ async def create_project_from_request(
         project_name=project.name,
         description=pr.description,
         organization_id=pr.organization_id,
-        portfolio_id=pr.portfolio_id,
-        program_id=pr.program_id,
+        portfolio_id=portfolio_id,
+        program_id=program_id,
         sponsor=pr.sponsor,
         sponsor_email=pr.sponsor_email,
         pm_id=str(body.pm_id),

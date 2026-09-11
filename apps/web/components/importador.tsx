@@ -26,6 +26,12 @@
  * Tienen su propio importador, en el plan de cada proyecto, porque un WBS es del
  * proyecto: el `1.2` de uno no es el `1.2` de otro. Se dice en la pantalla para
  * que nadie suba un plan aquí y no entienda el 415.
+ *
+ * FASE-4 (revamp v2, US-C) — vivía en `/pmo/imports`, ahora es la pestaña
+ * "Importar proyectos" de `/pmo`. `kind` fija qué se importa: el selector
+ * "Qué se importa" que antes dejaba cambiar de clase se retira — la clase
+ * `resources` se reubica en `/pmo/resources` en la fase 6, con su propio
+ * punto de entrada.
  */
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -34,7 +40,6 @@ import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Icono } from "@/components/ui/icono";
-import { Select } from "@/components/ui/select";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -75,13 +80,12 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export default function ImportsPage() {
+export function Importador({ kind }: { kind: ClaseDeImportacion }) {
   // US-205 — la organización se elige en el header y todo opera dentro de ella.
   // Esta pantalla no trae su propio selector: importar «en todas» no significa
   // nada —un proyecto vive en una organización— y `/pmo/imports` no está entre
   // las rutas que agregan, así que `efectiva` siempre es una concreta.
   const { efectiva: orgId, activaObj, cargando, vacio } = useOrganizacionActiva();
-  const [clase, setClase] = useState<ClaseDeImportacion>("projects");
   const [columnas, setColumnas] = useState<ColumnaDeImportacion[]>([]);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewDeImportacion | null>(null);
@@ -91,16 +95,13 @@ export default function ImportsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getImportColumns(clase)
+    getImportColumns(kind)
       .then((r) => setColumnas(r.columns))
       .catch(() => setColumnas([]));
-    // Cambiar de clase invalida lo anterior: las columnas de un proyecto no son
-    // las de una persona, y dejar el preview en pantalla lo haría leer como si
-    // aplicara a la clase nueva.
     setPreview(null);
     setResultado(null);
     setArchivo(null);
-  }, [clase]);
+  }, [kind]);
 
   const obligatorias = useMemo(
     () => columnas.filter((c) => c.required),
@@ -110,32 +111,79 @@ export default function ImportsPage() {
   // Paso actual del flujo — solo presentación, no gobierna nada.
   const paso: PasoImport = resultado ? 4 : preview ? 3 : archivo || subiendo ? 2 : 1;
 
+  const [descargando, setDescargando] = useState(false);
+
   /**
    * La plantilla se genera en el navegador desde las columnas que el backend
    * declara. No es un archivo estático: uno se queda viejo el día que se añade
    * una columna, y el usuario descubre el desajuste al subirlo.
+   *
+   * FASE-6 (US-D) — XLSX en vez de CSV: hoja "Plantilla" con encabezados y
+   * ejemplo, hoja "Instrucciones" con los campos obligatorios, misma fuente
+   * del sistema que el resto de los Excel (US-193).
    */
   const descargarPlantilla = useCallback(
-    (soloObligatorias: boolean) => {
+    async (soloObligatorias: boolean) => {
       const cols = soloObligatorias ? obligatorias : columnas;
-      if (!cols.length) return;
-      const encabezados = cols.map((c) => c.label).join(",");
-      // Una fila de ejemplo con los valores admitidos, cuando el vocabulario es
-      // cerrado. Sin ella, «Tipo» es una columna vacía que hay que adivinar.
-      const ejemplo = cols
-        .map((c) => (c.values.length ? c.values[0] : ""))
-        .join(",");
-      const csv = `﻿${encabezados}\n${ejemplo}\n`;
-      const url = URL.createObjectURL(
-        new Blob([csv], { type: "text/csv;charset=utf-8" }),
-      );
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `plantilla-${clase}${soloObligatorias ? "-minima" : ""}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (!cols.length || descargando) return;
+      setDescargando(true);
+      try {
+        const [ExcelJS, { aplicarFuente }] = await Promise.all([
+          import("exceljs").then((m) => m.default),
+          import("@/lib/plan-template"),
+        ]);
+        const wb = new ExcelJS.Workbook();
+        wb.creator = "PMO aaS";
+
+        const wsPlantilla = wb.addWorksheet("Plantilla");
+        wsPlantilla.columns = cols.map((c) => ({
+          header: c.label,
+          key: c.key,
+          width: Math.max(16, c.label.length + 4),
+        }));
+        wsPlantilla.getRow(1).font = { bold: true };
+        wsPlantilla.addRow(
+          Object.fromEntries(
+            cols.map((c) => [c.key, c.values.length ? c.values[0] : ""]),
+          ),
+        );
+
+        const wsInstrucciones = wb.addWorksheet("Instrucciones");
+        wsInstrucciones.columns = [
+          { header: "Columna", key: "col", width: 26 },
+          { header: "Obligatoria", key: "req", width: 14 },
+          { header: "Valores admitidos", key: "vals", width: 50 },
+        ];
+        wsInstrucciones.getRow(1).font = { bold: true };
+        for (const c of columnas) {
+          wsInstrucciones.addRow({
+            col: c.label,
+            req: c.required ? "Sí" : "No",
+            vals: c.values.length ? c.values.join(", ") : "Libre",
+          });
+        }
+
+        aplicarFuente(wsPlantilla);
+        aplicarFuente(wsInstrucciones);
+
+        const buf = await wb.xlsx.writeBuffer();
+        const url = URL.createObjectURL(
+          new Blob([buf], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          }),
+        );
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `plantilla-${kind}${soloObligatorias ? "-minima" : ""}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } finally {
+        setDescargando(false);
+      }
     },
-    [clase, columnas, obligatorias],
+    [kind, columnas, obligatorias, descargando],
   );
 
   async function subir() {
@@ -144,7 +192,7 @@ export default function ImportsPage() {
     setError(null);
     setResultado(null);
     try {
-      setPreview(await previewImport(clase, orgId, archivo));
+      setPreview(await previewImport(kind, orgId, archivo));
     } catch (e) {
       setPreview(null);
       setError(
@@ -184,7 +232,7 @@ export default function ImportsPage() {
 
   if (cargando) {
     return (
-      <div className="space-y-3 p-6">
+      <div className="space-y-3">
         <span
           aria-hidden
           className="block h-8 w-64 animate-pulse rounded bg-[var(--color-muted)]"
@@ -198,23 +246,11 @@ export default function ImportsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4.5 p-6">
-      <header className="flex flex-col gap-1.25">
-        <nav className="flex items-center gap-1.75 text-[13px] text-[var(--text-tertiary)]">
-          <Link href="/pmo/projects" className="text-[var(--text-secondary)] hover:underline">
-            Proyectos
-          </Link>
-          <Icono nombre="chevron-right" size={14} className="text-[var(--border-strong)]" />
-          <span className="font-medium text-[var(--text-primary)]">Importar</span>
-        </nav>
-        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
-          Onboarding masivo
-        </h1>
-        <p className="text-[13px] text-[var(--text-tertiary)]">
-          Carga una cartera completa desde Excel o CSV. El archivo se valida
-          entero antes de crear nada.
-        </p>
-      </header>
+    <div className="flex flex-col gap-4.5">
+      <p className="text-[13px] text-[var(--text-tertiary)]">
+        Carga {CLASE_IMPORTACION_LABEL[kind].toLowerCase()} desde Excel o CSV.
+        El archivo se valida entero antes de crear nada.
+      </p>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}
 
@@ -271,27 +307,16 @@ export default function ImportsPage() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2">
-            <label className="flex flex-col gap-2 text-[11px] text-[var(--text-tertiary)]">
+            <div className="flex flex-col gap-2 text-[11px] text-[var(--text-tertiary)]">
               Qué se importa
-              <Select
-                value={clase}
-                onChange={(e) =>
-                  setClase(e.target.value as ClaseDeImportacion)
-                }
-              >
-                {(
-                  Object.keys(CLASE_IMPORTACION_LABEL) as ClaseDeImportacion[]
-                ).map((k) => (
-                  <option key={k} value={k}>
-                    {CLASE_IMPORTACION_LABEL[k]}
-                  </option>
-                ))}
-              </Select>
+              <p className="text-[13px] font-medium text-[var(--text-primary)]">
+                {CLASE_IMPORTACION_LABEL[kind]}
+              </p>
               <span className="leading-[1.5] text-[var(--text-faint)]">
                 Los planes se importan desde el plan de cada proyecto: un
                 código WBS es del proyecto, el «1.2» de uno no es el de otro.
               </span>
-            </label>
+            </div>
             <div className="flex flex-col gap-2 text-[11px] text-[var(--text-tertiary)]">
               Organización de destino
               <p className="text-[13px] font-medium text-[var(--text-primary)]">
@@ -300,7 +325,7 @@ export default function ImportsPage() {
               <span className="leading-[1.5] text-[var(--text-faint)]">
                 Se cambia en el selector del header. Los duplicados se buscan
                 dentro de ella
-                {clase === "resources"
+                {kind === "resources"
                   ? "; las personas son del inquilino entero, porque su carga de"
                     + " capacidad se calcula por persona"
                   : ""}
@@ -314,7 +339,7 @@ export default function ImportsPage() {
               type="button"
               variant="secondary"
               onClick={() => descargarPlantilla(false)}
-              disabled={!columnas.length}
+              disabled={!columnas.length || descargando}
             >
               <Icono nombre="download" size={15} />
               Plantilla completa
@@ -323,7 +348,7 @@ export default function ImportsPage() {
               type="button"
               variant="secondary"
               onClick={() => descargarPlantilla(true)}
-              disabled={!obligatorias.length}
+              disabled={!obligatorias.length || descargando}
               title="Solo las columnas obligatorias — la misma plantilla sin lo opcional"
             >
               <Icono nombre="download" size={15} />
@@ -394,7 +419,7 @@ export default function ImportsPage() {
                   {resultado.skipped_invalid} con errores y{" "}
                   {resultado.skipped_duplicate} ya existentes quedaron fuera.
                 </span>
-                {clase === "projects" ? (
+                {kind === "projects" ? (
                   <Link href="/pmo" className="underline">
                     Ver la cartera
                   </Link>

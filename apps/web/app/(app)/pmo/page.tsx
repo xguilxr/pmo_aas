@@ -39,8 +39,10 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Icono } from "@/components/ui/icono";
 import { Select } from "@/components/ui/select";
+import { BoardDePortafolio } from "@/components/board-de-portafolio";
 import { HealthDimensionMatrix } from "@/components/health-panel";
 import { HealthEvaluationModal } from "@/components/health-evaluation-modal";
+import { Importador } from "@/components/importador";
 import { ProgramModal } from "@/components/program-modal";
 import { RoadmapTrimestral } from "@/components/roadmap-trimestral";
 import { VistaMaestra } from "@/components/vista-maestra";
@@ -48,6 +50,7 @@ import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import { useMyPermissions } from "@/hooks/use-my-permissions";
 import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { aplicarFuente, XLSX_FONT } from "@/lib/plan-template";
 import {
   downloadPmoStatusReport,
@@ -73,6 +76,9 @@ import {
 
 /** La ruta agrega organizaciones, así que la columna que las distingue importa. */
 const COLUMNA_ORG = ["organization"] as const;
+// FASE-4 (revamp v2, US-B) — portafolio y programa siempre visibles: es el
+// orden fijo de la lista, no algo que el usuario deba encender.
+const COLUMNAS_JERARQUIA = ["portfolio", "program"] as const;
 
 export default function PortafolioVistaMaestra() {
   const router = useRouter();
@@ -92,6 +98,12 @@ export default function PortafolioVistaMaestra() {
   const [phaseFilter, setPhaseFilter] = useState(searchParams.get("phase") ?? "");
   const [healthFilter, setHealthFilter] = useState(searchParams.get("health") ?? "");
 
+  // FASE-4 (revamp v2, US-C) — Board e Importar viven aquí como pestañas.
+  const tab = (searchParams.get("tab") ?? "portafolio") as
+    | "portafolio"
+    | "board"
+    | "importar";
+
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
 
@@ -101,6 +113,9 @@ export default function PortafolioVistaMaestra() {
   const [error, setError] = useState<string | null>(null);
 
   const [proyectosRoadmap, setProyectosRoadmap] = useState<Project[]>([]);
+  // FASE-4 (revamp v2) — año del roadmap trimestral. Piso 2026 (owner: "todo
+  // a partir del 26 hacia adelante"), sin techo.
+  const [anioRoadmap, setAnioRoadmap] = useState(() => Math.max(2026, new Date().getFullYear()));
   const [healthMatrix, setHealthMatrix] = useState<HealthMatrixResponse | null>(null);
   const [evalTarget, setEvalTarget] = useState<{ id: string; name: string } | null>(null);
   const [healthReportBusy, setHealthReportBusy] = useState(false);
@@ -149,6 +164,16 @@ export default function PortafolioVistaMaestra() {
         setHealthFilter(cambio.health);
         set("health", cambio.health);
       }
+      router.replace(usp.toString() ? `/pmo?${usp}` : "/pmo", { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const cambiarTab = useCallback(
+    (siguiente: "portafolio" | "board" | "importar") => {
+      const usp = new URLSearchParams(searchParams.toString());
+      if (siguiente === "portafolio") usp.delete("tab");
+      else usp.set("tab", siguiente);
       router.replace(usp.toString() ? `/pmo?${usp}` : "/pmo", { scroll: false });
     },
     [router, searchParams],
@@ -240,10 +265,17 @@ export default function PortafolioVistaMaestra() {
   // La salud se filtra en el cliente y no en el servidor a propósito: el
   // endpoint no tiene el parámetro, la tabla ya está entera en memoria, y una
   // ida al servidor por cambiar un desplegable de tres opciones se nota.
-  const visibles = useMemo(
-    () => (healthFilter ? filas.filter((f) => f.health === healthFilter) : filas),
-    [filas, healthFilter],
-  );
+  const visibles = useMemo(() => {
+    const base = healthFilter ? filas.filter((f) => f.health === healthFilter) : filas;
+    // FASE-4 (revamp v2, US-B) — orden fijo portafolio → programa → nombre;
+    // "￿" manda los "sin portafolio"/"sin programa" al final.
+    return [...base].sort(
+      (a, b) =>
+        (a.portfolio_name ?? "￿").localeCompare(b.portfolio_name ?? "￿", "es") ||
+        (a.program_name ?? "￿").localeCompare(b.program_name ?? "￿", "es") ||
+        a.name.localeCompare(b.name, "es"),
+    );
+  }, [filas, healthFilter]);
 
   const puedeEditar = !permsLoading && canUpdate("projects");
 
@@ -410,6 +442,14 @@ export default function PortafolioVistaMaestra() {
               Status PMO (PDF)
             </Button>
           ) : null}
+          {canUpdate("portfolios") ? (
+            <Link href="/pmo/config">
+              <Button variant="secondary" size="sm">
+                <Icono nombre="settings" size={14} />
+                Configurar portafolios y programas
+              </Button>
+            </Link>
+          ) : null}
           {canCreate("programs") ? (
             <Button
               variant="secondary"
@@ -432,6 +472,41 @@ export default function PortafolioVistaMaestra() {
         </div>
       </header>
 
+      {/* FASE-4 (revamp v2, US-C) — Board e Importar como pestañas de /pmo,
+          patrón de `project-tabs-bar.tsx` (mismas clases de activo). */}
+      <div
+        role="tablist"
+        aria-label="Secciones de PMO"
+        className="flex flex-wrap items-center gap-5 border-b border-[var(--border-default)] shadow-[var(--linea-surco)]"
+      >
+        {(
+          [
+            { v: "portafolio", label: "Portafolio" },
+            { v: "board", label: "Board" },
+            { v: "importar", label: "Importar proyectos" },
+          ] as const
+        ).map((t) => {
+          const activo = tab === t.v;
+          return (
+            <button
+              key={t.v}
+              type="button"
+              role="tab"
+              aria-selected={activo}
+              onClick={() => cambiarTab(t.v)}
+              className={cn(
+                "-mb-px flex h-9 items-center gap-1.5 border-b-2 text-[13px] transition-colors",
+                activo
+                  ? "border-[var(--color-accent)] font-semibold text-[var(--text-primary)]"
+                  : "border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-primary)]",
+              )}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
       <ProgramModal
         open={showProgramModal}
         onClose={() => setShowProgramModal(false)}
@@ -444,6 +519,11 @@ export default function PortafolioVistaMaestra() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       {reportError ? <Banner variant="danger">{reportError}</Banner> : null}
 
+      {tab === "board" ? <BoardDePortafolio /> : null}
+      {tab === "importar" ? <Importador kind="projects" /> : null}
+
+      {tab === "portafolio" ? (
+        <>
       {/* Los cuatro filtros del mockup. La organización no está: se elige en el
           header (US-205) y aquí sería el mismo control dos veces. */}
       <section
@@ -542,7 +622,12 @@ export default function PortafolioVistaMaestra() {
           aria-label="Roadmap trimestral"
           className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]"
         >
-          <RoadmapTrimestral proyectos={proyectosRoadmap} portafolios={portfolios} />
+          <RoadmapTrimestral
+            proyectos={proyectosRoadmap}
+            portafolios={portfolios}
+            year={anioRoadmap}
+            onYearChange={setAnioRoadmap}
+          />
         </section>
       ) : null}
 
@@ -552,7 +637,7 @@ export default function PortafolioVistaMaestra() {
         puedeEditar={puedeEditar}
         // La columna de organización solo distingue algo cuando el header
         // agrega; con una elegida repetiría el mismo valor en cada fila.
-        siempreVisibles={agrega ? COLUMNA_ORG : undefined}
+        siempreVisibles={agrega ? [...COLUMNAS_JERARQUIA, ...COLUMNA_ORG] : COLUMNAS_JERARQUIA}
         onSalud={(id, salud) => void guardar(id, { health_status: salud })}
         onPrioridad={(id, prioridad) => void guardar(id, { priority: prioridad })}
         onDesglose={(id, nombre) => setEvalTarget({ id, name: nombre })}
@@ -600,6 +685,8 @@ export default function PortafolioVistaMaestra() {
               .catch(() => {});
           }}
         />
+      ) : null}
+        </>
       ) : null}
     </div>
   );

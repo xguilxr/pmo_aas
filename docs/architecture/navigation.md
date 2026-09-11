@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-29
+revisado: 2026-09-11
 revisar_cada: 180d
 ---
 
@@ -54,8 +54,7 @@ flowchart TB
             PRJ_NEW["/pmo/projects/new"]:::app
             PRJ["/pmo/projects/[id]<br/>(hub + tabs)"]:::app
             REQ["/pmo/requests"]:::app
-            RAID_X["/pmo/raid (cross-project)"]:::app
-            CHG_X["/pmo/changes (cross-project)"]:::app
+            RAID_X["/pmo/raid/[type]/[raidId]<br/>(detalle; el listado es /pmo/reports?tab=raid)"]:::app
             MIN_X["/pmo/minutes (cross-project)"]:::app
             REP["/pmo/reports"]:::app
             RES_X["/pmo/resources (cross-project)"]:::app
@@ -83,11 +82,11 @@ flowchart TB
         subgraph ADMIN ["/admin — admin tenant"]
             ADM_HOME["/admin"]:::admin
             ADM_TEN["/admin/tenant"]:::admin
-            ADM_AI["/admin/ai"]:::admin
+            ADM_PLAN["/admin/plan<br/>(tabs Plan · IA — FASE-7)"]:::admin
+            ADM_HIER["/admin/hierarchy<br/>(FASE-7)"]:::admin
             ADM_ORG["/admin/organizations"]:::admin
             ADM_USR["/admin/users"]:::admin
             ADM_PERM["/admin/permissions"]:::admin
-            ADM_AREAS["/admin/areas"]:::admin
             ADM_AUDIT["/admin/audit-logs"]:::admin
         end
 
@@ -168,48 +167,43 @@ una columna de organización precisamente para poder mostrar varias a la vez).
 > de la API. El claim `active_organization_id` en el JWT es US-214.
 
 Las pantallas que **leen** del contexto: `/dashboard`, `/pmo/projects`,
-`/pmo/requests`, `/pmo/reports`, `/admin/areas` y las cuatro vistas cross vía
-`tenant-cross-filters.tsx`. Los formularios (`project-form`, `program-modal`,
+`/pmo/requests`, `/pmo/reports`, `/pmo/resources` (pestaña "Áreas y Equipos",
+antes `/admin/areas`) y las cuatro vistas cross vía `tenant-cross-filters.tsx`. Los formularios (`project-form`, `program-modal`,
 `request-form`) conservan su `<Select>` porque ahí la organización es un
 **campo** de lo que se crea, no un filtro; lo que toman del contexto es la lista
 y el valor por default.
 
 ### 2.1 Sidebar principal (rutas expuestas)
 
-US-204 lo parte en grupos con rótulo (`GRUPOS_NAV` en `app-shell.tsx`). El
-criterio del corte es de quién es la pregunta: **Organización** son las vistas
-que se leen por organización; **Transversal**, las que cruzan proyectos o son de
-quien las recibe.
+FASE-1 del revamp v2 (`REVAMP-V2-PLAN.md` §1) lo baja de 3 grupos/12 entradas
+a 2 grupos/8 entradas (`GRUPOS_NAV` + el bloque «Configuraciones» en
+`app-shell.tsx`). El grupo `transversal` se disuelve: RAID y Cambios pasan a
+enlaces dentro de Reportes (fase 8 los sube a tabs); Minutas y Notificaciones
+salen del sidebar (la campana sigue llevando a notificaciones). `Board` e
+`Importar` se absorben en `/pmo` (match por prefijo).
 
 ```mermaid
 flowchart LR
     subgraph ORG ["ORGANIZACIÓN - todos"]
         N1["Dashboard<br/>/dashboard"]
-        N2["Portafolio<br/>/pmo<br/>(vista maestra)"]
-        N2b["Board<br/>/pmo/board"]
-        N3["Proyectos<br/>/pmo/projects"]
-        N3b["Importar<br/>/pmo/imports"]
-        N4["Solicitudes<br/>/pmo/requests"]
+        N2["PMO<br/>/pmo<br/>(+ board, imports, programs, organizations)"]
         N5["Recursos<br/>/pmo/resources"]
-        N6["Reportes<br/>/pmo/reports"]
+        N4["Solicitudes<br/>/pmo/requests"]
+        N6["Reportes<br/>/pmo/reports<br/>(+ raid, changes)"]
+        N3["Proyectos<br/>/pmo/projects"]
     end
 
-    subgraph TRANS ["TRANSVERSAL - todos"]
-        T1["RAID<br/>/pmo/raid"]
-        T2["Cambios<br/>/pmo/changes"]
-        T3["Minutas<br/>/pmo/minutes"]
-        T4["Notificaciones<br/>/notifications"]
+    subgraph CFG_NAV ["CONFIGURACIONES - todos"]
+        C1["Cuenta<br/>/account"]
     end
 
-    subgraph ADMIN_NAV ["ADMIN - admin"]
+    subgraph ADMIN_NAV ["ADMIN - admin (dentro de Configuraciones)"]
         A0["/admin"]
-        A1["/admin/tenant"]
-        A2["/admin/ai"]
-        A3["/admin/organizations"]
-        A4["/admin/users"]
-        A5["/admin/permissions"]
-        A5b["/admin/plan"]
-        A6["/admin/audit-logs"]
+        A1["Branding<br/>/admin/tenant"]
+        A4["Usuarios<br/>/admin/users"]
+        A3["Organizaciones y portafolios<br/>/admin/organizations"]
+        A5b["Plan e IA<br/>/admin/plan"]
+        A6["Auditoría<br/>/admin/audit-logs"]
     end
 
     subgraph SUPER_NAV ["PLATAFORMA - is_superadmin"]
@@ -264,7 +258,7 @@ del sidebar admin + un panel adicional para Áreas:
 
 ## 3. Inventario de páginas
 
-Total: **77 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08) + `/admin/plan` (US-221) + `/pmo/imports` (US-216). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano).
+Total: **76 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08) + `/admin/plan` (US-221). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano); FASE-4 (revamp v2) borró 2 (`/pmo/board`, `/pmo/imports`, absorbidas como pestañas de `/pmo` con redirect) y agregó 1 (`/pmo/config`).
 
 ### 3.1 Rutas públicas (5)
 
@@ -290,8 +284,8 @@ Total: **77 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 
 | URL | Propósito |
 |---|---|
-| `/pmo` | Vista maestra del portafolio: una fila por proyecto con las 16 columnas del mockup, header y primera columna fijos, columnas configurables y XLSX (US-207, US-210, US-211). |
-| `/pmo/board` | Portfolio Board: los proyectos por estatus de reporte, en cuatro columnas de urgencia (US-219). |
+| `/pmo` | Vista maestra del portafolio: una fila por proyecto con las 16 columnas del mockup, header y primera columna fijos, columnas configurables y XLSX (US-207, US-210, US-211). FASE-4 (revamp v2): pestañas Portafolio · Board · Importar proyectos (`?tab=board`\|`importar`); el Gantt trimestral navega por año. |
+| `/pmo/config` | FASE-4 (revamp v2): alta, edición y reasignación de portafolios y programas de la organización activa — "estilo carpetas". Borrado suave; el permanente es de Admin (fase 7). |
 | `/pmo/organizations/[id]` | Detalle de organización: programas + proyectos + reportes. |
 | `/pmo/organizations/[id]/reports` | Reportes scope organización. |
 | `/pmo/programs/[id]` | Detalle de programa. |
@@ -299,15 +293,12 @@ Total: **77 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/pmo/projects` | Listado de proyectos (filtros: fase, salud, búsqueda). |
 | `/pmo/projects/new` | Crear proyecto. |
 | `/pmo/projects/[id]` | Hub del proyecto: header, KPIs, links a módulos. Sub-tabs internos: `Resumen` · `Equipo` · `Avance` · `Presupuesto` · `Actividad` · `Stakeholders` (este último solo si el charter tiene sponsor / líder de negocio / líder técnico). |
-| `/pmo/imports` | US-216: importación masiva de proyectos y recursos a nivel organización — sube Excel/CSV, mapea columnas, preview (no escribe) → confirm. |
 | `/pmo/requests` | Listado de solicitudes de proyecto. |
 | `/pmo/requests/new` | Nueva solicitud. |
 | `/pmo/requests/[id]` | Detalle de solicitud + aprobación → crea proyecto. |
-| `/pmo/raid` | RAID consolidado cross-project. |
-| `/pmo/raid/[type]/[raidId]` | Detalle de item RAID (risk/issue/action/decision). |
-| `/pmo/changes` | Cambios cross-project. |
+| `/pmo/raid/[type]/[raidId]` | Detalle de item RAID (risk/issue/action/decision); el listado vive en `/pmo/reports?tab=raid` (FASE-8). |
 | `/pmo/minutes` | Minutas cross-project. |
-| `/pmo/reports` | Reportes operativos. |
+| `/pmo/reports` | Reportes operativos: PMO, Organización, Portafolios, Programas, Proyectos, RAID y Cambios (FASE-8: las dos últimas absorbieron `/pmo/raid` y `/pmo/changes`). |
 | `/pmo/resources` | US-183: capacidad/saturación de recursos — vista Personas, Roles, Áreas y Equipos, Conflictos (sobreasignación con recomendación). Filtro de ventana (Hoy/Semana/3 semanas/Mes). |
 
 **Subrutas del proyecto** (montadas con `ProjectTabsBar`)
@@ -342,8 +333,8 @@ Total: **77 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 |---|---|---|
 | `/admin` | Landing con 7 paneles. | Sidebar admin |
 | `/admin/tenant` | Branding, dominio, config, stats (consolidó `/admin/settings` y `/admin/supervision` via tabs). | Sidebar + panel |
-| `/admin/ai` | Provider de IA (modo `byo`). | Sidebar + panel |
-| `/admin/organizations` | CRUD organizaciones. | Sidebar + panel |
+| `/admin/hierarchy` | FASE-7 (US-A): árbol organización → portafolio → programa → proyecto de todo el tenant — mover, crear, borrar (reusa `org-hierarchy-section.tsx`). Reemplaza a `/admin/organizations` en el sidebar. | Sidebar + panel |
+| `/admin/organizations` | CRUD organizaciones (alta/edición); ya no está en el sidebar, se enlaza desde `/admin/hierarchy`. | Panel |
 | `/admin/organizations/new` | Nueva organización. | Botón |
 | `/admin/organizations/[id]` | Panel de la org: portafolios, programas, proyectos y usuarios con rol. | Click en row |
 | `/admin/organizations/[id]/edit` | Editar organización + jerarquía Portafolio ⊃ Programa (`org-hierarchy-section.tsx`). | Botón en detalle |
@@ -351,8 +342,7 @@ Total: **77 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/admin/users/new` | Nuevo usuario. | Botón |
 | `/admin/users/[id]` | Detalle usuario, roles, reset pwd. | Click en row |
 | `/admin/permissions` | Matriz roles × permisos. | Sidebar + panel |
-| `/admin/plan` | US-221: plan de suscripción del inquilino — límites y consumo, solo lectura (escribir el tier es de superadmin). | Sidebar + panel |
-| `/admin/areas` | Directorio de áreas/equipos/actores. | Panel del landing |
+| `/admin/plan` | US-221: plan de suscripción del inquilino — límites y consumo, solo lectura (escribir el tier es de superadmin). FASE-7 (US-C) le agregó la pestaña "IA" (`?tab=ia`, antes `/admin/ai`, que ahora redirige). | Sidebar + panel |
 | `/admin/audit-logs` | Bitácora con filtros + export CSV. | Sidebar + panel |
 
 ### 3.5 `/superadmin/**` — plataforma (14)
@@ -492,6 +482,8 @@ muertos que el redirect cubría se **borraron** en este commit:
 | `/admin/supervision` | `/admin/tenant?tab=stats` | ✅ (US-036) |
 | `/admin/settings` | `/admin/tenant?tab=config` | ✅ (US-036) |
 | `/admin/organizations/[id]/panel` | `/admin/organizations/[id]` | ✅ (BUG-019) |
+| `/pmo/board` | `/pmo?tab=board` | ✅ (FASE-4) |
+| `/pmo/imports` | `/pmo?tab=importar` | ✅ (FASE-4) |
 
 El resto de las legacy URLs (`/admin/projects/**`, `/admin/programs/**`,
 `/admin/raid/**`, `/admin/requests/**`, `/admin/changes`,
@@ -517,6 +509,16 @@ No son huérfanas. Su único punto de entrada es no-obvio:
 - **0 huérfanas reales** post-cleanup.
 - **6 páginas con acceso indirecto único** documentadas arriba (alcanzables pero difíciles de descubrir).
 - Cleanup del `page.tsx` muerto: ejecutado en el commit de este cambio.
+
+### 6.5 Huérfanas de FASE-1 (revamp v2, temporal)
+
+FASE-1 saca estas rutas del sidebar sin borrarlas. Cada una tiene un enlace
+de reemplazo hasta que su fase las absorba (`REVAMP-V2-FEEDBACK.md` §2.2):
+
+| Ruta | Enlace de reemplazo | Se resuelve en |
+|---|---|---|
+| `/pmo/minutes` | Ninguno — no forma parte del rediseño; queda solo por URL. | Pendiente (D4) |
+| `/admin/permissions` | Ninguno — solo lectura, DEC-024. Queda solo por URL. | No aplica |
 
 ---
 

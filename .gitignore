@@ -34,3 +34,4 @@ __pycache__/
 .idea/
 *.log
 apps/api/.venv/
+apps/api/.venv312/

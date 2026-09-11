@@ -3,7 +3,9 @@ import { apiFetch } from "@/lib/api";
 /**
  * US-060 (DEC-020) — role_type fijo del usuario actual + permisos.
  */
-export type RoleType = "admin" | "user" | "viewer";
+// US-250 (FASE-2, DEC-036): "pm_sr" faltaba en este vocabulario — el backend
+// (`schemas/user.py`) ya lo devuelve, pero el tipo se había quedado en 2.
+export type RoleType = "admin" | "pm_sr" | "user" | "viewer";
 
 export type MyPermissions = {
   role_type: RoleType;

@@ -9,12 +9,11 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChartCard } from "@/components/chart-card";
 import {
   Bars,
   Heatmap,
-  Legend,
   PALETTE,
-  Pie,
   RiskMatrix,
   TrendLines,
   Treemap,
@@ -32,9 +31,10 @@ import {
 } from "@/lib/api/dashboard";
 import { getCapacitySummary, type CapacitySummaryResponse } from "@/lib/api/capacity";
 import {
+  HeroAvance,
   ListaTop,
+  RuedaDeSalud,
   SemaforoConsolidado,
-  TarjetaDeSalud,
   type FilaTop,
 } from "@/components/tablero-ejecutivo";
 import { getHealthMatrix, type HealthMatrixResponse } from "@/lib/api/analytics";
@@ -417,15 +417,6 @@ function DashboardInner() {
     }));
   }, [charts]);
 
-  const healthData = useMemo(() => {
-    const entries = charts ? toEntries(charts.portfolio_health) : [];
-    return entries.map(([k, v]) => ({
-      label: etiquetaSalud(k),
-      value: Number(v) || 0,
-      color: colorSalud(k),
-    }));
-  }, [charts]);
-
   // US-206 — las dos distribuciones nuevas. La clave vacía que manda la API es
   // «sin programa» / «sin sponsor», y se rotula aquí: el contrato no lleva
   // vocabulario de interfaz. El grupo es real —los proyectos que cuelgan del
@@ -437,7 +428,7 @@ function DashboardInner() {
       .map(([k, v]) => ({
         label: k || "Sin programa",
         value: Number(v) || 0,
-        color: k ? PALETTE.accent : "var(--color-tertiary)",
+        color: k ? PALETTE.accent : "var(--text-faint)",
       }))
       .sort((a, b) => b.value - a.value);
   }, [charts]);
@@ -448,7 +439,7 @@ function DashboardInner() {
       .map(([k, v]) => ({
         label: k || "Sin sponsor",
         value: Number(v) || 0,
-        color: k ? PALETTE.accent : "var(--color-tertiary)",
+        color: k ? PALETTE.accent : "var(--text-faint)",
       }))
       .sort((a, b) => b.value - a.value);
   }, [charts]);
@@ -477,6 +468,19 @@ function DashboardInner() {
     if (kpis?.progress_avg == null || kpis?.plan_progress_avg == null) return null;
     return Math.round(kpis.progress_avg - kpis.plan_progress_avg);
   }, [kpis]);
+
+  // FASE-3 (revamp v2, US-B) — la serie del hero de avance: mismo formato
+  // que antes alimentaba el `TrendMini` "Avance promedio" (solo-admin);
+  // `/trends` no exige admin (`require_authenticated()`), así que el hero la
+  // muestra a todos.
+  const avanceSerie = useMemo(
+    () =>
+      (trends?.series ?? []).map((p) => ({
+        x: p.snapshot_date,
+        y: Number(p.avg_progress ?? 0),
+      })),
+    [trends],
+  );
 
   const pieDePlan = useMemo(() => {
     if (kpis?.plan_progress_avg == null) return undefined;
@@ -712,25 +716,43 @@ function DashboardInner() {
           se actúa sobre ella. Este tablero contesta «cómo va la cartera», y
           para eso el par plan/real, lo consumido y los recursos sobreasignados
           dicen más que cuántos ítems hay abiertos en cada bandeja. */}
-      <KpiBand className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+      {/* FASE-3 (revamp v2) — Salud, Avance y Semáforo al mismo nivel, en
+          ese orden (W1 aprobado): la lectura de "cómo va" antes que el band
+          de cifras sueltas. */}
+      <section aria-label="Cómo va la cartera" className="grid gap-4 lg:grid-cols-[1fr_1.4fr_0.8fr]">
+        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+          <RuedaDeSalud
+            conteos={charts?.portfolio_health ?? {}}
+            total={kpis?.active_projects}
+            cargando={loadingCharts || loadingKpis}
+            href="/pmo/projects"
+          />
+        </div>
+        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+          <HeroAvance
+            real={kpis?.progress_avg}
+            plan={kpis?.plan_progress_avg}
+            serie={avanceSerie}
+            corte={pieDePlan}
+            cargando={loadingKpis}
+          />
+        </div>
+        <ChartCard title="Semáforo consolidado">
+          <SemaforoConsolidado
+            filas={semaforo?.rows ?? []}
+            cargando={cargandoEjecutivo}
+            corte={leido ? `Corte de hoy · ${leido}` : undefined}
+          />
+        </ChartCard>
+      </section>
+
+      <KpiBand className="grid-cols-2 sm:grid-cols-4 lg:grid-cols-4">
         <KpiCard
           label="Proyectos activos"
           value={kpis?.active_projects}
           loading={loadingKpis}
           hint={enPreparacion}
           href="/pmo/projects?phase=preparacion&phase=ejecucion&phase=hypercare"
-        />
-        <TarjetaDeSalud
-          conteos={charts?.portfolio_health ?? {}}
-          cargando={loadingCharts}
-          href="/pmo/projects"
-        />
-        <KpiCard
-          label="Avance plan vs real"
-          value={kpis?.progress_avg}
-          loading={loadingKpis}
-          format="percent"
-          hint={pieDePlan}
         />
         {/* BUG-092 — con una sola moneda se pinta el importe. Con varias NO hay
             un total, así que se pinta el desglose: sumar pesos y euros para dar
@@ -749,7 +771,7 @@ function DashboardInner() {
           loading={loadingKpis}
           tone="danger"
           hint={pieDeRiesgos}
-          href="/pmo/raid?kind=risks&severity_min=13"
+          href="/pmo/reports?tab=raid&kind=risks&severity_min=13"
         />
         <KpiCard
           label="Sobreasignados"
@@ -789,23 +811,16 @@ function DashboardInner() {
           sponsor», quién la coordina y quién la pidió. Las dos últimas son
           nuevas: son las preguntas que un comité hace y que las otras dos no
           contestan. */}
-      <section aria-label="Distribuciones" className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-        <ChartCard title="Por salud" loading={loadingCharts}>
-          <div className="flex items-center gap-4">
-            <Pie data={healthData} ariaLabel="Proyectos por salud" />
-            <div className="flex-1">
-              <Legend data={healthData} />
-            </div>
-          </div>
-        </ChartCard>
+      <section aria-label="Distribuciones" className="grid gap-4 lg:grid-cols-3">
+        {/* "Por salud" ya no va aquí: la fusiona la Rueda de salud arriba. */}
         <ChartCard title="Por fase" loading={loadingCharts}>
-          <Bars data={phasesData} ariaLabel="Proyectos por fase" />
+          <Bars data={phasesData} ariaLabel="Proyectos por fase" variant="fino" />
         </ChartCard>
         <ChartCard title="Por programa" loading={loadingCharts}>
-          <Bars data={programData} ariaLabel="Proyectos por programa" />
+          <Bars data={programData} ariaLabel="Proyectos por programa" variant="fino" />
         </ChartCard>
         <ChartCard title="Por sponsor" loading={loadingCharts}>
-          <Bars data={sponsorData} ariaLabel="Proyectos por sponsor" />
+          <Bars data={sponsorData} ariaLabel="Proyectos por sponsor" variant="fino" />
         </ChartCard>
       </section>
 
@@ -839,23 +854,11 @@ function DashboardInner() {
         </ChartCard>
       </section>
 
-      {/* US-206 · fila 4 — tendencias y el semáforo consolidado.
-          El mockup pide la tendencia **bi-semanal**; hoy las instantáneas son
-          semanales y por eso el rótulo dice semanas. La cadencia se cambia en
-          US-213 y este gráfico no se toca: lee lo que haya. */}
-      <section aria-label="Tendencia y semáforo" className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Semáforo consolidado">
-          <SemaforoConsolidado
-            filas={semaforo?.rows ?? []}
-            cargando={cargandoEjecutivo}
-            corte={
-              leido
-                ? `Corte de hoy · ${leido} · el color de cada dimensión es el peor que aparece en la cartera`
-                : undefined
-            }
-          />
-        </ChartCard>
-        {isAdminView ? (
+      {/* El semáforo consolidado ya se pinta arriba (fila "Cómo va la
+          cartera", US-C). El heatmap por organización es admin-equivalente
+          y se queda aquí, solo. */}
+      {isAdminView ? (
+        <section aria-label="Salud por organización" className="grid gap-4">
           <ChartCard title="Salud por organización">
             <Heatmap
               rows={heatmap?.rows ?? []}
@@ -863,8 +866,8 @@ function DashboardInner() {
               onCellClick={(orgId) => irAOrganizacion(orgId)}
             />
           </ChartCard>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
       {isAdminView ? (
         <section aria-label="Tendencias y portafolio" className="grid gap-4 lg:grid-cols-2">
@@ -872,14 +875,9 @@ function DashboardInner() {
             title={`Tendencias — corte ${etiquetaDeCadencia(cadenciaDeReporte)} (12 semanas)`}
           >
             {(trends?.series.length ?? 0) > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-3">
-                <TrendMini
-                  label="Avance promedio"
-                  trends={trends}
-                  metric="avg_progress"
-                  color="var(--color-success-fg)"
-                  valueFormat={(n) => `${Math.round(n)}%`}
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* "Avance promedio" ya no va aquí (US-B): lo muestra el
+                    hero de arriba, para todos los roles, no solo admin. */}
                 <TrendMini
                   label="Riesgos abiertos"
                   trends={trends}
@@ -1060,23 +1058,6 @@ function TrendMini({
         {delta === 0 ? "Sin cambio" : `${delta > 0 ? "▲" : "▼"} ${valueFormat ? valueFormat(Math.abs(delta)) : Math.abs(delta)} vs. semana previa`}
       </p>
     </div>
-  );
-}
-
-function ChartCard({
-  title,
-  children,
-  loading,
-}: {
-  title: string;
-  children: React.ReactNode;
-  loading?: boolean;
-}) {
-  return (
-    <article className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
-      <h2 className="mb-3 text-sm font-semibold text-[var(--color-primary)]">{title}</h2>
-      {loading ? <Skeleton className="h-[180px] w-full" /> : children}
-    </article>
   );
 }
 

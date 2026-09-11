@@ -84,11 +84,20 @@ export function Pie({
   );
 }
 
+/** Rect con solo las esquinas superiores redondeadas (`rounded-t-full` del
+ *  spec — un `<rect rx>` normal redondea las cuatro). */
+function barPath(x: number, y: number, w: number, h: number, r: number): string {
+  const rr = Math.min(r, w / 2, h);
+  if (h <= 0) return "";
+  return `M${x},${y + h} L${x},${y + rr} A${rr},${rr} 0 0 1 ${x + rr},${y} L${x + w - rr},${y} A${rr},${rr} 0 0 1 ${x + w},${y + rr} L${x + w},${y + h} Z`;
+}
+
 export function Bars({
   data,
   height = 180,
   ariaLabel,
   valueFormat,
+  variant = "default",
 }: {
   data: Datum[];
   /** Altura objetivo en px para fallback; el contenedor usa aspect-ratio
@@ -96,6 +105,10 @@ export function Bars({
   height?: number;
   ariaLabel: string;
   valueFormat?: (n: number) => string;
+  /** FASE-3 (revamp v2, US-C) — "fino": barras angostas con top redondeado,
+   *  cifra en mono encima, etiqueta separada por hairline. Sin cambio para
+   *  los usos existentes ("default"). */
+  variant?: "default" | "fino";
 }) {
   const max = useMemo(() => Math.max(1, ...data.map((d) => d.value)), [data]);
 
@@ -119,6 +132,7 @@ export function Bars({
     y: axisY - f * (barArea - 4),
   }));
 
+  const fino = variant === "fino";
   return (
     <div
       className="w-full"
@@ -132,44 +146,57 @@ export function Bars({
         role="img"
         aria-label={ariaLabel}
       >
-        {/* Grid horizontal */}
-        {ticks.map((t) => (
-          <line
-            key={t.frac}
-            x1={24}
-            y1={t.y}
-            x2={VB_W}
-            y2={t.y}
-            stroke="var(--border-subtle)"
-            strokeWidth={0.4}
-            strokeDasharray={t.frac === 0 ? undefined : "2,2"}
-          />
-        ))}
-        {/* Etiquetas eje Y */}
-        {ticks.map((t) => (
-          <text
-            key={`lbl-${t.frac}`}
-            x={20}
-            y={t.y + 1.2}
-            textAnchor="end"
-            fontSize="3"
-            fill="var(--color-tertiary)"
-          >
-            {valueFormat ? valueFormat(t.value) : Math.round(t.value)}
-          </text>
-        ))}
+        {/* Grid horizontal — el fino no lo pinta: es la lectura de barras
+            finas del spec, sin eje. */}
+        {!fino &&
+          ticks.map((t) => (
+            <line
+              key={t.frac}
+              x1={24}
+              y1={t.y}
+              x2={VB_W}
+              y2={t.y}
+              stroke="var(--border-subtle)"
+              strokeWidth={0.4}
+              strokeDasharray={t.frac === 0 ? undefined : "2,2"}
+            />
+          ))}
+        {!fino &&
+          ticks.map((t) => (
+            <text
+              key={`lbl-${t.frac}`}
+              x={20}
+              y={t.y + 1.2}
+              textAnchor="end"
+              fontSize="3"
+              fill="var(--color-tertiary)"
+            >
+              {valueFormat ? valueFormat(t.value) : Math.round(t.value)}
+            </text>
+          ))}
+        {/* Hairline del eje — el fino separa la etiqueta con esta línea. */}
+        {fino ? (
+          <line x1={4} y1={axisY} x2={VB_W - 4} y2={axisY} stroke="var(--border-subtle)" strokeWidth={0.4} />
+        ) : null}
 
         {data.map((d, i) => {
           const h = (d.value / max) * (barArea - 4);
-          const gap = barWidth * 0.2;
-          const x = 24 + i * ((VB_W - 24) / data.length) + gap / 2;
-          const w = (VB_W - 24) / data.length - gap;
+          const axisPad = fino ? 4 : 24;
+          const gap = barWidth * (fino ? 0.45 : 0.2);
+          const x = axisPad + i * ((VB_W - axisPad) / data.length) + gap / 2;
+          const w = (VB_W - axisPad) / data.length - gap;
           const y = axisY - h;
           return (
             <g key={i}>
-              <rect x={x} y={y} width={w} height={h} fill={d.color} rx={1}>
-                <title>{`${d.label}: ${valueFormat ? valueFormat(d.value) : d.value}`}</title>
-              </rect>
+              {fino ? (
+                <path d={barPath(x, y, w, h, w / 2)} fill={d.color}>
+                  <title>{`${d.label}: ${valueFormat ? valueFormat(d.value) : d.value}`}</title>
+                </path>
+              ) : (
+                <rect x={x} y={y} width={w} height={h} fill={d.color} rx={1}>
+                  <title>{`${d.label}: ${valueFormat ? valueFormat(d.value) : d.value}`}</title>
+                </rect>
+              )}
               <text
                 x={x + w / 2}
                 y={axisY + 6}
@@ -183,7 +210,8 @@ export function Bars({
                 x={x + w / 2}
                 y={Math.max(y - 1, 4)}
                 textAnchor="middle"
-                fontSize="3.2"
+                fontSize={fino ? 2.8 : 3.2}
+                fontFamily={fino ? "var(--font-mono)" : undefined}
                 fontWeight={600}
                 fill="var(--color-secondary)"
               >

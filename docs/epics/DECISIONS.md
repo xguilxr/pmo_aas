@@ -693,3 +693,101 @@ legacy en Sprint 7 (US-081).
 **Por qué el defecto no cambia:** el control es ASVS 4.3.1 y su ausencia debilita justo la cuenta que más puede hacer daño si se compromete. Que un tenant nuevo nazca sin las claves y siga pidiendo MFA es lo que hace este cambio aditivo y no una regresión de seguridad general.
 **Reversible:** sí — quitar las claves del `settings` de un tenant (o borrar el tenant) vuelve todo al comportamiento de fábrica.
 **Implementación:** `app/services/segundo_factor.py::mfa_habilitado_para_tenant` · `app/scripts/seed_demo_qa.py` (crea el tenant de demo) · trinquete `TC-013`/`TC-014` en `tests/test_seg01_asvs431_segundo_factor.py`. Origen: owner por chat, 2026-09-10.
+
+## DEC-036 — Quién ve "todas" las organizaciones en el filtro activo (EP002, revamp v2 §2.3)
+**Fecha:** 2026-09-11
+**Decisión:** `role_type` `admin` y `pm_sr` pueden dejar `activa = "todas"` en el
+contexto de organización (`organizacion-activa.tsx`) y ver el contenido de
+todas las organizaciones del tenant, en las páginas que declara
+`RUTAS_QUE_AGREGAN`. `role_type = "user"` (PM) nunca ve "todas": el
+switcher del header solo le ofrece organizaciones concretas y, si su
+`activa` almacenada era "todas" (por ejemplo tras un cambio de rol), el
+contexto la sustituye por la `efectiva` (primera organización visible) al
+cargar.
+**Rationale:** `pm_sr` ya es "acceso admin completo" por vocabulario
+(`schemas/user.py`), y el owner lo confirma como el rol multi-organización.
+Restringir "todas" a `user` habría dejado sin vista consolidada al PM
+senior que sigue varias organizaciones a la vez; dársela a `user` habría
+roto el aislamiento que la fase 2 del revamp construye.
+**Reversible:** sí — es una condición de rol en el provider, sin migración.
+**Implementación:** FASE-2 del revamp v2 (`docs/project-management/revamp-v2/FASE-2.md`),
+`components/organizacion-activa.tsx`. Origen: owner por chat, 2026-09-11.
+
+## DEC-037 — El portafolio-programa base se crea al vuelo, reusando `portafolio_general()` (EP002, revamp v2 §4)
+**Fecha:** 2026-09-11 (revisada el mismo día — ver nota)
+**Decisión:** Cada organización tiene una fila real de portafolio "Portafolio
+General" y una de programa "Programa General" (hijo del anterior). Se crean
+**al vuelo**, la primera vez que hacen falta — no por migración —, extendiendo
+el patrón que ya existe en `app/services/jerarquia.py::portafolio_general()`
+(US-198) con una función gemela `programa_general()`. Los proyectos sin
+portafolio/programa asignado, al crearse (`POST /projects` y la aprobación de
+solicitud en `project_requests.py`), se cuelgan de ese par por default.
+**Nota — revisión de la misma sesión:** la primera redacción de este DEC decía
+"se siembra por migración, no se calcula", con un portafolio nuevo
+`code = "BASE"`. Al implementarlo se encontró que `portafolio_general()` ya
+existe y resuelve el mismo problema para programas (US-198): crea
+"Portafolio General" la primera vez que alguien da de alta un programa sin
+portafolio. Sembrar un "Base" aparte habría dejado **dos** portafolios
+genéricos por organización con el mismo propósito. Se corrige aquí en vez de
+dejar un DEC que no describe lo que se construyó.
+**Rationale:** el Gantt y la lista de PMO (fase 4) necesitan agrupar por
+portafolio→programa siempre, incluidos los proyectos huérfanos. Reusar
+`portafolio_general()` da esa garantía sin duplicar el concepto ni escribir
+una migración de backfill: una organización que nunca tiene un proyecto
+huérfano nunca gana la fila, y la primera que lo necesita la crea igual que ya
+pasa con programas.
+**Consecuencia aceptada:** el portafolio/programa "General" no se puede
+borrar mientras tenga proyectos colgando (mismo trato que W3 le da). No hay
+backfill: una organización con proyectos huérfanos de antes de este cambio
+sigue sin portafolio hasta que alguien la edite o cree un proyecto nuevo sin
+especificar uno — ahí se resuelve sola.
+**Reversible:** sí — no hay migración de schema; es lógica de aplicación.
+**Implementación:** FASE-4 del revamp v2 (`docs/project-management/revamp-v2/FASE-4.md`),
+wireframe W3 aprobado. Origen: owner por chat, 2026-09-11 («Sí, confirmo D3»).
+
+## DEC-038 — La unicidad de un recurso pasa de por tenant a por organización (EP017, revamp v2 §5)
+**Fecha:** 2026-09-11
+**Decisión:** `uq_actors_tenant_email` — hoy `(tenant_id, email)` — cambia a
+`(tenant_id, organization_id, email)`. La misma persona puede existir como
+actor en dos organizaciones del mismo tenant, cada una con su propio
+registro; ya no comparten fila. Los actores sin correo (`email IS NULL`)
+quedan fuera del índice único como hoy y piden uno al importar (FASE-6,
+paso de import masivo).
+**Rationale:** el punto 5 del feedback es explícito: "si la misma persona
+participa en otra organización, se tiene que volver a dar de alta ahí — es
+un registro nuevo e independiente, no el mismo recurso compartido". La
+unicidad por tenant hoy lo impide: un correo que ya existe en la Organización
+A no se puede volver a dar de alta en la B. Acotar la unicidad a
+`(tenant_id, organization_id)` es lo mínimo que desbloquea el caso sin tocar
+el resto del modelo (`Actor.tenant_id` sigue existiendo; sigue siendo el
+tenant del recurso).
+**Consecuencia aceptada:** los actores que hoy comparten fila entre
+organizaciones (el caso real de datos duplicados que el owner reporta,
+diagnosticado por `scripts/diagnostico_actores_por_org.py`, US-251) hay que
+separarlos con datos delante — no se puede automatizar sin decidir cuál
+organización se queda con cuál historial de participación. Eso lo resuelve
+el owner en el mismo bloque de FASE-6, con el diagnóstico como insumo.
+**Reversible:** no del todo — una vez que hay dos filas para el mismo correo
+en organizaciones distintas, volver a `(tenant_id, email)` exige fusionarlas
+primero o el `downgrade` falla por choque de unicidad.
+**Implementación:** FASE-6 del revamp v2 (`docs/project-management/revamp-v2/FASE-6.md`),
+migración sobre `actors` + `DB-CHANGES.md`. Origen: owner por chat,
+2026-09-11 («Confirmo d1»).
+
+## DEC-039 — `/admin/areas` se muda a `/pmo/resources` como pestaña (EP007/EP017, revamp v2 §9)
+**Fecha:** 2026-09-11
+**Decisión:** áreas, equipos y roles de proyecto dejan de vivir en
+`/admin/areas` (hijo de `buildAdminNav()`) y pasan a ser una pestaña más de
+`/pmo/resources`, junto a Catálogo, Capacidad e Importar.
+**Rationale:** áreas y equipos son datos de directorio de recursos, no de
+administración del tenant — están más cerca de "quién hay" (Recursos) que
+de "quién puede hacer qué" (Admin). Es la opción recomendada en
+`REVAMP-V2-PLAN.md` §7 (D4).
+**Consecuencia aceptada:** `/admin/areas` deja de existir; cualquier
+bookmark o deep-link necesita un redirect 301 (`next.config.js`, patrón ya
+usado en FASE-4 para `/pmo/board` e `/pmo/imports`).
+**Reversible:** sí — es una reubicación de UI, sin cambio de schema ni de
+endpoints.
+**Implementación:** FASE-7 del revamp v2 (`docs/project-management/revamp-v2/FASE-7.md`),
+commit 4. Origen: owner por chat, 2026-09-11 (AskUserQuestion, "Dentro de
+Recursos, como pestaña").

@@ -412,10 +412,10 @@ function TenantAdminPageInner() {
             <p className="mt-2 text-[13px] text-[var(--text-secondary)]">
               La configuración de IA del tenant vive en{" "}
               <Link
-                href="/admin/ai"
+                href="/admin/plan?tab=ia"
                 className="font-medium text-[var(--color-accent)] hover:underline"
               >
-                Admin → IA
+                Admin → Plan e IA
               </Link>
               . Ahí eliges entre <strong>Sin IA</strong>,{" "}
               <strong>IA de la plataforma (Groq)</strong> o conectar tu

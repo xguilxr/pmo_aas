@@ -37,6 +37,7 @@ from app.services.completitud import a_json as completitud_a_json
 from app.services.completitud import completitud_de
 from app.services.folio import next_folio
 from app.services.jerarquia import (
+    programa_general,
     resolver_portafolio,
     validar_portafolio_de_organizacion,
 )
@@ -212,6 +213,19 @@ async def create_project(
             organization_id=str(body.organization_id),
             portfolio_id=data["portfolio_id"],
         )
+    # DEC-037 (FASE-4, revamp v2) — sin programa ni portafolio, el proyecto
+    # cae en el "Programa General" (y su "Portafolio General") de la
+    # organización: el Gantt y la lista de PMO agrupan siempre, sin una rama
+    # de código para "sin asignar".
+    if data.get("program_id") is None and data.get("portfolio_id") is None:
+        general = await programa_general(
+            db,
+            tenant_id=tenant_id,
+            organization_id=str(body.organization_id),
+            created_by=cu.user.id,
+        )
+        data["program_id"] = general.id
+        data["portfolio_id"] = general.portfolio_id
     for k in ("organization_id", "program_id", "portfolio_id", "pm_id"):
         if data.get(k) is not None:
             data[k] = str(data[k])

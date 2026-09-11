@@ -514,6 +514,39 @@ con el PR #576, de solo-docs: `MERGEABLE`/`CLEAN` con cinco jobs en *skipping*.
 Por eso los controles que deben valer siempre —`contexto-permanente`,
 `contraste-wcag`— corren sin filtro de rutas.
 
+### AM-17 — Borrado permanente de una entidad
+
+**FC-2 · STRIDE: repudio, elevación de privilegios · Estado: CONTROLADA (2026-09-11)**
+
+Organizaciones, portafolios, programas y (desde FASE-7, `DELETE
+/api/v1/admin/users/{id}/permanent`) usuarios tienen un segundo paso de
+borrado real, sin `deleted_at`: la fila desaparece de la base. Un endpoint
+así, alcanzado por error o por una cuenta comprometida, no se puede
+deshacer restaurando el soft-delete — no hay nada que restaurar.
+
+**Control:** patrón de dos pasos, igual en las cuatro entidades. (1) Solo
+existe para lo que ya está desactivado (`is_active = False`); el preview
+(`GET .../hard-delete-preview`) devuelve un `confirm_slug` — el nombre o
+username exacto de la entidad — y la cuenta de lo que se lleva en cascada.
+(2) El borrado exige ese `confirm_slug` tecleado de vuelta
+(`?confirm=<slug>`, 400 si no coincide exacto): el error humano de un
+click no alcanza, hay que **leer y escribir** el nombre de lo que se va a
+perder. (3) El mismo `Depends` que administración del tenant en las
+cuatro rutas — para usuarios, `require_capability` equivalente, rechaza
+además borrar al propio superadmin y a quien hace la llamada sobre sí
+mismo. (4) Todo borrado permanente queda auditado: `write_audit` con la
+acción `*.hard_delete` y el `entity_id`.
+**Evidencia:** `apps/api/app/api/v1/endpoints/organizations.py`
+(`hard-delete-preview`/`permanent` de organización, portafolio y
+programa), `apps/api/app/api/v1/endpoints/admin_users.py::delete_user_permanent`,
+front `components/hard-delete-button.tsx` (el input no habilita el botón
+hasta que el texto tecleado calza con `confirm_slug`).
+**Residual aceptado:** quien tiene la capability de administración del
+tenant puede borrar de verdad. Es el mismo actor que ya puede desactivar
+todo lo demás — el segundo paso no añade una superficie nueva de acceso,
+solo hace más caro el error: dos clicks, uno de ellos tecleando el nombre
+exacto de lo que se pierde.
+
 ---
 
 ## 3. Cómo se revisa

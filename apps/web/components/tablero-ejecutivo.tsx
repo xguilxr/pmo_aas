@@ -13,7 +13,7 @@
  */
 import Link from "next/link";
 
-import { HEALTH_FILL, colorSalud } from "@/components/dashboard-charts";
+import { HEALTH_FILL, TrendLines, colorSalud } from "@/components/dashboard-charts";
 import { etiquetaSalud } from "@/lib/api/projects";
 import { cn } from "@/lib/cn";
 
@@ -21,64 +21,57 @@ import { cn } from "@/lib/cn";
 const SALUDES = ["red", "yellow", "green"] as const;
 
 /**
- * La tarjeta de salud del mockup: los tres conteos en una, no tres tarjetas.
- *
- * Tres tarjetas separadas obligan a sumarlas mentalmente para saber si cubren
- * la cartera entera, y esa suma es justo el dato que dice si falta algo. Con el
- * total al frente y el desglose debajo, «14 · 6 · 3 de 23» se lee de un golpe.
+ * FASE-3 (revamp v2, US-A) — fusión de `KpiCard "Proyectos activos"` +
+ * `TarjetaDeSalud` + `ChartCard "Por salud"` en una sola pieza: una dona con
+ * el total de proyectos activos al centro y la leyenda de los tres conteos.
+ * Reemplaza a `TarjetaDeSalud` (mismos props de conteos), que se retira: los
+ * tres conteos ya sumaban aparte del total en dos lugares del dashboard.
  */
-export function TarjetaDeSalud({
+export function RuedaDeSalud({
   conteos,
+  total,
   cargando,
   href,
 }: {
   conteos: Record<string, number>;
+  /** Proyectos activos — el valor que antes iba al `KpiCard` separado. */
+  total?: number | null;
   cargando?: boolean;
   href?: string;
 }) {
-  const total = SALUDES.reduce((suma, s) => suma + (conteos[s] ?? 0), 0);
+  const suma = SALUDES.reduce((s, k) => s + (conteos[k] ?? 0), 0);
+  const centro = total ?? suma;
   const cuerpo = (
     <>
       <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
-        Salud
+        Salud del portafolio
       </span>
       {cargando ? (
         <span
           aria-hidden
-          className="block h-8 w-24 animate-pulse rounded bg-[var(--color-muted)]"
+          className="block h-[52px] w-[52px] animate-pulse rounded-full bg-[var(--color-muted)]"
         />
-      ) : total > 0 ? (
-        <>
-          <div className="flex items-baseline gap-2 font-mono text-[26px] font-medium tabular-nums">
+      ) : suma > 0 ? (
+        <div className="flex items-center gap-3">
+          <RuedaDona conteos={conteos} suma={suma} centro={centro} />
+          <div className="flex flex-col gap-1">
             {SALUDES.map((s) => (
-              <span key={s} style={{ color: colorSalud(s) }} title={etiquetaSalud(s)}>
+              <span
+                key={s}
+                className="flex items-center gap-1.5 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]"
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: HEALTH_FILL[s] }}
+                />
                 {conteos[s] ?? 0}
+                <span className="font-sans text-[10.5px] text-[var(--text-tertiary)]">
+                  {etiquetaSalud(s)}
+                </span>
               </span>
             ))}
           </div>
-          {/* La barra proporcional: el desglose que un conteo no da. */}
-          <div
-            className="flex h-1 overflow-hidden rounded-full"
-            role="img"
-            aria-label={SALUDES.map(
-              (s) => `${etiquetaSalud(s)}: ${conteos[s] ?? 0}`,
-            ).join(", ")}
-          >
-            {SALUDES.map((s) => {
-              const n = conteos[s] ?? 0;
-              if (n === 0) return null;
-              return (
-                <span
-                  key={s}
-                  style={{
-                    width: `${(n / total) * 100}%`,
-                    backgroundColor: HEALTH_FILL[s],
-                  }}
-                />
-              );
-            })}
-          </div>
-        </>
+        </div>
       ) : (
         <p className="text-[11px] text-[var(--text-tertiary)]">
           Sin proyectos activos que evaluar
@@ -86,8 +79,8 @@ export function TarjetaDeSalud({
       )}
     </>
   );
-  // Las mismas clases que `KpiCard`: comparte fila con cinco de ellas y una
-  // caja distinta en medio se lee como que esa tarjeta es de otra cosa.
+  // Las mismas clases que `KpiCard`: comparte fila con las demás y una caja
+  // distinta en medio se lee como que esa tarjeta es de otra cosa.
   const clases = "group flex h-full flex-col gap-2 p-4 transition-colors hover:bg-[var(--color-subtle)]";
   return href ? (
     <Link href={href} className="block focus:outline-none">
@@ -95,6 +88,143 @@ export function TarjetaDeSalud({
     </Link>
   ) : (
     <div className={clases}>{cuerpo}</div>
+  );
+}
+
+/** El anillo de 52px con el total centrado — mismo dasharray de `Pie`. */
+function RuedaDona({
+  conteos,
+  suma,
+  centro,
+}: {
+  conteos: Record<string, number>;
+  suma: number;
+  centro: number;
+}) {
+  const size = 52;
+  const thickness = 9;
+  const cx = size / 2;
+  const r = size / 2 - thickness / 2 - 1;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <svg width={size} height={size} role="img" aria-label={`${centro} proyectos activos`}>
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--color-subtle)" strokeWidth={thickness} />
+      <g transform={`rotate(-90 ${cx} ${cx})`}>
+        {SALUDES.filter((s) => (conteos[s] ?? 0) > 0).map((s) => {
+          const n = conteos[s] ?? 0;
+          const len = (n / suma) * circ;
+          const dashoffset = -offset;
+          offset += len;
+          return (
+            <circle
+              key={s}
+              cx={cx}
+              cy={cx}
+              r={r}
+              fill="none"
+              stroke={HEALTH_FILL[s]}
+              strokeWidth={thickness}
+              strokeDasharray={`${len} ${circ - len}`}
+              strokeDashoffset={dashoffset}
+            />
+          );
+        })}
+      </g>
+      <text
+        x={cx}
+        y={cx + 1}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="15"
+        fontWeight="600"
+        className="tabular-nums"
+        fill="var(--color-primary)"
+      >
+        {centro}
+      </text>
+    </svg>
+  );
+}
+
+/**
+ * FASE-3 (revamp v2, US-B) — fusión de `KpiCard "Avance plan vs real"` con
+ * la tendencia de avance (antes un `TrendMini` solo-admin, US-B la sube a
+ * hero: `/trends` no exige admin, `require_authenticated()` alcanza — así
+ * que la tendencia va para todos, no solo `isAdminView`).
+ */
+export function HeroAvance({
+  real,
+  plan,
+  serie,
+  corte,
+  cargando,
+}: {
+  real: number | null | undefined;
+  plan: number | null | undefined;
+  /** Serie de avance promedio, mismo formato que alimentaba `TrendMini`. */
+  serie: { x: string; y: number }[];
+  corte?: string;
+  cargando?: boolean;
+}) {
+  const delta = real != null && plan != null ? Math.round(real - plan) : null;
+  // «vs. hace 12 semanas»: contra el primer punto de la serie (12 semanas),
+  // no semana a semana — eso ya lo dice la línea.
+  const deltaSerie =
+    serie.length > 1 ? Math.round(serie[serie.length - 1].y - serie[0].y) : null;
+  return (
+    <div className="flex h-full flex-col gap-2 p-4">
+      <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
+        Avance del portafolio
+      </span>
+      {cargando ? (
+        <span
+          aria-hidden
+          className="block h-8 w-32 animate-pulse rounded bg-[var(--color-muted)]"
+        />
+      ) : (
+        <div className="flex flex-1 items-center gap-4">
+          <div className="flex items-baseline gap-3">
+            <span className="font-mono text-[26px] font-medium tabular-nums text-[var(--color-primary)]">
+              {real != null ? `${Math.round(real)}%` : "—"}
+            </span>
+            {plan != null ? (
+              <span
+                className={cn(
+                  "text-[11px] font-semibold tabular-nums",
+                  delta == null
+                    ? "text-[var(--text-tertiary)]"
+                    : delta >= 0
+                      ? "text-[var(--color-success-fg)]"
+                      : "text-[var(--color-danger-fg)]",
+                )}
+              >
+                plan {Math.round(plan)}%
+                {delta != null ? ` · ${delta > 0 ? "+" : ""}${delta} pts` : ""}
+              </span>
+            ) : null}
+          </div>
+          {serie.length > 0 ? (
+            <div className="min-w-0 flex-1">
+              <TrendLines
+                data={serie}
+                ariaLabel="Tendencia de avance promedio"
+                valueFormat={(n) => `${Math.round(n)}%`}
+              />
+            </div>
+          ) : null}
+        </div>
+      )}
+      {serie.length > 1 && deltaSerie != null ? (
+        <span className="text-[11px] tabular-nums text-[var(--text-tertiary)]">
+          {deltaSerie === 0
+            ? "Sin cambio"
+            : `${deltaSerie > 0 ? "▲" : "▼"} ${Math.abs(deltaSerie)} pts vs. hace 12 semanas`}
+        </span>
+      ) : corte ? (
+        <span className="text-[11px] text-[var(--text-tertiary)]">{corte}</span>
+      ) : null}
+    </div>
   );
 }
 
@@ -156,6 +286,13 @@ export function ListaTop({
             const esUltimo = i === filas.length - 1;
             const contenido = (
               <>
+                {/* FASE-3 (revamp v2, US-C) — punto de salud a la izquierda,
+                    mismo tinte que la cifra. */}
+                <span
+                  aria-hidden
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: f.color ?? "var(--text-faint)" }}
+                />
                 <span className="min-w-0 flex-1 truncate" title={f.titulo}>
                   {f.titulo}
                 </span>

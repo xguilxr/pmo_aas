@@ -68,6 +68,11 @@ PERMITIDOS: dict[str, str] = {
     "app/(app)/admin/users/[id]/page.tsx": (
         "detalle de usuario con su alcance: necesita todas las organizaciones"
     ),
+    "app/(app)/admin/hierarchy/page.tsx": (
+        "FASE-7 (US-A): árbol org→portafolio→programa→proyecto de todo el "
+        "tenant — el selector de arriba elige entre todas las organizaciones, "
+        "no filtra por la activa del header"
+    ),
 }
 
 #: El import, no la llamada: quien no la importa no la puede usar. Se acepta

@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiBase, apiFetch } from "@/lib/api";
 import type {
   ChangeRequest,
   Issue,
@@ -95,4 +95,52 @@ export function listTenantReports(
   filter: TenantCrossFilter = {},
 ): Promise<TenantReport[]> {
   return apiFetch<TenantReport[]>(`/api/v1/tenant/reports${toQs(filter)}`);
+}
+
+// FASE-8 (revamp v2, US-A/B/C) — botón "Descargar Excel" de las pestañas
+// RAID y Cambios de `/pmo/reports`. Mismo patrón que `_downloadXlsx` de
+// `lib/api/analytics.ts`: el filename ya viene listo por `Content-Disposition`.
+const XLSX_ACCEPT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+function _filenameFromDisposition(header: string | null, fallback: string): string {
+  if (!header) return fallback;
+  const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      // cae al filename simple
+    }
+  }
+  const plainMatch = /filename="?([^";]+)"?/i.exec(header);
+  return plainMatch?.[1] ?? fallback;
+}
+
+async function _downloadXlsx(path: string, fallbackFilename: string): Promise<void> {
+  const res = await fetch(`${apiBase()}${path}`, {
+    headers: { Accept: XLSX_ACCEPT },
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`No se pudo generar el archivo (${res.status}): ${txt.slice(0, 200)}`);
+  }
+  const blob = await res.blob();
+  const filename = _filenameFromDisposition(res.headers.get("Content-Disposition"), fallbackFilename);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function downloadTenantRaidExcel(filter: TenantCrossFilter = {}): Promise<void> {
+  return _downloadXlsx(`/api/v1/tenant/raid/export${toQs(filter)}`, "raid.xlsx");
+}
+
+export function downloadTenantChangesExcel(filter: TenantCrossFilter = {}): Promise<void> {
+  return _downloadXlsx(
+    `/api/v1/tenant/change-requests/export${toQs(filter)}`,
+    "cambios.xlsx",
+  );
 }

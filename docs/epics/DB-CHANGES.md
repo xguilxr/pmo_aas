@@ -1403,3 +1403,36 @@ membresía añade inquilinos; no reemplaza el de origen.
 sentidos sobre SQLite con usuarios previos: la siembra da dos membresías, el
 usuario sin inquilino no gana ninguna, y al bajar `users.tenant_id` queda intacto.
 
+## 0116 — `actors` únicos por organización, no por tenant (FASE-6 revamp v2, DEC-038 / D1)
+
+Un `DROP CONSTRAINT` + `CREATE CONSTRAINT`, nada más — no toca datos.
+
+| Antes | Después |
+|---|---|
+| `uq_actors_tenant_email` = `(tenant_id, email)` | `uq_actors_org_email` = `(tenant_id, organization_id, email)` |
+
+**Por qué.** El punto 5 del feedback pide que la misma persona pueda ser un
+actor **distinto** en cada organización del tenant — "se tiene que volver a
+dar de alta ahí, es un registro nuevo e independiente". El constraint viejo
+lo impedía con un 409 en cuanto el correo ya existía en cualquier otra
+organización. `Actor.organization_id` ya existía (US-182, nullable = recurso
+tenant-global); solo faltaba que la unicidad lo incluyera.
+
+**Orden obligatorio antes de correr en producción.** El `create_unique_constraint`
+falla si ya hay dos filas `(tenant_id, organization_id, email)` iguales — no
+puede haberlas hoy dentro de una misma organización porque el constraint
+viejo ya lo impedía por tenant completo, pero **si el owner reporta actores
+"duplicados entre organizaciones que se juntaron"**, la migración corre
+limpia igual (esos duplicados están en organizaciones *distintas*, que es
+justo el caso que deja de chocar). El script de diagnóstico
+(`scripts/diagnostico_actores_por_org.py`, US-251) y la fusión
+(`scripts/fusionar_actores_duplicados.py`, US-E) son para *después*: una vez
+que la migración corrió y alguien empieza a mover actores entre
+organizaciones a mano, ahí sí pueden aparecer choques dentro de una misma
+organización, y esos se resuelven con la fusión, no con la migración.
+
+**La bajada** es la inversa exacta y puede fallar si para entonces existen
+dos organizaciones con el mismo `(tenant_id, email)` — la capacidad nueva ya
+se usó y hay que fusionar antes de poder bajar. Ver DEC-038, "Reversible: no
+del todo".
+

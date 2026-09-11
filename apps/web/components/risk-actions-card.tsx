@@ -433,7 +433,7 @@ function AssigneePicker({
   if (actors.length === 0) {
     return (
       <p className="text-[11px] italic text-[var(--color-tertiary)]">
-        No hay actores disponibles. Crea actores en /admin/areas.
+        No hay actores disponibles. Crea recursos en /pmo/resources.
       </p>
     );
   }

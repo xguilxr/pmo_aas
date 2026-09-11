@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
 from app.core.compatibilidad import registrar_uso
-from app.core.errors import conflict, mensaje, not_found, validation_error
+from app.core.errors import business_rule, conflict, mensaje, not_found, validation_error
 from app.db.session import get_db
 from app.models.area import Actor, Area, AreaAssignment, Team
 from app.schemas.area import (
@@ -790,22 +790,29 @@ async def create_actor(
                 accion="Elige un equipo de tu organización.",
             ))
 
-    # BUG-059: el unique (tenant_id, email) hacía que un POST con un
-    # email ya registrado tirara 500. Para flujos de "carga de recursos
-    # a áreas" reusamos el actor existente: si está soft-deleted lo
-    # revivimos con los nuevos datos; si está activo devolvemos 409 con
-    # `existing_actor_id` para que el frontend ofrezca asignar al
-    # existente en vez de duplicar.
+    # BUG-059: el unique (tenant_id, organization_id, email) hacía que un
+    # POST con un email ya registrado en esa organización tirara 500. Para
+    # flujos de "carga de recursos a áreas" reusamos el actor existente: si
+    # está soft-deleted lo revivimos con los nuevos datos; si está activo
+    # devolvemos 409 con `existing_actor_id` para que el frontend ofrezca
+    # asignar al existente en vez de duplicar.
+    #
+    # FASE-6 (revamp v2, DEC-038 / D1): la búsqueda se acota a la
+    # organización del body, no a todo el tenant — el mismo correo en OTRA
+    # organización es un actor distinto, a propósito (punto 5 del feedback).
     if body.email:
         normalized_email = str(body.email).strip().lower()
-        existing = (
-            await db.execute(
-                select(Actor).where(
-                    Actor.tenant_id == str(tenant_id),
-                    func.lower(Actor.email) == normalized_email,
-                )
-            )
-        ).scalars().first()
+        org_id_str = str(body.organization_id) if body.organization_id else None
+        existing_q = select(Actor).where(
+            Actor.tenant_id == str(tenant_id),
+            func.lower(Actor.email) == normalized_email,
+        )
+        existing_q = existing_q.where(
+            Actor.organization_id == org_id_str
+            if org_id_str is not None
+            else Actor.organization_id.is_(None)
+        )
+        existing = (await db.execute(existing_q)).scalars().first()
         if existing is not None:
             if existing.deleted_at is not None:
                 existing.deleted_at = None
@@ -836,7 +843,7 @@ async def create_actor(
                 return ActorRead.model_validate(existing)
             raise conflict(
                 mensaje(
-                    que="Ya existe un actor con ese email en el tenant",
+                    que="Ya existe un actor con ese email en esta organización",
                     porque="El correo identifica a la persona dentro de la organización y no puede repetirse.",
                     accion="Edita el actor existente en vez de crear otro.",
                 ),
@@ -1107,6 +1114,8 @@ async def delete_actor(
     """Soft-delete del actor (marca `deleted_at` + `is_active=False`)."""
     from datetime import UTC, datetime
 
+    from app.models.project_participation import ProjectParticipation
+
     tenant_id = _tenant(cu)
     a = (
         await db.execute(
@@ -1119,6 +1128,25 @@ async def delete_actor(
     ).scalar_one_or_none()
     if a is None:
         raise not_found("Actor")
+    # FASE-6 (revamp v2, US-B) — quitar un recurso con proyectos activos
+    # dejaría esas participaciones apuntando a un actor invisible: el
+    # backend lo rechaza en vez de perder la asignación en silencio.
+    n_participaciones = (
+        await db.execute(
+            select(func.count()).where(
+                ProjectParticipation.actor_id == str(actor_id),
+                ProjectParticipation.is_active.is_(True),
+            )
+        )
+    ).scalar_one()
+    if n_participaciones > 0:
+        raise business_rule(
+            mensaje(
+                que="El actor tiene participaciones activas en proyectos",
+                porque="Quitarlo dejaría esas asignaciones apuntando a un recurso que ya no existe.",
+                accion="Quítalo de sus proyectos, acciones y riesgos abiertos antes de darlo de baja.",
+            )
+        )
     a.deleted_at = datetime.now(UTC)
     a.is_active = False
     await db.commit()

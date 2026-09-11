@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { MisDatosSection } from "@/components/mis-datos-section";
 import { NotificationPreferencesSection } from "@/components/notification-preferences-section";
+import { PreferenciasDeInterfaz } from "@/components/preferencias-de-interfaz";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Icono } from "@/components/ui/icono";
@@ -12,7 +14,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { setStoredUser, getStoredUser } from "@/lib/auth-storage";
-import { changePassword } from "@/lib/auth";
+import { changePassword, logout } from "@/lib/auth";
 import {
   getMyProfile,
   updateMyProfile,
@@ -275,6 +277,59 @@ function PasswordSection() {
   );
 }
 
+function PreferenciasSection() {
+  return (
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
+      <div className="mb-4 flex items-center gap-2">
+        <Icono nombre="settings" size={15} className="text-[var(--text-tertiary)]" />
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+          Preferencias
+        </h2>
+      </div>
+      <PreferenciasDeInterfaz variant="page" />
+    </section>
+  );
+}
+
+function SesionSection() {
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleLogout() {
+    setSigningOut(true);
+    try {
+      await logout();
+      router.replace("/login");
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
+  return (
+    <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
+      <div className="mb-4 flex items-center gap-2">
+        <Icono nombre="square-arrow-right" size={15} className="text-[var(--text-tertiary)]" />
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+          Sesión
+        </h2>
+      </div>
+      <p className="mb-3 text-[13px] text-[var(--text-tertiary)]">
+        Cierra la sesión en este dispositivo.
+      </p>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={handleLogout}
+        disabled={signingOut}
+        loading={signingOut}
+      >
+        <Icono nombre="square-arrow-right" size={14} />
+        Cerrar sesión
+      </Button>
+    </section>
+  );
+}
+
 export default function AccountPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -283,13 +338,15 @@ export default function AccountPage() {
           Administrar cuenta
         </h1>
         <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
-          Actualiza tus datos personales y la contraseña de tu cuenta.
+          Datos, preferencias, notificaciones, seguridad y sesión de tu cuenta.
         </p>
       </header>
       <ProfileSection />
-      <PasswordSection />
+      <PreferenciasSection />
       <NotificationPreferencesSection />
+      <PasswordSection />
       <MisDatosSection />
+      <SesionSection />
     </div>
   );
 }

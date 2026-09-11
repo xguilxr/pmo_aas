@@ -66,14 +66,15 @@ async def _existentes_de_proyecto(
 
 
 async def _existentes_de_recurso(
-    db: AsyncSession, tenant_id: UUID
+    db: AsyncSession, tenant_id: UUID, organization_id: UUID
 ) -> dict[str, str]:
-    """`clave normalizada → nombre` de los actores del inquilino.
+    """`clave normalizada → nombre` de los actores de la organización.
 
-    Aquí sí es por inquilino y no por organización: el catálogo de personas es
-    compartido (Op A, 2026-05-07), y la misma persona puede trabajar en dos
-    organizaciones del cliente. Duplicarla rompería su carga de capacidad, que se
-    calcula por persona.
+    FASE-6 (DEC-038, D1): la unicidad de un actor es por
+    `(tenant, organización, correo)`, no por inquilino — el mismo correo en
+    otra organización es una persona distinta e independiente. Antes de
+    DEC-038 el catálogo era por inquilino; se acota aquí para que el
+    importador marque «existe» exactamente lo mismo que `POST /actors`.
 
     Se indexa por correo **y** por nombre. Una fila con correo choca con quien
     tenga ese correo; una sin correo, con quien se llame igual — que es más
@@ -82,7 +83,9 @@ async def _existentes_de_recurso(
     filas = (
         await db.execute(
             select(Actor.name, Actor.email).where(
-                Actor.tenant_id == str(tenant_id), Actor.deleted_at.is_(None)
+                Actor.tenant_id == str(tenant_id),
+                Actor.organization_id == str(organization_id),
+                Actor.deleted_at.is_(None),
             )
         )
     ).all()
@@ -117,7 +120,7 @@ async def revisar(
     existentes = (
         await _existentes_de_proyecto(db, tenant_id, organization_id)
         if clase == "projects"
-        else await _existentes_de_recurso(db, tenant_id)
+        else await _existentes_de_recurso(db, tenant_id, organization_id)
     )
     marcar_duplicadas(filas, existentes, clase)
     return filas
@@ -230,7 +233,9 @@ async def aplicar(
                 await _crear_proyecto(db, tenant_id, organization_id, fila)
             )
         else:
-            creados.append(await _crear_recurso(db, tenant_id, fila))
+            creados.append(
+                await _crear_recurso(db, tenant_id, organization_id, fila)
+            )
     return {
         "created": creados,
         "created_count": len(creados),
@@ -300,7 +305,7 @@ async def _crear_proyecto(
 
 
 async def _crear_recurso(
-    db: AsyncSession, tenant_id: UUID, fila: FilaLeida
+    db: AsyncSession, tenant_id: UUID, organization_id: UUID, fila: FilaLeida
 ) -> dict[str, str]:
     v = fila.valores
     area_id = (
@@ -308,6 +313,7 @@ async def _crear_recurso(
     )
     actor = Actor(
         tenant_id=str(tenant_id),
+        organization_id=str(organization_id),
         name=str(v["name"]).strip(),
         email=(str(v["email"]).strip() if v.get("email") else None),
         company=(str(v["company"]).strip() if v.get("company") else None),

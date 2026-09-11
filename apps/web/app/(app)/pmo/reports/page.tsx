@@ -42,7 +42,32 @@ import {
   listBuilderTemplates,
   type ReportBuilderTemplate,
 } from "@/lib/api/report-builder";
-import { listTenantReports, type TenantReport } from "@/lib/api/tenant-cross";
+import {
+  downloadTenantChangesExcel,
+  downloadTenantRaidExcel,
+  listTenantChanges,
+  listTenantIssues,
+  listTenantReports,
+  listTenantRisks,
+  type TenantChange,
+  type TenantIssue,
+  type TenantReport,
+  type TenantRisk,
+} from "@/lib/api/tenant-cross";
+import {
+  CHANGE_STATUS_BADGE,
+  CHANGE_STATUS_LABEL,
+  CHANGE_TYPE_LABEL,
+  ISSUE_STATUS_LABEL,
+  RAID_STATUS_BADGE,
+  RISK_STATUS_LABEL,
+} from "@/lib/api/modules";
+import { KpiCard } from "@/components/kpi-card";
+import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
+import { HeroAvance, RuedaDeSalud } from "@/components/tablero-ejecutivo";
+import { healthTone } from "@/components/health-panel";
+import { getDashboardCharts, getDashboardKpis } from "@/lib/api/dashboard";
+import { listProjects, type Project } from "@/lib/api/projects";
 
 type TenantReportsTab =
   | "pmo"
@@ -50,14 +75,19 @@ type TenantReportsTab =
   // US-209 — el nivel que ADR-037 metió entre la organización y el programa.
   | "portfolio"
   | "program"
-  | "projects";
+  | "projects"
+  // FASE-8 (revamp v2, US-B/C) — absorben /pmo/raid y /pmo/changes.
+  | "raid"
+  | "cambios";
 
 const TABS: Array<{ v: TenantReportsTab; label: string; icono: string }> = [
   { v: "pmo", label: "PMO", icono: "layout-dashboard" },
-  { v: "organization", label: "Organizaciones", icono: "building" },
+  { v: "organization", label: "Organización", icono: "building" },
   { v: "portfolio", label: "Portafolios", icono: "folders" },
   { v: "program", label: "Programas", icono: "route" },
   { v: "projects", label: "Proyectos", icono: "file-text" },
+  { v: "raid", label: "RAID", icono: "triangle-alert" },
+  { v: "cambios", label: "Cambios", icono: "git-pull-request" },
 ];
 
 export default function TenantReportsPage() {
@@ -118,6 +148,10 @@ export default function TenantReportsPage() {
         <ReportesDePortafolio />
       ) : activeTab === "program" ? (
         <ProgramScopePlaceholder />
+      ) : activeTab === "raid" ? (
+        <RaidReportsView />
+      ) : activeTab === "cambios" ? (
+        <CambiosReportsView />
       ) : (
         <ProjectsReportsView />
       )}
@@ -300,6 +334,8 @@ function OrgScopePlaceholder() {
   return (
     <div className="space-y-5">
       {error ? <Banner variant="danger">{error}</Banner> : null}
+
+      {orgId ? <OrgSnapshotYArbol orgId={orgId} /> : null}
 
       <section className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-5 shadow-[var(--relieve-isla)]">
         <div className="flex items-start gap-3">
@@ -901,5 +937,525 @@ function ProjectsReportsView() {
         )}
       </section>
     </>
+  );
+}
+
+// FASE-8 (revamp v2, US-B) — pestaña RAID: filtros, KPI band, tabla
+// agrupada en 4 bloques (Riesgos/Acciones/Incidencias/Decisiones) y botón
+// Excel. Diseño W5. No incluye el board/kanban ni la vista previa por-item
+// de `/pmo/raid` (que se queda en `/pmo/raid/:type/:raidId`, el detalle):
+// esto es el reporte imprimible, no la herramienta de trabajo diario.
+function RaidGroupTable({
+  title,
+  rows,
+  scoreLabel,
+  scoreOf,
+  statusLabel,
+  statusBadge,
+}: {
+  title: string;
+  rows: (TenantRisk | TenantIssue)[];
+  scoreLabel: string;
+  scoreOf: (r: TenantRisk | TenantIssue) => number | null;
+  statusLabel: (status: string) => string;
+  statusBadge: (status: string) => string;
+}) {
+  return (
+    <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+      <h3 className="border-b border-[var(--border-default)] px-4 py-2.5 text-[13px] font-semibold text-[var(--text-primary)] shadow-[var(--linea-surco)]">
+        {title} <span className="font-mono text-[var(--text-tertiary)]">({rows.length})</span>
+      </h3>
+      {rows.length === 0 ? (
+        <div className="p-6 text-center text-[13px] text-[var(--text-tertiary)]">
+          Sin filas.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)]">
+              <tr>
+                <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Proyecto</th>
+                <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Folio</th>
+                <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Título</th>
+                <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Responsable</th>
+                <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Estado</th>
+                <th className="h-8.5 whitespace-nowrap px-3 font-semibold">{scoreLabel}</th>
+                <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Fecha</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]">
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="h-10 whitespace-nowrap px-3 text-[12.5px] text-[var(--text-secondary)]">
+                    {r.project_folio} — {r.project_name}
+                  </td>
+                  <td className="h-10 whitespace-nowrap px-3 font-mono text-[12px] text-[var(--text-tertiary)]">
+                    {r.folio}
+                  </td>
+                  <td className="h-10 max-w-[280px] truncate px-3 text-[12.5px] text-[var(--text-primary)]" title={r.title}>
+                    {r.title}
+                  </td>
+                  <td className="h-10 whitespace-nowrap px-3 text-[12.5px] text-[var(--text-secondary)]">
+                    {r.responsible_name ?? "—"}
+                  </td>
+                  <td className="h-10 whitespace-nowrap px-3">
+                    <Badge className={statusBadge(r.status)}>{statusLabel(r.status)}</Badge>
+                  </td>
+                  <td className="h-10 whitespace-nowrap px-3 font-mono text-[12.5px] text-[var(--text-secondary)]">
+                    {scoreOf(r) ?? "—"}
+                  </td>
+                  <td className="h-10 whitespace-nowrap px-3 text-[12.5px] text-[var(--text-tertiary)]">
+                    {("identified_at" in r ? r.identified_at : r.reported_at) ?? "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RaidReportsView() {
+  const { activaObj: orgActiva } = useOrganizacionActiva();
+  const searchParams = useSearchParams();
+  // ENH-009 — el KPI "Riesgos severos" del dashboard y el botón "Volver"
+  // del detalle de un ítem RAID llegan con `?kind=` y `?severity_min=`
+  // (heredado de `/pmo/raid`, que redirige aquí conservando la query).
+  const kindParam = searchParams.get("kind");
+  const severityMinParam = Number(searchParams.get("severity_min") ?? "") || null;
+  const [filter, setFilter] = useState<TenantCrossFilterValue>({});
+  const [risks, setRisks] = useState<TenantRisk[]>([]);
+  const [issues, setIssues] = useState<TenantIssue[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    Promise.all([listTenantRisks(filter), listTenantIssues(filter)])
+      .then(([r, i]) => {
+        if (cancelled) return;
+        setRisks(r);
+        setIssues(i);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof ApiError ? err.message : "No se pudo cargar");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filter]);
+
+  const risksFiltrados = useMemo(
+    () => (severityMinParam ? risks.filter((r) => (r.severity ?? 0) >= severityMinParam) : risks),
+    [risks, severityMinParam],
+  );
+  const actions = useMemo(() => issues.filter((i) => i.type === "action"), [issues]);
+  const decisions = useMemo(() => issues.filter((i) => i.type === "decision"), [issues]);
+  const incidentes = useMemo(() => issues.filter((i) => i.type === "issue"), [issues]);
+  const soloUnGrupo = ["risks", "actions", "issues", "decisions"].includes(kindParam ?? "")
+    ? kindParam
+    : null;
+
+  async function descargar() {
+    setDownloading(true);
+    try {
+      await downloadTenantRaidExcel(filter);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo generar el Excel");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <>
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+
+      <section className="print:hidden flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]">
+        <TenantCrossFilters value={filter} onChange={setFilter} />
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => window.print()}>
+            <Icono nombre="printer" size={14} />
+            Imprimir / guardar PDF
+          </Button>
+          <Button size="sm" onClick={descargar} loading={downloading} disabled={downloading}>
+            <Icono nombre="download" size={14} />
+            Descargar Excel
+          </Button>
+        </div>
+      </section>
+
+      <section className="space-y-1">
+        <p className="text-[11px] uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
+          {orgActiva?.name ?? "Todas las organizaciones"} · {new Date().toLocaleDateString("es-MX")}
+        </p>
+      </section>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <KpiCard label="Riesgos abiertos" value={loading ? null : risks.filter((r) => r.status !== "resolved").length} loading={loading} tone="warning" />
+        <KpiCard label="Riesgos severos" value={loading ? null : risks.filter((r) => (r.severity ?? 0) >= 15).length} loading={loading} tone="danger" />
+        <KpiCard label="Incidencias abiertas" value={loading ? null : incidentes.filter((i) => i.status !== "resolved").length} loading={loading} tone="warning" />
+        <KpiCard label="Decisiones pendientes" value={loading ? null : decisions.filter((d) => d.status !== "resolved").length} loading={loading} tone="accent" />
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {!soloUnGrupo || soloUnGrupo === "risks" ? (
+            <RaidGroupTable
+              title="Riesgos"
+              rows={risksFiltrados}
+              scoreLabel="Severidad"
+              scoreOf={(r) => ("severity" in r ? r.severity : null)}
+              statusLabel={(s) => RISK_STATUS_LABEL[s as keyof typeof RISK_STATUS_LABEL] ?? s}
+              statusBadge={(s) => RAID_STATUS_BADGE[s as keyof typeof RAID_STATUS_BADGE] ?? ""}
+            />
+          ) : null}
+          {!soloUnGrupo || soloUnGrupo === "actions" ? (
+            <RaidGroupTable
+              title="Acciones"
+              rows={actions}
+              scoreLabel="Prioridad"
+              scoreOf={(r) => ("priority" in r ? r.priority : null)}
+              statusLabel={(s) => ISSUE_STATUS_LABEL[s as keyof typeof ISSUE_STATUS_LABEL] ?? s}
+              statusBadge={(s) => RAID_STATUS_BADGE[s as keyof typeof RAID_STATUS_BADGE] ?? ""}
+            />
+          ) : null}
+          {!soloUnGrupo || soloUnGrupo === "issues" ? (
+            <RaidGroupTable
+              title="Incidencias"
+              rows={incidentes}
+              scoreLabel="Prioridad"
+              scoreOf={(r) => ("priority" in r ? r.priority : null)}
+              statusLabel={(s) => ISSUE_STATUS_LABEL[s as keyof typeof ISSUE_STATUS_LABEL] ?? s}
+              statusBadge={(s) => RAID_STATUS_BADGE[s as keyof typeof RAID_STATUS_BADGE] ?? ""}
+            />
+          ) : null}
+          {!soloUnGrupo || soloUnGrupo === "decisions" ? (
+            <RaidGroupTable
+              title="Decisiones"
+              rows={decisions}
+              scoreLabel="Prioridad"
+              scoreOf={(r) => ("priority" in r ? r.priority : null)}
+              statusLabel={(s) => ISSUE_STATUS_LABEL[s as keyof typeof ISSUE_STATUS_LABEL] ?? s}
+              statusBadge={(s) => RAID_STATUS_BADGE[s as keyof typeof RAID_STATUS_BADGE] ?? ""}
+            />
+          ) : null}
+        </div>
+      )}
+    </>
+  );
+}
+
+// FASE-8 (revamp v2, US-C) — pestaña Cambios: mismo patrón que RAID.
+function CambiosReportsView() {
+  const { activaObj: orgActiva } = useOrganizacionActiva();
+  const [filter, setFilter] = useState<TenantCrossFilterValue>({});
+  const [rows, setRows] = useState<TenantChange[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listTenantChanges(filter)
+      .then((r) => {
+        if (!cancelled) setRows(r);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof ApiError ? err.message : "No se pudo cargar");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filter]);
+
+  async function descargar() {
+    setDownloading(true);
+    try {
+      await downloadTenantChangesExcel(filter);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo generar el Excel");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  const pendientes = rows.filter((c) => c.status === "in_review").length;
+  const aprobados = rows.filter((c) => c.status === "approved").length;
+  const implementados = rows.filter((c) => c.status === "implemented").length;
+  const rechazados = rows.filter((c) => c.status === "rejected").length;
+
+  return (
+    <>
+      {error ? <Banner variant="danger">{error}</Banner> : null}
+
+      <section className="print:hidden flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] p-4 shadow-[var(--relieve-isla)]">
+        <TenantCrossFilters value={filter} onChange={setFilter} />
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => window.print()}>
+            <Icono nombre="printer" size={14} />
+            Imprimir / guardar PDF
+          </Button>
+          <Button size="sm" onClick={descargar} loading={downloading} disabled={downloading}>
+            <Icono nombre="download" size={14} />
+            Descargar Excel
+          </Button>
+        </div>
+      </section>
+
+      <section className="space-y-1">
+        <p className="text-[11px] uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
+          {orgActiva?.name ?? "Todas las organizaciones"} · {new Date().toLocaleDateString("es-MX")}
+        </p>
+      </section>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <KpiCard label="Pendientes de aprobación" value={loading ? null : pendientes} loading={loading} tone="warning" />
+        <KpiCard label="Aprobados" value={loading ? null : aprobados} loading={loading} tone="accent" />
+        <KpiCard label="Implementados" value={loading ? null : implementados} loading={loading} tone="success" />
+        <KpiCard label="Rechazados" value={loading ? null : rechazados} loading={loading} tone="danger" />
+      </div>
+
+      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+        {loading ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="p-10 text-center text-[13px] text-[var(--text-tertiary)]">
+            Sin cambios para los filtros actuales.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead className="border-b border-[var(--border-default)] bg-[var(--color-subtle)] text-left text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)]">
+                <tr>
+                  <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Proyecto</th>
+                  <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Folio</th>
+                  <th className="h-8.5 px-3 font-semibold">Título</th>
+                  <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Tipo</th>
+                  <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Estado</th>
+                  <th className="h-8.5 whitespace-nowrap px-3 font-semibold">Fecha</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {rows.map((c) => (
+                  <tr key={c.id}>
+                    <td className="h-10 whitespace-nowrap px-3 text-[12.5px] text-[var(--text-secondary)]">
+                      {c.project_folio} — {c.project_name}
+                    </td>
+                    <td className="h-10 whitespace-nowrap px-3 font-mono text-[12px] text-[var(--text-tertiary)]">
+                      {c.folio}
+                    </td>
+                    <td className="h-10 max-w-[280px] truncate px-3 text-[12.5px] text-[var(--text-primary)]" title={c.title}>
+                      {c.title}
+                    </td>
+                    <td className="h-10 whitespace-nowrap px-3 text-[12.5px] text-[var(--text-secondary)]">
+                      {CHANGE_TYPE_LABEL[c.type as keyof typeof CHANGE_TYPE_LABEL] ?? c.type}
+                    </td>
+                    <td className="h-10 whitespace-nowrap px-3">
+                      <Badge className={CHANGE_STATUS_BADGE[c.status as keyof typeof CHANGE_STATUS_BADGE] ?? ""}>
+                        {CHANGE_STATUS_LABEL[c.status as keyof typeof CHANGE_STATUS_LABEL] ?? c.status}
+                      </Badge>
+                    </td>
+                    <td className="h-10 whitespace-nowrap px-3 text-[12.5px] text-[var(--text-tertiary)]">
+                      {c.requested_at ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
+// FASE-8 (revamp v2, US-D) — snapshot (Dashboard, mismos componentes de la
+// fase 3) + árbol portafolio → programa → proyecto, en la pestaña
+// "Organización". Los PDF de status por organización ya existen
+// (organizations.py:1584, POST /{org_id}/reports/status) y se enlazan desde
+// la sección de plantillas que ya estaba aquí — no se reescriben.
+function OrgSnapshotYArbol({ orgId }: { orgId: string }) {
+  const [kpis, setKpis] = useState<import("@/lib/api/dashboard").DashboardKpis | null>(null);
+  const [charts, setCharts] = useState<import("@/lib/api/dashboard").DashboardCharts | null>(null);
+  const leido = useLectura(kpis);
+  const [loadingSnapshot, setLoadingSnapshot] = useState(true);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loadingArbol, setLoadingArbol] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingSnapshot(true);
+    Promise.all([
+      getDashboardKpis({ organization_id: orgId }),
+      getDashboardCharts({ organization_id: orgId }),
+    ])
+      .then(([k, c]) => {
+        if (cancelled) return;
+        setKpis(k);
+        setCharts(c);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingSnapshot(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingArbol(true);
+    Promise.all([
+      listPortfolios(orgId, { is_active: true }),
+      listPrograms({ organization_id: orgId }),
+      listProjects({ organization_id: orgId, limit: 500 }),
+    ])
+      .then(([p, pr, proj]) => {
+        if (cancelled) return;
+        setPortfolios(p);
+        setPrograms(pr);
+        setProjects(proj.filter((x) => x.phase !== "cerrado" && x.phase !== "cancelado"));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingArbol(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  return (
+    <div className="space-y-5">
+      {leido ? <MarcaDeDatos periodo="vivo" actualizado={leido} /> : null}
+      <section aria-label="Cómo va la organización" className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+          <RuedaDeSalud
+            conteos={charts?.portfolio_health ?? {}}
+            total={kpis?.active_projects}
+            cargando={loadingSnapshot}
+          />
+        </div>
+        <div className="rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+          <HeroAvance
+            real={kpis?.progress_avg}
+            plan={kpis?.plan_progress_avg}
+            serie={[]}
+            cargando={loadingSnapshot}
+          />
+        </div>
+      </section>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <KpiCard label="Proyectos activos" value={loadingSnapshot ? null : kpis?.active_projects} loading={loadingSnapshot} />
+        <KpiCard label="Riesgos abiertos" value={loadingSnapshot ? null : kpis?.open_risks} loading={loadingSnapshot} tone="warning" />
+        <KpiCard label="Riesgos severos" value={loadingSnapshot ? null : kpis?.severe_risks} loading={loadingSnapshot} tone="danger" />
+        <KpiCard label="Presupuesto total" value={loadingSnapshot ? null : kpis?.budget_total} format="currency" loading={loadingSnapshot} />
+      </div>
+
+      <section className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-[var(--color-surface)] shadow-[var(--relieve-isla)]">
+        <h3 className="border-b border-[var(--border-default)] px-4 py-2.5 text-[13px] font-semibold text-[var(--text-primary)] shadow-[var(--linea-surco)]">
+          Portafolio → programa → proyecto
+        </h3>
+        {loadingArbol ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-full" />
+            ))}
+          </div>
+        ) : portfolios.length === 0 ? (
+          <div className="p-8 text-center text-[13px] text-[var(--text-tertiary)]">
+            Sin portafolios en esta organización.
+          </div>
+        ) : (
+          <ul className="divide-y divide-[var(--border-subtle)] p-2">
+            {portfolios.map((pf) => {
+              const susProgramas = programs.filter((pg) => pg.portfolio_id === pf.id);
+              const directos = projects.filter(
+                (p) => p.portfolio_id === pf.id && !p.program_id,
+              );
+              return (
+                <li key={pf.id} className="py-1.5">
+                  <div className="flex items-center gap-2 px-2 py-1 text-[13px] font-semibold text-[var(--text-primary)]">
+                    <Icono nombre="folder" size={14} className="text-[var(--text-tertiary)]" />
+                    {pf.name}
+                  </div>
+                  <ul className="ml-3 border-l border-[var(--border-subtle)] pl-3">
+                    {susProgramas.map((pg) => (
+                      <li key={pg.id} className="py-1">
+                        <div className="flex items-center gap-2 px-2 py-0.5 text-[12.5px] font-medium text-[var(--text-secondary)]">
+                          <Icono nombre="folders" size={13} className="text-[var(--text-tertiary)]" />
+                          {pg.name}
+                        </div>
+                        <ul className="ml-3 border-l border-[var(--border-subtle)] pl-3">
+                          {projects
+                            .filter((p) => p.program_id === pg.id)
+                            .map((p) => (
+                              <li key={p.id} className="flex items-center gap-2 px-2 py-1 text-[12.5px] text-[var(--text-secondary)]">
+                                <span className={cn("h-2 w-2 shrink-0 rounded-full", healthTone(p.health_status))} aria-hidden />
+                                <Link href={`/pmo/projects/${p.id}`} className="truncate hover:underline">
+                                  {p.name}
+                                </Link>
+                                <span className="ml-auto font-mono text-[11px] text-[var(--text-tertiary)]">
+                                  {Math.round(p.progress)}%
+                                </span>
+                              </li>
+                            ))}
+                        </ul>
+                      </li>
+                    ))}
+                    {directos.map((p) => (
+                      <li key={p.id} className="flex items-center gap-2 px-2 py-1 text-[12.5px] text-[var(--text-secondary)]">
+                        <span className={cn("h-2 w-2 shrink-0 rounded-full", healthTone(p.health_status))} aria-hidden />
+                        <Link href={`/pmo/projects/${p.id}`} className="truncate hover:underline">
+                          {p.name}
+                        </Link>
+                        <span className="ml-auto font-mono text-[11px] text-[var(--text-tertiary)]">
+                          {Math.round(p.progress)}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <div className="print:hidden flex justify-end">
+        <Button variant="secondary" size="sm" onClick={() => window.print()}>
+          <Icono nombre="printer" size={14} />
+          Imprimir / guardar PDF
+        </Button>
+      </div>
+    </div>
   );
 }

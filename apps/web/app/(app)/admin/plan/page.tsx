@@ -20,15 +20,25 @@
  * captura por inquilino, y donde no se capturó la pantalla lo dice — en vez de
  * pintar un cero, que diría «no puedes crear ninguna».
  */
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ConfiguracionIA } from "@/components/admin/configuracion-ia";
 import { Banner } from "@/components/ui/banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Icono } from "@/components/ui/icono";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
+import { cn } from "@/lib/cn";
 import { ApiError } from "@/lib/api";
 import { getPlan, type EstadoDeUso, type EstadoDelPlan } from "@/lib/api/plan";
+
+type Pestana = "plan" | "ia";
+
+const PESTANAS: { v: Pestana; label: string }[] = [
+  { v: "plan", label: "Plan" },
+  { v: "ia", label: "IA" },
+];
 
 const CLASE_BARRA: Record<EstadoDeUso, string> = {
   sin_limite: "bg-[var(--color-muted)]",
@@ -45,6 +55,10 @@ const CLASE_TEXTO: Record<EstadoDeUso, string> = {
 };
 
 export default function PlanPage() {
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<Pestana>(() =>
+    searchParams.get("tab") === "ia" ? "ia" : "plan",
+  );
   const [plan, setPlan] = useState<EstadoDelPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const leido = useLectura(plan);
@@ -66,17 +80,17 @@ export default function PlanPage() {
       <Breadcrumb
         items={[
           { href: "/admin", label: "Admin" },
-          { label: "Plan" },
+          { label: "Plan e IA" },
         ]}
       />
       <header className="flex flex-col gap-2">
         <div className="flex items-center gap-2.25">
           <Icono nombre="credit-card" size={20} className="text-[var(--text-primary)]" />
           <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
-            Plan de suscripción
+            Plan e IA
           </h1>
         </div>
-        {leido && plan ? (
+        {leido && plan && tab === "plan" ? (
           <MarcaDeDatos
             periodo="vivo"
             detalle={`plan ${plan.tier_label}`}
@@ -85,9 +99,38 @@ export default function PlanPage() {
         ) : null}
       </header>
 
-      {error ? <Banner variant="danger">{error}</Banner> : null}
+      <div
+        role="tablist"
+        aria-label="Plan e IA"
+        className="flex items-center gap-1 border-b border-[var(--border-default)] shadow-[var(--linea-surco)]"
+      >
+        {PESTANAS.map((opt) => {
+          const active = tab === opt.v;
+          return (
+            <button
+              key={opt.v}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(opt.v)}
+              className={cn(
+                "inline-flex h-9 items-center gap-1.5 border-b-2 px-2.5 text-[13px] transition-colors",
+                active
+                  ? "border-[var(--text-primary)] font-semibold text-[var(--text-primary)]"
+                  : "border-transparent font-medium text-[var(--text-tertiary)] hover:text-[var(--text-primary)]",
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
 
-      {plan === null ? (
+      {tab === "ia" ? <ConfiguracionIA /> : null}
+
+      {tab !== "plan" ? null : error ? <Banner variant="danger">{error}</Banner> : null}
+
+      {tab !== "plan" ? null : plan === null ? (
         error ? null : <Skeleton className="h-40 w-full" />
       ) : (
         <>

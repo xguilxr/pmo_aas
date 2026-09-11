@@ -13,7 +13,9 @@ import { ApiError } from "@/lib/api";
 import {
   createProgram,
   listPortfolios,
+  updateProgram,
   type Portfolio,
+  type Program,
   type ProgramCreateBody,
 } from "@/lib/api/organizations";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
@@ -23,9 +25,11 @@ type Props = {
   onClose: () => void;
   onSaved: () => void;
   initialOrgId?: string;
+  /** FASE-4 (revamp v2, US-E) — sin él, el modal crea; con él, edita. */
+  programa?: Program | null;
 };
 
-export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
+export function ProgramModal({ open, onClose, onSaved, initialOrgId, programa }: Props) {
   // US-205 — la lista y el default salen del header. `initialOrgId` sigue
   // ganando: quien abre el modal desde la ficha de una organización está
   // creando el programa **ahí**, diga lo que diga el switcher.
@@ -55,8 +59,15 @@ export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
   // vale «todas», que no es una organización en la que crear nada.
   useEffect(() => {
     if (!open) return;
-    setOrgId(initialOrgId || orgDelHeader || orgs[0]?.id || "");
-  }, [open, initialOrgId, orgDelHeader, orgs]);
+    setOrgId(initialOrgId || programa?.organization_id || orgDelHeader || orgs[0]?.id || "");
+    setPortfolioId(programa?.portfolio_id ?? "");
+    setName(programa?.name ?? "");
+    setDescription(programa?.description ?? "");
+    setStrategic(programa?.strategic_alignment ?? "");
+    setStartDate(programa?.start_date ?? "");
+    setEndDate(programa?.end_date ?? "");
+    setIsActive(programa?.is_active ?? true);
+  }, [open, initialOrgId, orgDelHeader, orgs, programa]);
 
   useEffect(() => {
     if (!open || !orgId) {
@@ -94,14 +105,18 @@ export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
         end_date: endDate || null,
         is_active: isActive,
       };
-      await createProgram(body);
-      setName("");
-      setPortfolioId("");
-      setDescription("");
-      setStrategic("");
-      setStartDate("");
-      setEndDate("");
-      setIsActive(true);
+      if (programa) {
+        await updateProgram(programa.id, body);
+      } else {
+        await createProgram(body);
+        setName("");
+        setPortfolioId("");
+        setDescription("");
+        setStrategic("");
+        setStartDate("");
+        setEndDate("");
+        setIsActive(true);
+      }
       onSaved();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "No se pudo guardar el programa");
@@ -111,7 +126,7 @@ export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Nuevo programa" size="lg">
+    <Modal open={open} onClose={onClose} title={programa ? "Editar programa" : "Nuevo programa"} size="lg">
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         {err ? <Banner variant="danger">{err}</Banner> : null}
         {!initialOrgId ? (
@@ -259,7 +274,7 @@ export function ProgramModal({ open, onClose, onSaved, initialOrgId }: Props) {
             Cancelar
           </Button>
           <Button type="submit" loading={saving} disabled={!canSubmit}>
-            Crear
+            {programa ? "Guardar" : "Crear"}
           </Button>
         </div>
       </form>

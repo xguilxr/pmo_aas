@@ -43,14 +43,20 @@ function trimestreEn(iso: string | null, year: number): number | null {
 
 const TRIMESTRE_LABEL = ["1er trimestre", "2do trimestre", "3er trimestre", "4to trimestre"];
 
+/** FASE-4 (revamp v2) — piso del navegador de año: "todo a partir del 26
+ *  hacia adelante" (owner). Sin techo. */
+const ANIO_MINIMO = 2026;
+
 export function RoadmapTrimestral({
   proyectos,
   portafolios,
-  year = new Date().getFullYear(),
+  year,
+  onYearChange,
 }: {
   proyectos: Project[];
   portafolios: Portfolio[];
-  year?: number;
+  year: number;
+  onYearChange: (y: number) => void;
 }) {
   const trimestreActual =
     new Date().getFullYear() === year ? Math.floor(new Date().getMonth() / 3) + 1 : null;
@@ -85,20 +91,57 @@ export function RoadmapTrimestral({
     porPortafolio.get(clave)!.push(fila);
   }
 
+  // FASE-4 — navegador de año a la derecha del título. Piso 2026, sin techo.
+  const controlAnio = (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => onYearChange(year - 1)}
+        disabled={year <= ANIO_MINIMO}
+        aria-label="Año anterior"
+        className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-default)] text-[var(--text-secondary)] disabled:opacity-40"
+      >
+        ‹
+      </button>
+      <span className="font-mono text-[13px] font-semibold text-[var(--text-primary)]">
+        {year}
+      </span>
+      <button
+        type="button"
+        onClick={() => onYearChange(year + 1)}
+        aria-label="Año siguiente"
+        className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-default)] text-[var(--text-secondary)]"
+      >
+        ›
+      </button>
+    </div>
+  );
+
   if (conRango.length === 0) {
     return (
-      <p className="text-[12px] text-[var(--text-tertiary)]">
-        Ningún proyecto visible tiene fecha de inicio y fin en {year} para el roadmap.
-      </p>
+      <div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+            Roadmap trimestral, {year}
+          </h3>
+          {controlAnio}
+        </div>
+        <p className="text-[12px] text-[var(--text-tertiary)]">
+          Ningún proyecto visible tiene fecha de inicio y fin en {year} para el roadmap.
+        </p>
+      </div>
     );
   }
 
   return (
     <div role="img" aria-label={`Roadmap trimestral ${year}`}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-          Roadmap trimestral, {year}
-        </h3>
+        <div className="flex items-center gap-2.5">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+            Roadmap trimestral, {year}
+          </h3>
+          {controlAnio}
+        </div>
         <div className="flex flex-wrap gap-3.5 text-[10.5px] text-[var(--text-secondary)]">
           {(Object.keys(ESTADO_LABEL) as EstadoRoadmap[]).map((e) => (
             <span key={e} className="flex items-center gap-1.5">

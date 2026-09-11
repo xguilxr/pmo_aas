@@ -44,6 +44,9 @@ type Props = {
   /** BUG-069: subtítulo opcional (ej. "12 total") para des-duplicar las
    *  KpiCard re-implementadas localmente en org/program. */
   hint?: string;
+  /** FASE-3 (revamp v2, US-C) — puntos de la serie reciente; si viene, se
+   *  pinta el sparkline bajo la cifra. Sin serie no se pinta nada. */
+  serie?: number[];
 };
 
 function formatValue(value: number, format: Props["format"], moneda?: string): string {
@@ -88,6 +91,43 @@ const TONES: Record<NonNullable<Props["tone"]>, string> = {
   warning: "text-[var(--color-warning-fg)]",
   success: "text-[var(--color-success-fg)]",
 };
+
+const SPARK_STROKE: Record<NonNullable<Props["tone"]>, string> = {
+  neutral: "var(--color-accent)",
+  accent: "var(--color-accent)",
+  danger: "var(--color-danger-fg)",
+  warning: "var(--color-warning-fg)",
+  success: "var(--color-success-fg)",
+};
+
+/** FASE-3 (revamp v2, US-C) — sparkline mínima de la tabla del spec: 46×10,
+ *  `stroke-dasharray="1 2.5"`, opacidad 70%, punto final marcado. */
+function Sparkline({ serie, tone }: { serie: number[]; tone: NonNullable<Props["tone"]> }) {
+  if (serie.length < 2) return null;
+  const w = 46;
+  const h = 10;
+  const max = Math.max(...serie);
+  const min = Math.min(...serie);
+  const span = max - min || 1;
+  const n = serie.length;
+  const xAt = (i: number) => (i * w) / (n - 1);
+  const yAt = (v: number) => h - ((v - min) / span) * h;
+  const points = serie.map((v, i) => `${xAt(i)},${yAt(v)}`).join(" ");
+  const stroke = SPARK_STROKE[tone];
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="opacity-70" aria-hidden>
+      <polyline
+        points={points}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={1}
+        strokeDasharray="1 2.5"
+        strokeLinecap="round"
+      />
+      <circle cx={xAt(n - 1)} cy={yAt(serie[n - 1])} r={1.3} fill={stroke} />
+    </svg>
+  );
+}
 
 function TrendPill({ trend }: { trend: KpiTrend }) {
   const { delta, label, goodWhenUp = true } = trend;
@@ -149,21 +189,22 @@ export function KpiCard({
   trend,
   hint,
   moneda,
+  serie,
 }: Props) {
   const vacio = esSinDato(value);
   const animated = useCountUp(vacio ? 0 : (value as number));
 
   const body = (
-    <div className="group flex h-full flex-col gap-2 p-4 transition-colors hover:bg-[var(--color-subtle)]">
-      <div className="flex items-center justify-between">
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
+    <div className="group flex h-full flex-col items-center gap-2 p-4 text-center transition-colors hover:bg-[var(--color-subtle)]">
+      <div className="flex w-full items-center justify-center gap-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)]">
           {label}
         </span>
         {icon ? <span className="text-[var(--color-tertiary)]">{icon}</span> : null}
       </div>
       <span
         className={cn(
-          "font-mono text-[26px] font-medium tabular-nums",
+          "font-mono text-[17px] font-medium tabular-nums",
           TONES[tone],
           loading || vacio ? "opacity-50" : "",
         )}
@@ -175,10 +216,13 @@ export function KpiCard({
       >
         {loading || vacio ? SIN_DATO : formatValue(animated, format, moneda)}
       </span>
+      {!loading && !vacio && serie && serie.length > 1 ? (
+        <Sparkline serie={serie} tone={tone} />
+      ) : null}
       {!loading && !vacio && trend ? <TrendPill trend={trend} /> : null}
-      {hint ? <span className="text-[11.5px] text-[var(--text-tertiary)]">{hint}</span> : null}
+      {hint ? <span className="text-[9.5px] text-[var(--text-tertiary)]">{hint}</span> : null}
       {href ? (
-        <span className="text-[11.5px] text-[var(--text-tertiary)] group-hover:text-[var(--color-secondary)]">
+        <span className="text-[9.5px] text-[var(--text-tertiary)] group-hover:text-[var(--color-secondary)]">
           Ver detalle →
         </span>
       ) : null}

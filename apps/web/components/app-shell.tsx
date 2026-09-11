@@ -52,6 +52,10 @@ type GrupoNav = {
   items: NavItem[];
 };
 
+// US-247/248 — FASE-1 del revamp v2 (REVAMP-V2-FEEDBACK.md §2.2): un solo
+// grupo, seis entradas. El grupo «Transversal» se disuelve — RAID y Cambios
+// entran a Reportes (misma pregunta: «¿cómo va la organización?»); Minutas y
+// Notificaciones salen del sidebar (huérfanas temporales, ver navigation.md).
 const GRUPOS_NAV: GrupoNav[] = [
   {
     id: "organizacion",
@@ -65,36 +69,22 @@ const GRUPOS_NAV: GrupoNav[] = [
         match: (p) => p === "/dashboard",
       },
       {
-        id: "portfolio",
-        label: "Portafolio",
+        id: "pmo",
+        label: "PMO",
         icono: "folders",
         href: "/pmo",
-        match: (p) => p === "/pmo",
+        match: (p) =>
+          p === "/pmo" ||
+          p.startsWith("/pmo/config") ||
+          p.startsWith("/pmo/programs") ||
+          p.startsWith("/pmo/organizations"),
       },
       {
-        // US-219 — el board contesta «¿qué persigo esta semana?». Va junto a
-        // Portafolio porque es la misma cartera vista por otro eje.
-        id: "board",
-        label: "Board",
-        icono: "grid-2x2",
-        href: "/pmo/board",
-        match: (p) => p.startsWith("/pmo/board"),
-      },
-      {
-        id: "projects",
-        label: "Proyectos",
-        icono: "folder",
-        href: "/pmo/projects",
-        match: (p) => p.startsWith("/pmo/projects"),
-      },
-      {
-        // US-216 — el onboarding masivo va junto a Proyectos porque es su carga
-        // inicial: el artboard lo sitúa en «Org activa › Proyectos › Importar».
-        id: "imports",
-        label: "Importar",
-        icono: "upload",
-        href: "/pmo/imports",
-        match: (p) => p.startsWith("/pmo/imports"),
+        id: "resources",
+        label: "Recursos",
+        icono: "users",
+        href: "/pmo/resources",
+        match: (p) => p.startsWith("/pmo/resources"),
       },
       {
         id: "requests",
@@ -104,56 +94,21 @@ const GRUPOS_NAV: GrupoNav[] = [
         match: (p) => p.startsWith("/pmo/requests"),
       },
       {
-        // US-183: capacidad y saturación. El mockup lo sube al primer grupo:
-        // es una pregunta de la organización, no un módulo del proyecto.
-        id: "resources",
-        label: "Recursos",
-        icono: "users",
-        href: "/pmo/resources",
-        match: (p) => p.startsWith("/pmo/resources"),
-      },
-      {
         id: "reports",
         label: "Reportes",
         icono: "file-spreadsheet",
         href: "/pmo/reports",
-        match: (p) => p === "/pmo/reports" || p.startsWith("/pmo/reports/"),
-      },
-    ],
-  },
-  {
-    id: "transversal",
-    titulo: "Transversal",
-    items: [
-      {
-        id: "raid",
-        label: "RAID",
-        icono: "triangle-alert",
-        href: "/pmo/raid",
-        match: (p) => p.startsWith("/pmo/raid"),
+        match: (p) =>
+          p.startsWith("/pmo/reports") ||
+          p.startsWith("/pmo/raid") ||
+          p.startsWith("/pmo/changes"),
       },
       {
-        id: "changes",
-        label: "Cambios",
-        icono: "git-branch",
-        href: "/pmo/changes",
-        match: (p) => p.startsWith("/pmo/changes"),
-      },
-      {
-        id: "minutes",
-        label: "Minutas",
-        icono: "file-text",
-        href: "/pmo/minutes",
-        match: (p) => p === "/pmo/minutes" || p.startsWith("/pmo/minutes/"),
-      },
-      {
-        // El mockup lo pone en este grupo, y encaja: una notificación no es de
-        // una organización ni de un proyecto — es de quien la recibe.
-        id: "notifications",
-        label: "Notificaciones",
-        icono: "bell",
-        href: "/notifications",
-        match: (p) => p.startsWith("/notifications"),
+        id: "projects",
+        label: "Proyectos",
+        icono: "folder",
+        href: "/pmo/projects",
+        match: (p) => p.startsWith("/pmo/projects"),
       },
     ],
   },
@@ -167,50 +122,37 @@ const GRUPOS_NAV: GrupoNav[] = [
 // Sigue siendo una función y no una constante porque el árbol lleva JSX de
 // iconos: construirlo en el módulo lo evaluaría antes del render.
 // (ENH-190 hacía configurable el label "Organizaciones"; se retiró en DEC-032.)
+// US-247/248 — «Permisos» sale del árbol (solo lectura, DEC-024; sigue
+// accesible por URL). «IA» sale: FASE-7 (US-C) la fundió con «Plan e IA»
+// (`/admin/plan?tab=ia`; `/admin/ai` redirige). Label raíz pasa de
+// "Configuraciones" a "Admin":
+// ese rótulo ahora lo lleva el `RotuloDeGrupo` del bloque (paso 3).
 function buildAdminNav(): NavItem {
   return {
     id: "admin",
-    label: "Configuraciones",
+    label: "Admin",
     icono: "settings",
     href: "/admin",
     match: (p) =>
       p === "/admin" ||
       p.startsWith("/admin/supervision") ||
       p.startsWith("/admin/users") ||
-      p.startsWith("/admin/permissions") ||
       p.startsWith("/admin/audit-logs") ||
       p.startsWith("/admin/settings") ||
       p.startsWith("/admin/tenant") ||
-      p.startsWith("/admin/ai") ||
-      p.startsWith("/admin/organizations"),
+      p.startsWith("/admin/plan") ||
+      p.startsWith("/admin/organizations") ||
+      p.startsWith("/admin/hierarchy"),
     children: [
       {
         id: "tenant-mgmt",
-        label: "Tenant",
+        label: "Branding",
         icono: "building",
         href: "/admin/tenant",
         match: (p) =>
           p.startsWith("/admin/tenant") ||
           p.startsWith("/admin/supervision") ||
           p.startsWith("/admin/settings"),
-      },
-      {
-        id: "tenant-ai",
-        label: "IA",
-        // Sin equivalente de Sparkles en el set Keyline; el mockup usa
-        // "info" (no "star") para este ítem de nav en las 5 pantallas que
-        // lo muestran (superadmin y admin del tenant).
-        icono: "info",
-        href: "/admin/ai",
-        match: (p) => p.startsWith("/admin/ai"),
-      },
-      {
-        id: "orgs-mgmt",
-        label: "Organizaciones",
-        icono: "building",
-        href: "/admin/organizations",
-        match: (p) =>
-          p.startsWith("/admin/organizations") && !p.includes("/panel"),
       },
       {
         id: "users",
@@ -220,17 +162,19 @@ function buildAdminNav(): NavItem {
         match: (p) => p.startsWith("/admin/users"),
       },
       {
-        id: "permissions",
-        label: "Permisos",
-        icono: "lock",
-        href: "/admin/permissions",
-        match: (p) => p.startsWith("/admin/permissions"),
+        id: "orgs-mgmt",
+        label: "Organizaciones y portafolios",
+        icono: "building",
+        href: "/admin/hierarchy",
+        match: (p) =>
+          p.startsWith("/admin/hierarchy") ||
+          (p.startsWith("/admin/organizations") && !p.includes("/panel")),
       },
       {
-        // US-221 — el plan va antes de Auditoría y después de Permisos: es
-        // configuración de la cuenta, no un registro que se consulta.
+        // US-221 — el plan va antes de Auditoría: es configuración de la
+        // cuenta, no un registro que se consulta.
         id: "plan",
-        label: "Plan",
+        label: "Plan e IA",
         icono: "credit-card",
         href: "/admin/plan",
         match: (p) => p.startsWith("/admin/plan"),
@@ -245,6 +189,14 @@ function buildAdminNav(): NavItem {
     ],
   };
 }
+
+const CUENTA_NAV: NavItem = {
+  id: "account",
+  label: "Cuenta",
+  icono: "users",
+  href: "/account",
+  match: (p) => p.startsWith("/account"),
+};
 
 // Navegación agrupada de superadmin (patrón fijado en la ronda 6 de la
 // especificación de revamp): los 4 rótulos Plataforma/Tenants/Seguridad/
@@ -618,7 +570,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Topbar a sangre: se separa del cuerpo con filete + luz, sin sombra
           (Revamp v2 — el sidebar y el topbar dejan de flotar). */}
       <header
-        className="flex h-[56px] shrink-0 items-center justify-between gap-2 border-b border-[var(--border-default)] px-3 shadow-[var(--linea-surco)] lg:px-4"
+        className="print:hidden flex h-[56px] shrink-0 items-center justify-between gap-2 border-b border-[var(--border-default)] px-3 shadow-[var(--linea-surco)] lg:px-4"
       >
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -631,25 +583,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <Link
             href={homeHref}
-            className="flex min-w-0 items-center gap-3"
+            className="flex min-w-0 items-center"
             aria-label="Inicio"
           >
-            {logoSrc ? (
-              <span className="flex h-11 w-[200px] flex-none items-center overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={logoSrc}
-                  alt={brandName}
-                  className="h-full w-auto max-w-full object-contain object-left"
-                />
-              </span>
-            ) : (
-              <span className="truncate text-[15px] font-semibold tracking-tight text-[var(--color-primary)]">
-                {brandName}
-              </span>
-            )}
-            <span className="whitespace-nowrap text-[13px] font-medium tracking-tight text-[var(--text-tertiary)]">
-              PMO-aaS
+            <span className="whitespace-nowrap text-[15px] font-semibold tracking-tight text-[var(--color-primary)]">
+              PMO · aaS
             </span>
           </Link>
           {/* US-205 — el contexto de organización, una vez y aquí. El mockup lo
@@ -663,16 +601,19 @@ export function AppShell({ children }: { children: ReactNode }) {
           {userReady && user && !user.is_superadmin ? (
             <>
               <SwitcherDeInquilino />
+              <span className="hidden lg:inline text-[13px] text-[var(--text-tertiary)]">
+                Organización:
+              </span>
               <SwitcherDeOrganizacion />
             </>
           ) : null}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="hidden sm:flex flex-1 justify-center px-4">
           <button
             type="button"
             aria-label="Buscar"
             title="Buscar (⌘K)"
-            className="hidden sm:flex h-8 w-[260px] items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2.5 text-left shadow-[var(--hundido)]"
+            className="flex h-8 w-full max-w-[560px] items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--color-surface)] px-2.5 text-left shadow-[var(--hundido)]"
           >
             <Icono nombre="search" size={15} className="text-[var(--text-faint)]" />
             <span className="flex-1 truncate text-[13px] text-[var(--text-faint)]">Buscar</span>
@@ -680,6 +621,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               ⌘K
             </kbd>
           </button>
+        </div>
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             aria-label="Buscar"
@@ -688,6 +631,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Icono nombre="search" size={15} />
           </button>
+          {logoSrc ? (
+            <span className="hidden md:flex h-8 max-w-[140px] items-center overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={logoSrc}
+                alt={brandName}
+                className="h-full w-auto object-contain"
+              />
+            </span>
+          ) : null}
           {userReady && user ? <NotificationBell /> : null}
           <UserMenu user={user} variant="surface" />
         </div>
@@ -706,7 +659,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 flex h-full w-[216px] flex-col border-r border-[var(--chrome-border)] bg-[var(--chrome-bg)] transition-transform",
+            "print:hidden fixed inset-y-0 left-0 z-40 flex h-full w-[216px] flex-col border-r border-[var(--chrome-border)] bg-[var(--chrome-bg)] transition-transform",
             "lg:static lg:z-auto lg:h-auto lg:translate-x-0",
             collapsed ? "lg:w-[68px]" : "lg:w-[216px]",
             open ? "translate-x-0" : "-translate-x-full",
@@ -714,7 +667,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <div
             className={cn(
-              "flex h-12 items-center px-2",
+              "flex h-12 items-center px-2 lg:hidden",
               collapsed ? "justify-end lg:justify-center" : "justify-end",
             )}
           >
@@ -745,15 +698,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </div>
                 ))
               : null}
-            {adminVisible ? (
+            {userReady && user ? (
               <div className="mt-0.5">
                 <RotuloDeGrupo titulo="Configuraciones" oculto={collapsed} />
                 <NavTree
-                  items={[adminNav]}
+                  items={adminVisible ? [CUENTA_NAV, adminNav] : [CUENTA_NAV]}
                   pathname={pathname}
                   onNavigate={close}
                   expanded={expanded}
                   toggle={toggle}
+                  adminVisible={adminVisible}
                   collapsed={collapsed}
                   onExpandSidebar={() => setCollapsedPersisted(false)}
                 />
