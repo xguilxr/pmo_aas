@@ -79,6 +79,9 @@ export function RaidCreateModal({
   // Issues (A/I/D): prioridad + fecha compromiso.
   const [priority, setPriority] = useState(3);
   const [committedDate, setCommittedDate] = useState("");
+  // BUG-100: categoría también en creación, no solo en edición
+  // (Risk.category y ENH-177 Issue.category).
+  const [category, setCategory] = useState("");
   // US-064: área obligatoria + fecha de creación editable.
   const [areas, setAreas] = useState<ProjectArea[]>([]);
   const [areaId, setAreaId] = useState<string>("");
@@ -113,6 +116,7 @@ export function RaidCreateModal({
     setDueDate("");
     setPriority(3);
     setCommittedDate("");
+    setCategory("");
     setAreaId("");
     setOwnerActorId("");
     setIdentifiedAt(localToday());
@@ -134,6 +138,7 @@ export function RaidCreateModal({
           probability,
           impact,
           mitigation_strategy: mitigation.trim() || null,
+          category: category.trim() || null,
           area_id: areaId,
           owner_actor_id: ownerActorId || null,
           identified_at: identifiedAt || null,
@@ -145,6 +150,7 @@ export function RaidCreateModal({
           description: description.trim() || null,
           type: KIND_TO_ISSUE_TYPE[kind],
           priority,
+          category: category.trim() || null,
           area_id: areaId,
           owner_actor_id: ownerActorId || null,
           committed_date: committedDate || null,
@@ -265,24 +271,42 @@ export function RaidCreateModal({
                 onChange={(e) => setMitigation(e.target.value)}
               />
             </Field>
-            <Field label="Fecha compromiso" className="max-w-[200px]">
-              <DateField value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Categoría">
+                <Input
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder="Tecnología / Negocio / Operación / …"
+                />
+              </Field>
+              <Field label="Fecha compromiso">
+                <DateField value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              </Field>
+            </div>
           </>
         ) : (
           <>
-            <Field label="Prioridad (1-5)">
-              <Select
-                value={String(priority)}
-                onChange={(e) => setPriority(Number(e.target.value))}
-              >
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Prioridad (1-5)">
+                <Select
+                  value={String(priority)}
+                  onChange={(e) => setPriority(Number(e.target.value))}
+                >
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Categoría">
+                <Input
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder="Tecnología / Negocio / Operación / …"
+                />
+              </Field>
+            </div>
             <Field label="Fecha compromiso" className="max-w-[200px]">
               <DateField
                 value={committedDate}
