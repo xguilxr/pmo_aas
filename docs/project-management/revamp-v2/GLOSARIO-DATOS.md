@@ -1,3 +1,11 @@
+---
+tipo: gestion
+responsable: propietario
+estado: vigente
+revisado: 2026-09-12
+revisar_cada: 30d
+---
+
 # Glosario de datos por entidad (FASE-9, pasada 2)
 
 > Campo por campo: qué tiene el modelo, dónde se pide en la UI, y qué
