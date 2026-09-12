@@ -43,6 +43,7 @@ transversal con `code-review --comment` (`revamp-v2/FASE-9.md`).
 
 ## 📥 INBOX
 
+- [ ] **Glosario de datos** (FASE-9 pasada 2): #613-#619.
 - [ ] **W3 — RLS de Postgres**: #599 (US-240), #600 (US-241), #601 (US-242).
 - [ ] **EP021**: quedan US-223, US-225 y US-226. US-224 entregada.
 - [ ] **US-239** — clave de proyecto estilo Jira en la URL (mig. 0120).

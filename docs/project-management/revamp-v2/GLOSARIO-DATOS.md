@@ -116,12 +116,13 @@ Sin discrepancias reales. Los campos sin formulario (`avatar_url`, `locale`, `pr
 2. `Issue.category` en `raid-create-modal.tsx` y `raid-edit-fields.tsx`.
 3. Corrección de comentario/gate de `ChangeRequest` edit (`draft` → `in_review`) — ya funcionaba, solo estaba mal documentado en el runbook.
 
-**Van a triage** (grandes o con decisión de diseño pendiente, exceden el alcance de "agregar un campo a un form existente"):
-- Actor: sección completa de "pool de recursos" (11 campos) — necesita decidir dónde vive en la UI (¿modal nuevo? ¿pestaña en el directorio?).
-- Actor: `phone`/`job_title` en alta, `is_lead`/`verified`/`manager_actor_id`/`user_id` sin UI en ningún lado.
-- Project: sincronización `sponsor`/`type`/`priority`/`pm_id` entre `Project` y `ProjectCharter`.
-- Project: UI para `resetPlanAggregateOverride` (volver a automático plan/presupuesto/avance).
-- Project: confirmar si `progress` debe tener input manual.
-- ProjectCharter: exponer `portfolio_id`/`program_id` en el formulario del charter.
-- ProjectRequest: edición de campos del solicitante mientras `in_review`/`needs_info` (activar `updateRequest`, hoy código muerto).
-- ChangeRequest: `type` editable también desde el detalle, no solo inline en la tabla.
+**Fueron a triage** (grandes o con decisión de diseño pendiente, exceden el alcance de "agregar un campo a un form existente"):
+- ENH-205 #613 — Actor: sección completa de "pool de recursos" (11 campos).
+- ENH-206 #614 — Actor: `phone`/`job_title` en alta; `is_lead`/`verified`/`manager_actor_id`/`user_id` sin UI.
+- BUG-101 #615 — Project/ProjectCharter: sincronización `sponsor`/`type`/`priority`/`pm_id`.
+- ENH-207 #616 — Project: UI para `resetPlanAggregateOverride`.
+- ENH-208 #617 — ProjectCharter: exponer `portfolio_id`/`program_id` en el form.
+- BUG-102 #618 — ProjectRequest: edición de campos del solicitante en `in_review`/`needs_info`.
+- ENH-209 #619 — ChangeRequest: `type` editable también desde el detalle.
+
+**Decidido, sin issue:** `Project.progress` sin input manual es intencional (owner, 2026-09-12) — el avance siempre sale del rollup de tareas.
