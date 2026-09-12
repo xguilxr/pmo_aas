@@ -130,6 +130,10 @@ export function RaidEditFields(props:
       ? new Date(item.reported_at).toISOString().slice(0, 10)
       : "",
   );
+  // BUG-100 (ENH-177): category también en Issue, no solo en Risk.
+  const [issueCategory, setIssueCategory] = useState(
+    kind === "issue" ? item.category ?? "" : "",
+  );
 
   useEffect(() => {
     if (!editing) return;
@@ -179,6 +183,7 @@ export function RaidEditFields(props:
           ? new Date(item.reported_at).toISOString().slice(0, 10)
           : "",
       );
+      setIssueCategory(item.category ?? "");
     }
     setError(null);
   }
@@ -225,6 +230,7 @@ export function RaidEditFields(props:
           title: title.trim(),
           description: description.trim() || null,
           type: issueType,
+          category: issueCategory.trim() || null,
           area_id: areaId || undefined,
           owner_actor_id: ownerActorId || null,
           status,
@@ -498,6 +504,13 @@ export function RaidEditFields(props:
               />
             </Field>
           </div>
+          <Field label="Categoría">
+            <Input
+              value={issueCategory}
+              onChange={(e) => setIssueCategory(e.target.value)}
+              placeholder="Tecnología / Negocio / Operación / …"
+            />
+          </Field>
           <Field label="Nota de cierre">
             <Textarea
               value={issueResolution}
