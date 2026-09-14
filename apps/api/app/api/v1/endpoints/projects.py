@@ -30,6 +30,7 @@ from app.schemas.project import (
     ProjectRead,
     ProjectUpdate,
     normalizar_fase,
+    normalizar_tipo,
 )
 from app.services.audit import write_audit
 from app.services.charter_generator import generate_charter_docx
@@ -114,7 +115,10 @@ async def list_projects(
     if no_portfolio:
         stmt = stmt.where(Project.portfolio_id.is_(None))
     if type:
-        stmt = stmt.where(Project.type.in_(type))
+        # ADR-038 — el mismo hueco que tenía `phase`: `type=innovation` devolvía
+        # cero sin error y sin sumar al contador de la ventana.
+        tipos = [normalizar_tipo(t, donde="parámetro de consulta") for t in type]
+        stmt = stmt.where(Project.type.in_(tipos))
     if health:
         stmt = stmt.where(Project.health_status.in_(health))
     if priority_min is not None:

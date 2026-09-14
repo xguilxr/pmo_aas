@@ -67,7 +67,10 @@ def normalizar_fase(valor: object, *, donde: str = _DONDE_FASE) -> object:
     return canonico
 
 
-def normalizar_tipo(valor: object) -> object:
+_DONDE_TIPO = "tipo del proyecto"
+
+
+def normalizar_tipo(valor: object, *, donde: str = _DONDE_TIPO) -> object:
     """Traduce el tipo en inglés al canónico. Lo demás pasa igual.
 
     Un solo contador para los tres nombres (`project_type_libre`): salían del
@@ -75,13 +78,15 @@ def normalizar_tipo(valor: object) -> object:
     en el mapa **no** se traduce ni se registra aquí: lo rechaza el enum, que es
     lo correcto — el texto libre de antes de US-202 se lee (la columna sigue
     siendo texto) pero no se vuelve a escribir.
+
+    `donde` sólo por palabra clave, por la misma razón que en `normalizar_fase`.
     """
     if not isinstance(valor, str):
         return valor
     canonico = TIPOS_RENOMBRADOS.get(valor)
     if canonico is None:
         return valor
-    registrar_uso("project_type_libre", donde="tipo del proyecto")
+    registrar_uso("project_type_libre", donde=donde)
     return canonico
 
 
