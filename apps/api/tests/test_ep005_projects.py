@@ -183,6 +183,9 @@ async def test_tc067_filters_combine(client, db_session):
         "/api/v1/projects?type=innovation&phase=planning", headers=auth["_authz"]
     )
     assert r.status_code == 200
+    # Sin esto, `all(...)` sobre una lista vacía pasaba: el filtro de `type` con
+    # el nombre viejo devolvía cero y el test lo daba por bueno.
+    assert [p["name"] for p in r.json()] == ["P0"]
     assert all(p["type"] == "innovacion" and p["phase"] == "preparacion" for p in r.json())
 
 
