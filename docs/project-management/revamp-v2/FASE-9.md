@@ -76,7 +76,7 @@ corregir aquí.
 | Portfolio | sin alta/edición | 4 (commit 5) | crear `portfolio-form.tsx` con los 5 campos de `PortfolioCreateBody` (`organizations.ts:328`) |
 | Program | sin edición | 4 (commit 5) | `program-modal.tsx` con `updateProgram` |
 | Risk | `category` no se pide al crear | — | `raid-create-modal.tsx`: agregar `category` (mismo control que `raid-edit-fields.tsx`) |
-| Change | sin edición | — | `changes/[changeId]/page.tsx`: formulario con `ChangeRequestUpdateBody` (`title`, `description`, `impact`) mientras `status = draft` |
+| Change | sin edición | Ya existe | Cerrado — `change-detail-page.tsx` ya edita `title`/`description`/`impact` con `ChangeRequestUpdateBody`, gate real `status === "in_review"` (no `draft` como decía esta fila) |
 | Actor | sin alta/baja | 6 (commit 2) | ver FASE-6 |
 | User | `deleteUser` desactiva | 7 (commit 2) | ver FASE-7 |
 | Request | edición desde `requests/[id]` no verificada | — | abrir `pmo/requests/[id]/page.tsx`; si solo permite revisar, agregar edición de los campos del solicitante mientras `status ∈ {in_review, needs_info}` |
