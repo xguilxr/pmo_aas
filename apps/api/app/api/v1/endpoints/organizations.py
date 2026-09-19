@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
-from sqlalchemy import Result, Select, func, select, update
+from sqlalchemy import Result, Select, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_authenticated, require_capability
@@ -48,6 +48,7 @@ from app.schemas.organization import (
 )
 from app.services.audit import write_audit
 from app.services.jerarquia import (
+    NOMBRE_PORTAFOLIO_GENERAL,
     portafolio_general,
     validar_portafolio_de_organizacion,
 )
@@ -1135,6 +1136,213 @@ async def delete_portfolio(
     )
     await db.commit()
     return Response(status_code=204)
+
+
+# =============================================================================
+# US-284 — «Retirar»: sacar de circulación sin borrar
+# =============================================================================
+# La papelera de dos pasos (US-088) **borra**: primero desactiva, después
+# elimina con confirmación. Retirar es otra cosa y por eso es otra acción: saca
+# el portafolio o el programa de las pantallas y deja a sus proyectos donde se
+# los pueda seguir viendo.
+#
+# El owner lo pidió con estas palabras: «retirar un portafolio o programa solo
+# debería retirar la asignación a proyectos, no borrar los proyectos».
+
+
+async def _mover_al_general(
+    db: AsyncSession,
+    *,
+    tenant_id: UUID,
+    organization_id: str,
+    proyectos: list[Project],
+    created_by: UUID | str | None,
+) -> str:
+    """Reasigna esos proyectos al «Portafolio General» de su organización.
+
+    Devuelve el id del portafolio destino. Se pide la lista ya cargada porque
+    el llamador la necesita igual para auditar cuántos movió.
+    """
+    general = await portafolio_general(
+        db,
+        tenant_id=tenant_id,
+        organization_id=organization_id,
+        created_by=created_by,
+    )
+    for p in proyectos:
+        # Los identificadores de este repo son UUID como texto (`String(36)`) y
+        # los modelos los declaran `UUID`; el `cast` sostiene esa convención.
+        p.portfolio_id = cast(UUID, str(general.id))
+        # El programa se suelta a la vez. Conservarlo dejaría el par
+        # incoherente que DEC-037 prohíbe: `program_id ⇒ portfolio_id =
+        # program.portfolio_id`, y el programa sigue colgando del portafolio
+        # que se acaba de retirar.
+        p.program_id = None
+    return str(general.id)
+
+
+@portfolios_router.post("/portfolios/{portfolio_id}/retire", status_code=200)
+async def retirar_portfolio(
+    portfolio_id: UUID,
+    cu: CurrentUser = Depends(require_capability("organizations.delete")),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """Desactiva el portafolio y manda sus proyectos al «Portafolio General».
+
+    Sus programas se desactivan con él —un programa cuyo portafolio ya no se
+    lista no lo lista nadie— y los proyectos que colgaban de ellos también
+    sueltan el programa.
+    """
+    tenant_id = _ensure_tenant(cu)
+    pf = await _portafolio_o_404(db, tenant_id, portfolio_id)
+    if str(pf.name) == NOMBRE_PORTAFOLIO_GENERAL:
+        raise business_rule(
+            mensaje(
+                que="El «Portafolio General» no se retira",
+                porque=(
+                    "Es el destino al que van los proyectos cuando se retira "
+                    "otro portafolio; retirarlo los dejaría sin sitio."
+                ),
+                accion="Retira los portafolios que sí clasifican algo.",
+            ),
+            code="PORTAFOLIO_GENERAL_NO_SE_RETIRA",
+        )
+
+    programas = (
+        await db.execute(
+            select(Program).where(
+                Program.tenant_id == tenant_id, Program.portfolio_id == pf.id
+            )
+        )
+    ).scalars().all()
+    ids_programas = [str(p.id) for p in programas]
+    condiciones = [Project.portfolio_id == str(pf.id)]
+    if ids_programas:
+        condiciones.append(Project.program_id.in_(ids_programas))
+    proyectos = (
+        await db.execute(
+            select(Project).where(
+                Project.tenant_id == tenant_id,
+                Project.deleted_at.is_(None),
+                or_(*condiciones),
+            )
+        )
+    ).scalars().all()
+
+    destino = await _mover_al_general(
+        db,
+        tenant_id=tenant_id,
+        organization_id=str(pf.organization_id),
+        proyectos=list(proyectos),
+        created_by=cu.id,
+    )
+    pf.is_active = False
+    for prog in programas:
+        prog.is_active = False
+
+    await write_audit(
+        db, action="portfolio.retire", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="portfolio",
+        entity_id=str(pf.id),
+        details={
+            "proyectos_movidos": len(proyectos),
+            "destino_portfolio_id": destino,
+            "programas_desactivados": [p.name for p in programas],
+        },
+    )
+    await db.commit()
+    return {
+        "portfolio_id": str(pf.id),
+        "proyectos_movidos": len(proyectos),
+        "destino_portfolio_id": destino,
+        "programas_desactivados": len(programas),
+    }
+
+
+@programs_router.post("/{program_id}/retire", status_code=200)
+async def retirar_programa(
+    program_id: UUID,
+    cu: CurrentUser = Depends(require_capability("organizations.delete")),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """Desactiva el programa y suelta a sus proyectos.
+
+    Los proyectos **se quedan en su portafolio**, que sigue activo y sigue
+    diciendo algo cierto sobre ellos. Moverlos al «Portafolio General» —como
+    hace el retiro de un portafolio— perdería esa clasificación sin motivo: lo
+    que se retiró es el programa, no el portafolio.
+
+    Solo si el portafolio tampoco está activo se los lleva al General, porque
+    entonces sí quedarían colgando de algo que ninguna pantalla lista.
+    """
+    tenant_id = _ensure_tenant(cu)
+    prog = (
+        await db.execute(
+            select(Program).where(
+                Program.id == str(program_id), Program.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one_or_none()
+    if prog is None:
+        raise not_found("Programa")
+
+    proyectos = list(
+        (
+            await db.execute(
+                select(Project).where(
+                    Project.tenant_id == tenant_id,
+                    Project.program_id == str(prog.id),
+                    Project.deleted_at.is_(None),
+                )
+            )
+        ).scalars().all()
+    )
+    portafolio = (
+        await db.execute(
+            select(Portfolio).where(
+                Portfolio.id == str(prog.portfolio_id),
+                Portfolio.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one_or_none()
+    portafolio_vivo = (
+        portafolio is not None
+        and portafolio.is_active
+        and portafolio.deleted_at is None
+    )
+
+    destino: str | None
+    if portafolio_vivo:
+        destino = str(prog.portfolio_id)
+        for p in proyectos:
+            p.program_id = None
+            p.portfolio_id = cast(UUID, destino)
+    else:
+        destino = await _mover_al_general(
+            db,
+            tenant_id=tenant_id,
+            organization_id=str(prog.organization_id),
+            proyectos=proyectos,
+            created_by=cu.id,
+        )
+    prog.is_active = False
+
+    await write_audit(
+        db, action="program.retire", module="organizations",
+        user_id=cu.id, tenant_id=tenant_id, entity_type="program",
+        entity_id=str(prog.id),
+        details={
+            "proyectos_movidos": len(proyectos),
+            "destino_portfolio_id": destino,
+            "portafolio_seguia_activo": portafolio_vivo,
+        },
+    )
+    await db.commit()
+    return {
+        "program_id": str(prog.id),
+        "proyectos_movidos": len(proyectos),
+        "destino_portfolio_id": destino,
+    }
 
 
 # =============================================================================

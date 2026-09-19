@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-99 documentos vivos · 70 archivados · 2812 secciones indexadas.
+99 documentos vivos · 70 archivados · 2816 secciones indexadas.
 
 ## gestion
 
@@ -32,7 +32,7 @@ revisar_cada: nunca
 | [`project-management/REVAMP-V2-PLAN.md`](project-management/REVAMP-V2-PLAN.md) | 1. Navegación objetivo · 2. Estados · 3. Entidades, fases y campos · 4. Flujo operativo | 2026-09-11 | 507 |
 | [`project-management/SPRINT-BACKLOG.md`](project-management/SPRINT-BACKLOG.md) | 📤 Salido de SPRINT.md el 2026-08-28 · ⏸️ Deferred — re-evaluación post EP020 · ✅ DONE · 📋 Backlog v2.0 (pos… | 2026-08-28 | 152 |
 | [`project-management/SPRINT-DONE-HISTORY.md`](project-management/SPRINT-DONE-HISTORY.md) | Ronda 2026-08-27 — Revamp de diseño v2 (batch del owner, sin US) · Ronda 2026-08-06 — Ola 2, `SEG-04` y ver… | 2026-08-12 | 609 |
-| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · ⏳ ESPERANDO al owner · 📥 INBOX · 📦 Lo demás | 2026-09-19 | 59 |
+| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · ⏳ ESPERANDO al owner · 📥 INBOX · 📦 Lo demás | 2026-09-19 | 61 |
 | [`project-management/revamp-v2/FASE-0.md`](project-management/revamp-v2/FASE-0.md) | Preparación · Corrección 1 — tabs del detalle de proyecto no se marcan activos · Corrección 2 — tabla RAID … | 2026-09-11 | 181 |
 | [`project-management/revamp-v2/FASE-1.md`](project-management/revamp-v2/FASE-1.md) | Preparación · Commit 1 — sidebar (US-A) · Commit 2 — header (US-B) · Verificación antes de push | 2026-09-11 | 231 |
 | [`project-management/revamp-v2/FASE-2.md`](project-management/revamp-v2/FASE-2.md) | Preparación · Hechos verificados · Paso 1 — las tres páginas transversales (3 commits) · Paso 2 — regla D2:… | 2026-09-11 | 155 |
@@ -53,7 +53,7 @@ revisar_cada: nunca
 | [`epics/DB-CHANGES.md`](epics/DB-CHANGES.md) | Migraciones aplicadas (v1.0) · EP001 — Auth / usuarios · EP002 — Jerarquía org · EP003 — Solicitudes y Proj… | 2026-08-29 | 1492 |
 | [`epics/DECISIONS.md`](epics/DECISIONS.md) | DEC-001 — Tracking multi-sesión con GitHub Issues + archivos MD · DEC-002 — ❌ SUPERSEDED por DEC-013 · DEC-… | 2026-08-29 | 876 |
 | [`epics/EP001-auth-users.md`](epics/EP001-auth-users.md) | Modelo actual (post-Sprint 6 / DEC-024) · Objetivo de negocio (v1.0, histórico) · Roles involucrados · User… | 2026-08-29 | 628 |
-| [`epics/EP002-org-hierarchy.md`](epics/EP002-org-hierarchy.md) | Objetivo de negocio · Roles involucrados · User Stories existentes · # PENDING — User Stories nuevas | 2026-09-11 | 384 |
+| [`epics/EP002-org-hierarchy.md`](epics/EP002-org-hierarchy.md) | Objetivo de negocio · Roles involucrados · User Stories existentes · # PENDING — User Stories nuevas | 2026-09-11 | 444 |
 | [`epics/EP003-project-requests.md`](epics/EP003-project-requests.md) | Objetivo de negocio · Roles · User Stories · Notas técnicas | 2026-08-29 | 308 |
 | [`epics/EP004-dashboard.md`](epics/EP004-dashboard.md) | Objetivo de negocio · User Stories · Notas técnicas · Definition of Done | 2026-09-11 | 788 |
 | [`epics/EP005-projects.md`](epics/EP005-projects.md) | Objetivo de negocio · User Stories · Notas técnicas · Definition of Done | 2026-08-29 | 649 |

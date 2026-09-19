@@ -25,6 +25,8 @@ import {
   listPrograms,
   previewHardDeletePortfolio,
   previewHardDeleteProgram,
+  retirarPortfolio,
+  retirarPrograma,
   updatePortfolio,
   updateProgram,
   type Portfolio,
@@ -33,6 +35,7 @@ import {
 import { listProjects, updateProject, type Project } from "@/lib/api/projects";
 import { HardDeleteButton } from "@/components/hard-delete-button";
 import { cn } from "@/lib/cn";
+import { confirmarDestructivo } from "@/lib/confirmar";
 
 /**
  * US-200 / ADR-037 — la jerarquía de la organización es Portafolio ⊃ Programa.
@@ -120,6 +123,11 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
   >(null);
   const [confirmarPortafolio, setConfirmarPortafolio] = useState<Portfolio | null>(null);
   const [confirmarPrograma, setConfirmarPrograma] = useState<Program | null>(null);
+  // US-284 — «Retirar» no es archivar. Archivar es el primer paso de la
+  // papelera y lleva a borrar; retirar saca de circulación y deja los
+  // proyectos donde se los pueda seguir viendo. Dos acciones, dos botones.
+  const [retirando, setRetirando] = useState<string | null>(null);
+  const [avisoRetiro, setAvisoRetiro] = useState<string | null>(null);
 
   // FASE-7 (revamp v2, US-A) — "mover proyecto de programa" vive aquí y no
   // en /pmo/config: esta es la vista de todo el tenant, program por program,
@@ -187,6 +195,47 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
     });
   }
 
+  async function retirar(
+    tipo: "portafolio" | "programa",
+    entidad: Portfolio | Program,
+  ) {
+    const esPortafolio = tipo === "portafolio";
+    if (
+      !confirmarDestructivo({
+        objeto: `${esPortafolio ? "el portafolio" : "el programa"} «${entidad.name}»`,
+        consecuencia: esPortafolio
+          ? "Deja de listarse, sus programas se desactivan y sus proyectos pasan al «Portafolio General». Los proyectos no se borran."
+          : "Deja de listarse y sus proyectos sueltan el programa. Se quedan en su portafolio y no se borran.",
+        reversibilidad: "recuperable",
+      })
+    ) {
+      return;
+    }
+    setRetirando(entidad.id);
+    setErrorMover(null);
+    try {
+      const hecho = esPortafolio
+        ? await retirarPortfolio(entidad.id)
+        : await retirarPrograma(entidad.id);
+      setAvisoRetiro(
+        hecho.proyectos_movidos === 0
+          ? `«${entidad.name}» se retiró. No tenía proyectos asignados.`
+          : `«${entidad.name}» se retiró. ${hecho.proyectos_movidos} proyecto(s) siguen ahí, reasignados.`,
+      );
+      await refrescarPortafolios();
+      if (!esPortafolio) {
+        await refrescarProgramas((entidad as Program).portfolio_id);
+      }
+      await refrescarProyectosYProgramas();
+    } catch (err) {
+      setErrorMover(
+        err instanceof ApiError ? err.message : "No se pudo retirar",
+      );
+    } finally {
+      setRetirando(null);
+    }
+  }
+
   async function archivarPortafolio(portafolio: Portfolio, force: boolean) {
     await deletePortfolio(portafolio.id, force);
     setConfirmarPortafolio(null);
@@ -238,6 +287,11 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
       {errorMover ? (
         <div className="p-4 pt-0">
           <Banner variant="danger">{errorMover}</Banner>
+        </div>
+      ) : null}
+      {avisoRetiro ? (
+        <div className="p-4 pt-0">
+          <Banner variant="success">{avisoRetiro}</Banner>
         </div>
       ) : null}
 
@@ -322,6 +376,19 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                     >
                       <Icono nombre="pen" size={14} />
                     </Button>
+                    {portafolio.is_active ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void retirar("portafolio", portafolio)}
+                        loading={retirando === portafolio.id}
+                        title="Retirar: deja de listarse; sus proyectos pasan al Portafolio General"
+                        aria-label={`Retirar ${portafolio.name}`}
+                      >
+                        <Icono nombre="archive" size={14} />
+                        <span className="ml-1 text-[12px]">Retirar</span>
+                      </Button>
+                    ) : null}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -399,6 +466,19 @@ export function OrgHierarchySection({ orgId }: { orgId: string }) {
                             >
                               <Icono nombre="pen" size={14} />
                             </Button>
+                            {programa.is_active ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => void retirar("programa", programa)}
+                                loading={retirando === programa.id}
+                                title="Retirar: deja de listarse; sus proyectos sueltan el programa"
+                                aria-label={`Retirar ${programa.name}`}
+                              >
+                                <Icono nombre="archive" size={14} />
+                                <span className="ml-1 text-[12px]">Retirar</span>
+                              </Button>
+                            ) : null}
                             <Button
                               size="sm"
                               variant="ghost"

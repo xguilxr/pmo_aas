@@ -381,3 +381,63 @@ decisión de vocabulario propia, no parte de este retiro.
 - [ ] Aislamiento app-level en tablas nuevas verificado vía `TC-MT-001` extendido (no RLS, ver DEC-003 / `architecture/security-multitenant.md`).
 - [ ] Bug 404 programas resuelto.
 - [ ] Migración BD documentada y reversible.
+
+---
+
+## US-284 — «Retirar» un portafolio o un programa ✅ (2026-09-19)
+
+La papelera de dos pasos (US-088) **borra**: desactiva y después elimina con
+confirmación. Retirar es otra acción y por eso es otro botón: saca la
+clasificación de circulación y deja los proyectos donde se los pueda seguir
+viendo. El owner lo pidió así — «retirar un portafolio o programa solo debería
+retirar la asignación a proyectos, no borrar los proyectos».
+
+| Acción | Qué hace | Endpoint |
+|---|---|---|
+| Retirar | Desactiva y reasigna sus proyectos. No borra nada | `POST /portfolios/{id}/retire` · `POST /programs/{id}/retire` |
+| Archivar | Primer paso de la papelera: desactiva y habilita el borrado | `DELETE /portfolios/{id}` · `DELETE /programs/{id}` |
+| Eliminar | Borra de verdad, con confirmación escrita | `DELETE .../permanent` |
+
+### Adónde van los proyectos
+
+**Al retirar un portafolio**, sus proyectos pasan al «Portafolio General» de su
+organización (DEC-041) y **sueltan el programa**. Sus programas se desactivan
+con él: un programa cuyo portafolio ya no se lista no lo lista nadie. Soltar el
+programa no es cosmético — conservarlo dejaría el par incoherente que DEC-037
+prohíbe, con el programa colgando del portafolio recién retirado.
+
+**Al retirar un programa**, los proyectos sueltan el programa y **se quedan en
+su portafolio**. Es una desviación deliberada del criterio de aceptación, que
+pedía moverlos también al General: su portafolio sigue activo y sigue diciendo
+algo cierto sobre ellos, así que moverlos perdería esa clasificación sin motivo.
+Lo que se retiró es el programa. Solo se los lleva al General si el portafolio
+tampoco está vivo, porque entonces sí quedarían colgando de algo invisible.
+
+El mismo criterio de aceptación pedía que ningún proyecto quedara con
+`program_id` en `NULL`. Eso no se puede cumplir sin inventar un programa: un
+proyecto con portafolio y sin programa es el caso normal del producto. El
+invariante que sí se respeta, y se prueba, es
+`program_id ⇒ portfolio_id = program.portfolio_id`.
+
+### El «Portafolio General» no se retira
+
+Es el destino de los demás. Retirarlo dejaría sin sitio a los proyectos del
+siguiente portafolio que alguien retire, así que la API responde
+`PORTAFOLIO_GENERAL_NO_SE_RETIRA`.
+
+### Auditoría
+
+`portfolio.retire` y `program.retire` registran cuántos proyectos se movieron y
+a qué portafolio. Es el dato que permite deshacerlo a mano si el retiro fue un
+error: sin el conteo y el destino, no hay forma de saber qué reasignar.
+
+**Criterios de aceptación:**
+- [x] «Retirar» separado de la papelera, en los dos niveles.
+- [x] Retirar desactiva sin borrar.
+- [x] Los proyectos del portafolio retirado pasan al «Portafolio General».
+- [x] La auditoría registra el conteo de proyectos movidos.
+- [x] Ningún proyecto queda con `portfolio_id` en `NULL` ni con un par
+  `program_id`/`portfolio_id` incoherente.
+
+**Test cases:** `tests/test_us284_retirar.py` (7).
+

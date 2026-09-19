@@ -21,8 +21,10 @@ revisar_cada: 30d
 y A entregados y en `fix-committed`. Sigue el Bloque E (#637-#639) y luego F,
 D, B, C. Orden completo en el draft del batch.
 
-- [x] **Bloque 0** — #623, #624, #625 (DEC-044) · **0b** — #642…#651 ·
-  **A** — #626, #627 (vaciado, DEC-045)
+- [x] **0** #623-#625 · **0b** #642-#651 · **A** #626-#627 · **E** #637-#639
+  (DEC-040) · **F** a medias: US-288 #640 hecho
+- [ ] **US-289 #641 — decisión del owner.** Fases configurables toca 17
+  archivos (KPIs, snapshots, tableros, boards): pasa el freno de §3
 - [ ] Owner: correr `diagnostico_participaciones_cruzadas.py` (sin `--apply`)
 - [ ] Revamp v2 fase 9 y mobile, en pausa: `revamp-v2/FASE-9.md`
 

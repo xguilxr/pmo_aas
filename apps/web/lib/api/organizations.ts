@@ -367,6 +367,32 @@ export function updatePortfolio(
   return apiFetch<Portfolio>(`/api/v1/portfolios/${id}`, { method: "PATCH", body });
 }
 
+/**
+ * US-284 — «Retirar»: saca de circulación sin borrar.
+ *
+ * No es la papelera. La papelera (`deletePortfolio` / `deleteProgram`) marca
+ * para borrar; esto desactiva y **desasigna**: los proyectos del portafolio
+ * retirado pasan al «Portafolio General», y los del programa retirado sueltan
+ * el programa y se quedan en su portafolio.
+ */
+export type ResultadoDeRetiro = {
+  proyectos_movidos: number;
+  destino_portfolio_id: string | null;
+  programas_desactivados?: number;
+};
+
+export function retirarPortfolio(id: string): Promise<ResultadoDeRetiro> {
+  return apiFetch<ResultadoDeRetiro>(`/api/v1/portfolios/${id}/retire`, {
+    method: "POST",
+  });
+}
+
+export function retirarPrograma(id: string): Promise<ResultadoDeRetiro> {
+  return apiFetch<ResultadoDeRetiro>(`/api/v1/programs/${id}/retire`, {
+    method: "POST",
+  });
+}
+
 /** Primer paso de la papelera (ADR-017): desactiva. Con programas activos
  *  dentro exige `force`, y entonces los desactiva en cascada. */
 export function deletePortfolio(id: string, force = false): Promise<void> {
