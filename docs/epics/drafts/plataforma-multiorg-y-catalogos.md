@@ -9,8 +9,9 @@ revisar_cada: 30d
 # Plataforma multi-organización y catálogos de proyecto — plan de desarrollo
 
 **Origen:** batch del owner del 2026-09-19, refinado en dos rondas.
-**Estado:** Fase A cerrada. Scope y decisiones aprobados por el owner.
-**IDs:** BUG-103, BUG-104 · US-273 … US-289 · DEC-040 … DEC-045
+**Estado:** Fase B cerrada. Issues #623-#641 creados con `status:triage`.
+**IDs:** BUG-103 #623, BUG-104 #624 · US-273 #625 … US-289 #641 ·
+DEC-040 … DEC-045
 (derivados con `proximo_id.py` + GitHub el 2026-09-19).
 
 ---
@@ -92,9 +93,9 @@ A y D son independientes.
 
 | ID | Epic | Qué entrega |
 |---|---|---|
-| BUG-103 | EP017 | `create_participation` rechaza un actor cuya organización no es la del proyecto; el actor global (`organization_id IS NULL`) sigue siendo asignable. El selector de personas filtra por la organización del proyecto |
-| BUG-104 | EP017 | `delete_actor` cuenta como bloqueantes solo los proyectos de la organización del actor. Las participaciones cruzadas se nombran aparte, como dato a limpiar, y no impiden el borrado |
-| US-273 | EP017 | `scripts/diagnostico_participaciones_cruzadas.py` (solo lectura) + acción de limpieza que desactiva las participaciones cruzadas con reporte por organización y auditoría |
+| BUG-103 #623 | EP017 | `create_participation` rechaza un actor cuya organización no es la del proyecto; el actor global (`organization_id IS NULL`) sigue siendo asignable. El selector de personas filtra por la organización del proyecto |
+| BUG-104 #624 | EP017 | `delete_actor` cuenta como bloqueantes solo los proyectos de la organización del actor. Las participaciones cruzadas se nombran aparte, como dato a limpiar, y no impiden el borrado |
+| US-273 #625 | EP017 | `scripts/diagnostico_participaciones_cruzadas.py` (solo lectura) + acción de limpieza que desactiva las participaciones cruzadas con reporte por organización y auditoría |
 
 ### Bloque A — Ciclo de vida del inquilino
 
@@ -103,8 +104,8 @@ vaciar. Todo lo corre el owner desde la interfaz, no por script (D8).
 
 | ID | Epic | Qué entrega |
 |---|---|---|
-| US-274 | EP010 | `GET /superadmin/tenants/{id}/wipe/preview` (conteo por tabla, sin borrar) y `POST /superadmin/tenants/{id}/wipe?confirm_slug=` con inventario de tablas declarado y trinquete que falla si aparece una tabla con `tenant_id` fuera del inventario |
-| US-275 | EP010 | Botón «Vaciar datos» en la ficha del inquilino, con el preview de conteos y la confirmación por slug, junto a «Desactivar» y «Borrar permanente» |
+| US-274 #626 | EP010 | `GET /superadmin/tenants/{id}/wipe/preview` (conteo por tabla, sin borrar) y `POST /superadmin/tenants/{id}/wipe?confirm_slug=` con inventario de tablas declarado y trinquete que falla si aparece una tabla con `tenant_id` fuera del inventario |
+| US-275 #627 | EP010 | Botón «Vaciar datos» en la ficha del inquilino, con el preview de conteos y la confirmación por slug, junto a «Desactivar» y «Borrar permanente» |
 
 El inventario declarado es el punto del diseño. Son 32 modelos con
 `tenant_id`: un vaciado que recorra las tablas por reflexión se salta la
@@ -115,9 +116,9 @@ parece limpio y no lo está. El trinquete vive en los tests de API.
 
 | ID | Epic | Qué entrega |
 |---|---|---|
-| US-276 | EP002, EP004 | `GET /inicio/organizaciones`: árbol organización → portafolios → programas con conteos de proyectos y salud, filtrado por `user_scope_assignments` |
-| US-277 | EP004 | Pantalla `/organizaciones`: tarjeta por organización con su jerarquía segmentada y su semáforo |
-| US-278 | EP004, EP007 | Entrar y salir de una organización: fija la organización activa, migas de pan, «ver todas» y redirección post-login |
+| US-276 #628 | EP002, EP004 | `GET /inicio/organizaciones`: árbol organización → portafolios → programas con conteos de proyectos y salud, filtrado por `user_scope_assignments` |
+| US-277 #629 | EP004 | Pantalla `/organizaciones`: tarjeta por organización con su jerarquía segmentada y su semáforo |
+| US-278 #630 | EP004, EP007 | Entrar y salir de una organización: fija la organización activa, migas de pan, «ver todas» y redirección post-login |
 
 `/dashboard` sigue siendo el tablero de una organización. La landing es una
 pantalla nueva, no un reemplazo.
@@ -128,17 +129,17 @@ Epic nueva: `EP022-onboarding.md`.
 
 | ID | Epic | Qué entrega |
 |---|---|---|
-| US-279 | EP022 | Estado de onboarding en `tenants.settings.onboarding` + `GET/POST /onboarding/estado` con la lista de pasos y su avance |
-| US-280 | EP022 | Wizard `/bienvenida`: organización → portafolio → programa → tipos y fases → invitaciones, con avance guardado y salida en cualquier paso |
-| US-281 | EP002, EP005 | Creación de portafolio, programa y proyecto como formularios reutilizables, alcanzables desde el wizard, la landing y el admin |
+| US-279 #631 | EP022 | Estado de onboarding en `tenants.settings.onboarding` + `GET/POST /onboarding/estado` con la lista de pasos y su avance |
+| US-280 #632 | EP022 | Wizard `/bienvenida`: organización → portafolio → programa → tipos y fases → invitaciones, con avance guardado y salida en cualquier paso |
+| US-281 #633 | EP002, EP005 | Creación de portafolio, programa y proyecto como formularios reutilizables, alcanzables desde el wizard, la landing y el admin |
 
 ### Bloque D — Paneles de portafolios y programas
 
 | ID | Epic | Qué entrega |
 |---|---|---|
-| US-282 | EP002, EP007 | Panel de portafolios en tabla: nombre, código, responsable, programas, proyectos, estado; botón «Agregar» y acción «Editar» |
-| US-283 | EP002, EP007 | Panel de programas en tabla: nombre, portafolio, responsable, proyectos, estado; mismos botones |
-| US-284 | EP002 | «Retirar»: desactiva el portafolio o el programa y **desasigna** sus proyectos, sin borrarlos. Auditoría con el conteo de proyectos movidos |
+| US-282 #634 | EP002, EP007 | Panel de portafolios en tabla: nombre, código, responsable, programas, proyectos, estado; botón «Agregar» y acción «Editar» |
+| US-283 #635 | EP002, EP007 | Panel de programas en tabla: nombre, portafolio, responsable, proyectos, estado; mismos botones |
+| US-284 #636 | EP002 | «Retirar»: desactiva el portafolio o el programa y **desasigna** sus proyectos, sin borrarlos. Auditoría con el conteo de proyectos movidos |
 
 Editar toca solo campos descriptivos. El árbol actual se sustituye por dos
 paneles; la papelera de dos pasos se conserva y queda separada de
@@ -148,9 +149,9 @@ paneles; la papelera de dos pasos se conserva y queda separada de
 
 | ID | Epic | Qué entrega |
 |---|---|---|
-| US-285 | EP007 | Tabla `tenant_catalog_values` + migración + siembra de los valores actuales por inquilino + servicio `services/catalogos.py` |
-| US-286 | EP007 | API `/admin/catalogos/{catalogo}` (listar, crear, editar, reordenar, desactivar) y validación de proyectos contra el catálogo del inquilino |
-| US-287 | EP007 | Pantalla `/admin/catalogos` con dos pestañas: Tipos de proyecto · Fases |
+| US-285 #637 | EP007 | Tabla `tenant_catalog_values` + migración + siembra de los valores actuales por inquilino + servicio `services/catalogos.py` |
+| US-286 #638 | EP007 | API `/admin/catalogos/{catalogo}` (listar, crear, editar, reordenar, desactivar) y validación de proyectos contra el catálogo del inquilino |
+| US-287 #639 | EP007 | Pantalla `/admin/catalogos` con dos pestañas: Tipos de proyecto · Fases |
 
 Dos catálogos, no más: `tipo_proyecto` y `fase_proyecto`. La tabla nace
 genérica (`catalogo` como columna) para no rehacerla si mañana entra un
@@ -168,8 +169,8 @@ datos. Ninguna fila queda marcada como intocable (D9).
 
 | ID | Epic | Qué entrega |
 |---|---|---|
-| US-288 | EP005 | Tipos de proyecto del inquilino: alta, edición y baja, sin valores de sistema. Un tipo en uso se desactiva, no se borra. Uso en formularios, filtros y gráficos |
-| US-289 | EP005 | Fases del inquilino: alta, edición y reordenamiento, **máximo 8**, con banderas `activa` y `terminal`; las transiciones se derivan del orden |
+| US-288 #640 | EP005 | Tipos de proyecto del inquilino: alta, edición y baja, sin valores de sistema. Un tipo en uso se desactiva, no se borra. Uso en formularios, filtros y gráficos |
+| US-289 #641 | EP005 | Fases del inquilino: alta, edición y reordenamiento, **máximo 8**, con banderas `activa` y `terminal`; las transiciones se derivan del orden |
 
 La fase no es una etiqueta suelta: `FASES_ACTIVAS`, `FASES_TERMINALES` y
 `TRANSICIONES` gobiernan KPIs, capacidad y cortes. Por eso cada fase declara

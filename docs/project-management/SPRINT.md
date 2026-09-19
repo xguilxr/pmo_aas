@@ -41,9 +41,9 @@ transversal con `code-review --comment` (`revamp-v2/FASE-9.md`).
 
 ## 📥 INBOX
 
-- [ ] **Batch 2026-09-19** — multi-organización y catálogos: BUG-103/104 +
-  US-273…289 en 7 bloques, scope aprobado y D8–D11 cerradas. Issues por crear
-  · `drafts/plataforma-multiorg-y-catalogos.md`
+- [ ] **Batch 2026-09-19** — multi-organización y catálogos: #623-#641 en 7
+  bloques (`drafts/plataforma-multiorg-y-catalogos.md`). Arranca el Bloque 0
+  (#623, #624, #625). Falta la label `EP022` y marcar `status:ready`.
 - [ ] **Glosario de datos** (FASE-9 pasada 2): #613-#619.
 - [ ] **W3 — RLS de Postgres**: #599 (US-240), #600 (US-241), #601 (US-242).
 - [ ] **EP021**: quedan US-223, US-225 y US-226. US-224 entregada.
