@@ -722,6 +722,12 @@ async def list_actors(
     # compatibilidad para no romper un filtro guardado ni un script de cliente.
     portfolio_function: str | None = Query(default=None, deprecated=True),
     organization_id: UUID | None = Query(default=None),
+    # BUG-103 / DEC-044 — dos preguntas distintas sobre la misma columna.
+    # `organization_id` es «de qué organización es este recurso» y responde el
+    # catálogo de Recursos. `asignable_en` es «puede este recurso trabajar en
+    # esta organización», y ahí el recurso global (sin organización) también
+    # cuenta. Un solo parámetro con dos lecturas se equivoca en una de las dos.
+    asignable_en: UUID | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=100, ge=1, le=500),
     cu: CurrentUser = Depends(require_authenticated()),
@@ -741,6 +747,10 @@ async def list_actors(
         stmt = stmt.where(Actor.discipline == disciplina)
     if organization_id is not None:
         stmt = stmt.where(Actor.organization_id == str(organization_id))
+    if asignable_en is not None:
+        from app.services.area_visibility import condicion_actor_de_organizacion
+
+        stmt = stmt.where(condicion_actor_de_organizacion(asignable_en))
     if team_id is not None:
         stmt = stmt.where(Actor.team_id == str(team_id))
     if area_id is not None:

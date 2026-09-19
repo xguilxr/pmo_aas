@@ -8,6 +8,11 @@ Regla de propagación (catálogo tenant, US-103 + BUG-085):
 - Un actor (recurso) es asignable en un proyecto si pertenece a un equipo
   cuya área es visible, o tiene ``area_id`` directo a un área visible, o
   tiene una participación activa en el proyecto.
+- Y, desde BUG-103 (DEC-044), si además **sirve a la organización** del
+  proyecto: ``actors.organization_id`` puesto lo ata a esa organización;
+  nulo lo deja global al inquilino. La cascada de áreas no bastaba —un
+  ``AreaAssignment`` con ``is_global`` hacía visible a cualquier actor de
+  su área, viniera de la organización que viniera.
 
 Centralizar esto evita el drift entre los pickers de Plan / RAID /
 Cambios / Lecciones / Minutas (antes cada endpoint reimplementaba la
@@ -17,11 +22,48 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.area import Actor, Area, AreaAssignment, Team
 from app.models.project import Project
+
+
+def actor_sirve_a_organizacion(
+    actor: Actor, organization_id: UUID | str | None
+) -> bool:
+    """BUG-103 / DEC-044 — si este actor puede trabajar en esa organización.
+
+    ``actors.organization_id`` nulo significa recurso global del inquilino
+    (US-182, el mismo patrón que ``areas.organization_id`` en BUG-061): sirve a
+    cualquier organización. Con una organización puesta, no cruza a otra.
+
+    Se devuelve un bool en vez de lanzar porque los dos llamadores necesitan
+    cosas distintas: el que asigna levanta un 422 con el nombre de la
+    organización, y el que lista filtra en silencio.
+    """
+    if actor.organization_id is None:
+        return True
+    if organization_id is None:
+        return False
+    return str(actor.organization_id) == str(organization_id)
+
+
+def condicion_actor_de_organizacion(
+    organization_id: UUID | str | None,
+) -> ColumnElement[bool]:
+    """La misma regla que :func:`actor_sirve_a_organizacion`, como filtro SQL.
+
+    Existe para no traer a memoria los actores que igual se van a descartar.
+    Se mantiene al lado de la versión en Python a propósito: las dos son la
+    misma frase y separarlas de archivo es como se desincronizan.
+    """
+    if organization_id is None:
+        return Actor.organization_id.is_(None)
+    return or_(
+        Actor.organization_id.is_(None),
+        Actor.organization_id == str(organization_id),
+    )
 
 
 def _project_cascade_condition(project: Project):
@@ -61,7 +103,8 @@ async def actors_visible_to_project(
 
     Une (a) actores de equipos cuya área es visible, (b) actores con
     ``area_id`` directo a un área visible y (c) actores con participación
-    activa en el proyecto. Excluye soft-deleted / inactivos.
+    activa en el proyecto. Excluye soft-deleted / inactivos, y los que no
+    sirven a la organización del proyecto (BUG-103).
     """
     from app.models.project_participation import ProjectParticipation
 
@@ -112,6 +155,10 @@ async def actors_visible_to_project(
                 Actor.tenant_id == str(tenant_id),
                 Actor.is_active.is_(True),
                 Actor.deleted_at.is_(None),
+                # BUG-103: la organización del proyecto manda por encima de la
+                # cascada. Un actor de otra organización que entró por un área
+                # global deja de ofrecerse, aunque hoy tenga participación.
+                condicion_actor_de_organizacion(project.organization_id),
                 or_(*conds),
             )
             .order_by(Actor.name)

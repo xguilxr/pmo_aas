@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-98 documentos vivos · 70 archivados · 2777 secciones indexadas.
+99 documentos vivos · 70 archivados · 2793 secciones indexadas.
 
 ## gestion
 
@@ -22,6 +22,7 @@ revisar_cada: nunca
 | [`epics/drafts/plan-post-revamp-generacion.md`](epics/drafts/plan-post-revamp-generacion.md) | G1 — `report-spec` (el formato que el owner o un agente escriben) · G2 — Renderer determinista · G3 — Minut… | 2026-08-27 | 175 |
 | [`epics/drafts/plan-post-revamp-operacion.md`](epics/drafts/plan-post-revamp-operacion.md) | O1 — CLI `pmo` (`tools/pmo/`) · O2 — Skills de operación (`.claude/skills/`) · O3 — Enrutamiento de modelos… | 2026-08-27 | 139 |
 | [`epics/drafts/plan-post-revamp.md`](epics/drafts/plan-post-revamp.md) | Norte · Orden de ejecución sugerido · Bloque R1 — Plataforma observable (superadmin con datos reales) · Blo… | 2026-08-27 | 264 |
+| [`epics/drafts/plataforma-multiorg-y-catalogos.md`](epics/drafts/plataforma-multiorg-y-catalogos.md) | Qué pide el owner · Qué existe hoy · El bloqueo por recursos cruzados · Bloques de trabajo | 2026-09-19 | 223 |
 | [`epics/drafts/reestructura-modelo-datos.md`](epics/drafts/reestructura-modelo-datos.md) | Estado real, oleada por oleada (verificado contra código, 2026-08-29) · 1. Jerarquía organizacional · 2. Id… | 2026-08-29 | 272 |
 | [`epics/drafts/reestructura-plan.md`](epics/drafts/reestructura-plan.md) | Qué ya se ejecutó, y dónde quedó · Lo que sigue sin construir · Riesgos que siguen vigentes · Guía de sesio… | 2026-08-29 | 89 |
 | [`project-management/CRITERIOS-DE-ACEPTACION.md`](project-management/CRITERIOS-DE-ACEPTACION.md) | El hueco que había · La regla · Lo que este control NO comprueba · Para el trabajo de producto que no toca … | 2026-08-07 | 107 |
@@ -31,7 +32,7 @@ revisar_cada: nunca
 | [`project-management/REVAMP-V2-PLAN.md`](project-management/REVAMP-V2-PLAN.md) | 1. Navegación objetivo · 2. Estados · 3. Entidades, fases y campos · 4. Flujo operativo | 2026-09-11 | 507 |
 | [`project-management/SPRINT-BACKLOG.md`](project-management/SPRINT-BACKLOG.md) | 📤 Salido de SPRINT.md el 2026-08-28 · ⏸️ Deferred — re-evaluación post EP020 · ✅ DONE · 📋 Backlog v2.0 (pos… | 2026-08-28 | 152 |
 | [`project-management/SPRINT-DONE-HISTORY.md`](project-management/SPRINT-DONE-HISTORY.md) | Ronda 2026-08-27 — Revamp de diseño v2 (batch del owner, sin US) · Ronda 2026-08-06 — Ola 2, `SEG-04` y ver… | 2026-08-12 | 609 |
-| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · ⏳ ESPERANDO al owner · 📥 INBOX · 📦 Lo demás | 2026-09-11 | 61 |
+| [`project-management/SPRINT.md`](project-management/SPRINT.md) | 🔴 IN-PROGRESS · ⏳ ESPERANDO al owner · 📥 INBOX · 📦 Lo demás | 2026-09-19 | 60 |
 | [`project-management/revamp-v2/FASE-0.md`](project-management/revamp-v2/FASE-0.md) | Preparación · Corrección 1 — tabs del detalle de proyecto no se marcan activos · Corrección 2 — tabla RAID … | 2026-09-11 | 181 |
 | [`project-management/revamp-v2/FASE-1.md`](project-management/revamp-v2/FASE-1.md) | Preparación · Commit 1 — sidebar (US-A) · Commit 2 — header (US-B) · Verificación antes de push | 2026-09-11 | 231 |
 | [`project-management/revamp-v2/FASE-2.md`](project-management/revamp-v2/FASE-2.md) | Preparación · Hechos verificados · Paso 1 — las tres páginas transversales (3 commits) · Paso 2 — regla D2:… | 2026-09-11 | 155 |
@@ -50,7 +51,7 @@ revisar_cada: nunca
 | Documento | De qué trata | Revisado | Líneas |
 |---|---|---|---|
 | [`epics/DB-CHANGES.md`](epics/DB-CHANGES.md) | Migraciones aplicadas (v1.0) · EP001 — Auth / usuarios · EP002 — Jerarquía org · EP003 — Solicitudes y Proj… | 2026-08-29 | 1439 |
-| [`epics/DECISIONS.md`](epics/DECISIONS.md) | DEC-001 — Tracking multi-sesión con GitHub Issues + archivos MD · DEC-002 — ❌ SUPERSEDED por DEC-013 · DEC-… | 2026-08-29 | 794 |
+| [`epics/DECISIONS.md`](epics/DECISIONS.md) | DEC-001 — Tracking multi-sesión con GitHub Issues + archivos MD · DEC-002 — ❌ SUPERSEDED por DEC-013 · DEC-… | 2026-08-29 | 824 |
 | [`epics/EP001-auth-users.md`](epics/EP001-auth-users.md) | Modelo actual (post-Sprint 6 / DEC-024) · Objetivo de negocio (v1.0, histórico) · Roles involucrados · User… | 2026-08-29 | 628 |
 | [`epics/EP002-org-hierarchy.md`](epics/EP002-org-hierarchy.md) | Objetivo de negocio · Roles involucrados · User Stories existentes · # PENDING — User Stories nuevas | 2026-09-11 | 384 |
 | [`epics/EP003-project-requests.md`](epics/EP003-project-requests.md) | Objetivo de negocio · Roles · User Stories · Notas técnicas | 2026-08-29 | 308 |
@@ -61,7 +62,7 @@ revisar_cada: nunca
 | [`epics/EP008-ai.md`](epics/EP008-ai.md) | Objetivo de negocio · Modo de IA por tenant (US-057 · DEC-017) · US-043 — Generar minuta desde transcripció… | 2026-08-29 | 577 |
 | [`epics/EP009-ms-project.md`](epics/EP009-ms-project.md) | Objetivo de negocio · Decisiones técnicas · US-047 — Importar archivo MS Project (XML/XLSX) · US-048 — Impo… | 2026-08-29 | 742 |
 | [`epics/EP010-superadmin-panel.md`](epics/EP010-superadmin-panel.md) | Objetivo de negocio · Roles involucrados · Decisiones clave · User Stories | 2026-08-29 | 409 |
-| [`epics/EP017-project-directory.md`](epics/EP017-project-directory.md) | Objetivo de negocio · Modelo conceptual · DEC a registrar en DECISIONS.md al cierre del bloque · Bloques | 2026-08-29 | 668 |
+| [`epics/EP017-project-directory.md`](epics/EP017-project-directory.md) | Objetivo de negocio · Modelo conceptual · DEC a registrar en DECISIONS.md al cierre del bloque · Bloques | 2026-08-29 | 699 |
 | [`epics/EP018-documents-artifacts.md`](epics/EP018-documents-artifacts.md) | Objetivo de negocio · Decisiones arquitectónicas asociadas (a registrar en DECISIONS.md) · US iniciales (Sp… | 2026-08-29 | 57 |
 | [`epics/EP019-changes-approval.md`](epics/EP019-changes-approval.md) | Objetivo de negocio · Decisiones arquitectónicas asociadas · US iniciales · Migraciones Alembic aplicadas | 2026-08-29 | 51 |
 | [`epics/EP020-report-builder.md`](epics/EP020-report-builder.md) | Cambios recientes (2026-05-23) · Objetivo de negocio · Decisiones arquitectónicas (registradas en DECISIONS… | 2026-08-29 | 473 |

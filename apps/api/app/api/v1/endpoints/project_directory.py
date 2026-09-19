@@ -11,7 +11,7 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_authenticated
-from app.core.errors import conflict, mensaje, not_found, validation_error
+from app.core.errors import business_rule, conflict, mensaje, not_found, validation_error
 from app.db.session import get_db
 from app.dominio.raci import UNICO as PAPEL_UNICO
 from app.models.area import Actor
@@ -26,6 +26,10 @@ from app.schemas.project_directory import (
     ProjectRoleCreate,
     ProjectRoleRead,
     ProjectRoleUpdate,
+)
+from app.services.area_visibility import (
+    actor_sirve_a_organizacion,
+    condicion_actor_de_organizacion,
 )
 from app.services.costo_asignacion import congelar as congelar_tarifa
 from app.services.costo_asignacion import costo as costo_de_participacion
@@ -304,6 +308,43 @@ async def create_participation(
     if not actor:
         raise not_found("Actor en la organización")
 
+    # BUG-103 / DEC-044 — el actor tiene que servir a la organización del
+    # proyecto. Hasta aquí solo se comprobaba el inquilino, así que un recurso
+    # de la organización A se asignaba a un proyecto de la B sin que nada lo
+    # impidiera; después ese cruce bloqueaba el borrado del recurso en su
+    # propia organización, que es como salió el defecto a la luz.
+    proyecto = (
+        await db.execute(
+            select(Project).where(
+                and_(
+                    Project.tenant_id == str(_tenant(cu)),
+                    Project.id == str(project_id),
+                )
+            )
+        )
+    ).scalar_one_or_none()
+    if proyecto is None:
+        raise not_found("Proyecto")
+    if not actor_sirve_a_organizacion(actor, proyecto.organization_id):
+        raise business_rule(
+            mensaje(
+                que=(
+                    f"«{actor.name}» pertenece a otra organización y no puede "
+                    "participar en este proyecto"
+                ),
+                porque=(
+                    "Un recurso con organización solo trabaja en proyectos de "
+                    "esa organización; el recurso global (sin organización) "
+                    "trabaja en cualquiera."
+                ),
+                accion=(
+                    "Usa un recurso de la organización del proyecto, o quítale "
+                    "la organización al recurso para volverlo global."
+                ),
+            ),
+            code="ACTOR_DE_OTRA_ORGANIZACION",
+        )
+
     part = ProjectParticipation(
         tenant_id=str(_tenant(cu)),
         project_id=str(project_id),
@@ -461,6 +502,18 @@ async def list_eligible_actors(
     seen: set[str] = set()
     out: list[ActorMini] = []
 
+    # BUG-103: el proyecto se carga antes que nada — su organización acota las
+    # dos fuentes, no solo la cascada de áreas.
+    project = (
+        await db.execute(
+            select(Project).where(
+                Project.id == str(project_id),
+                Project.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    proyecto_org = project.organization_id if project is not None else None
+
     def _push(actor: Actor) -> None:
         if actor.id in seen:
             return
@@ -486,6 +539,11 @@ async def list_eligible_actors(
                     ProjectParticipation.project_id == str(project_id),
                     ProjectParticipation.is_active.is_(True),
                     Actor.is_active.is_(True),
+                    # BUG-103: una participación cruzada heredada no vuelve a
+                    # ofrecerse como responsable. Ofrecerla sería proponer un
+                    # valor que `create_participation` ya rechaza, y dejaría el
+                    # cruce reproduciéndose desde los desplegables de RAID.
+                    condicion_actor_de_organizacion(proyecto_org),
                 )
             )
         )
@@ -498,14 +556,6 @@ async def list_eligible_actors(
         _push(actor)
 
     # (2) actores visibles por la cascada de áreas del proyecto.
-    project = (
-        await db.execute(
-            select(Project).where(
-                Project.id == str(project_id),
-                Project.tenant_id == str(tenant_id),
-            )
-        )
-    ).scalar_one_or_none()
     if project is not None:
         for actor in await actors_visible_to_project(db, tenant_id, project):
             _push(actor)

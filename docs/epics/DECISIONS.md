@@ -791,3 +791,33 @@ endpoints.
 **Implementación:** FASE-7 del revamp v2 (`docs/project-management/revamp-v2/FASE-7.md`),
 commit 4. Origen: owner por chat, 2026-09-11 (AskUserQuestion, "Dentro de
 Recursos, como pestaña").
+
+---
+
+## DEC-044 — Un recurso con organización no cruza a otra (EP017, BUG-103)
+
+**Fecha:** 2026-09-19
+**Decisión:** un `Actor` con `organization_id` puesto solo participa en
+proyectos de esa organización. Con `organization_id` nulo es un recurso
+global del inquilino y participa en cualquiera. No se crea una figura de
+«préstamo» entre organizaciones.
+**Rationale:** el owner reportó que no podía retirar un recurso de una
+organización porque tenía participaciones en proyectos de otra. El modelo ya
+distinguía los dos casos —DEC-038 hizo la unicidad del recurso por
+organización, y el nulo era el recurso global desde US-182—, pero ninguna
+capa aplicaba la regla: `create_participation` solo comprobaba el inquilino y
+el selector de personas ofrecía todo el catálogo. El cruce se creaba sin
+resistencia y solo aparecía al intentar borrar.
+**Consecuencia aceptada:** prestar una persona entre organizaciones exige
+volverla global o darla de alta como recurso de la otra organización —que es
+lo que DEC-038 ya había decidido para su identidad. Las participaciones
+cruzadas que ya existen no se pueden recrear, y se limpian aparte (US-273):
+un arreglo que las dejara vivas mantendría el bloqueo que originó el reporte.
+**Reversible:** sí, pero con costo — si mañana hace falta el préstamo
+explícito, es una columna en `project_participations`, no quitar esta
+validación.
+**Implementación:** BUG-103 (validación al asignar y filtros de los
+selectores), BUG-104 (el borrado deja de contar los cruces) y US-273
+(diagnóstico y limpieza). La regla vive en
+`app/services/area_visibility.py::actor_sirve_a_organizacion`, en una sola
+función con su espejo SQL al lado.

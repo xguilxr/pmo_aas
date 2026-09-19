@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import type { Actor } from "@/lib/api/areas";
 import { listActors } from "@/lib/api/areas";
+import { getProject } from "@/lib/api/projects";
 import { confirmarDestructivo } from "@/lib/confirmar";
 import {
   RISK_ACTION_STATUS,
@@ -59,7 +60,14 @@ const STATUS_BADGE_VARIANT: Record<
   blocked: "danger",
 };
 
-export function RiskActionsCard({ riskId }: { riskId: string }) {
+export function RiskActionsCard({
+  riskId,
+  projectId,
+}: {
+  riskId: string;
+  /** BUG-103: de aquí sale la organización que acota el selector de dueño. */
+  projectId?: string | null;
+}) {
   const [actions, setActions] = useState<RiskAction[]>([]);
   const [actors, setActors] = useState<Actor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,9 +89,16 @@ export function RiskActionsCard({ riskId }: { riskId: string }) {
     setLoading(true);
     setError(null);
     try {
+      // BUG-103: el dueño de una acción se elige entre quienes pueden
+      // trabajar en la organización del proyecto. Sin esto el desplegable
+      // ofrecía todo el inquilino y seguía sembrando cruces.
+      const proyecto = projectId
+        ? await getProject(projectId).catch(() => null)
+        : null;
+      const orgId = (proyecto as any)?.organization_id ?? null;
       const [list, actorList] = await Promise.all([
         listRiskActions(riskId),
-        listActors({}).catch(() => [] as Actor[]),
+        listActors(orgId ? { asignable_en: orgId } : {}).catch(() => [] as Actor[]),
       ]);
       setActions(list);
       setActors(actorList);
@@ -97,7 +112,7 @@ export function RiskActionsCard({ riskId }: { riskId: string }) {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [riskId]);
+  }, [riskId, projectId]);
 
   async function submitCreate() {
     if (!createDraft.short_desc.trim()) return;

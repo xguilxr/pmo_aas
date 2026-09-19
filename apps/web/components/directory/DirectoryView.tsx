@@ -57,6 +57,7 @@ import {
   type RaciPapel,
   type ResumenCosto,
 } from "@/lib/api/project-directory";
+import { getProject } from "@/lib/api/projects";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
 import { confirmarDestructivo } from "@/lib/confirmar";
@@ -83,17 +84,26 @@ export function DirectoryView({ projectId }: Props) {
   const [editing, setEditing] = useState<Participation | null>(null);
   // US-215.
   const [costo, setCosto] = useState<ResumenCosto | null>(null);
+  // BUG-103: la organización del proyecto acota a quién se puede agregar.
+  // No sale del header: el proyecto que se está viendo manda, y el header
+  // puede estar en otra organización.
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
     setError(null);
     try {
-      const [parts, ar, tm, ro, actors] = await Promise.all([
+      const [parts, ar, tm, ro, actors, proyecto] = await Promise.all([
         listParticipations(projectId, { include: "actor" }),
         listAreasByProject(projectId).catch(() => [] as Area[]),
         listTeams().catch(() => [] as Team[]),
         listProjectRoles().catch(() => [] as ProjectRole[]),
+        // Sin filtrar a propósito: este mapa hidrata el nombre de quien YA
+        // está en el proyecto. Acotarlo dejaría en blanco las filas de una
+        // participación cruzada heredada, que es justo la que hay que ver
+        // para poder quitarla.
         listActors().catch(() => [] as Actor[]),
+        getProject(projectId).catch(() => null),
       ]);
       // US-215: el resumen se pide aparte y su fallo no tumba el directorio.
       // El costo es información añadida; sin ella la pantalla sigue sirviendo
@@ -106,6 +116,7 @@ export function DirectoryView({ projectId }: Props) {
       setTeams(tm);
       setRoles(ro);
       setActorsById(Object.fromEntries(actors.map((a) => [a.id, a])));
+      setOrganizationId((proyecto as any)?.organization_id ?? null);
     } catch (e: any) {
       setError(e?.message ?? "Error cargando directorio");
     } finally {
@@ -355,6 +366,7 @@ export function DirectoryView({ projectId }: Props) {
       {showAdd && (
         <AddPersonModal
           projectId={projectId}
+          organizationId={organizationId}
           initialAreas={areas}
           initialTeams={teams}
           initialRoles={roles}
@@ -627,6 +639,7 @@ function SelectorRaci({
 // ---------------------------------------------------------------------------
 function AddPersonModal({
   projectId,
+  organizationId,
   initialAreas,
   initialTeams,
   initialRoles,
@@ -634,6 +647,7 @@ function AddPersonModal({
   onSaved,
 }: {
   projectId: string;
+  organizationId: string | null;
   initialAreas: Area[];
   initialTeams: Team[];
   initialRoles: ProjectRole[];
@@ -667,10 +681,17 @@ function AddPersonModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listActors()
+    // BUG-103: `asignable_en` incluye al recurso global (sin organización) y
+    // deja fuera al de otra organización. Sin esto el desplegable ofrecía todo
+    // el inquilino y la API rechazaba la mitad de lo ofrecido.
+    listActors(
+      organizationId
+        ? { asignable_en: organizationId, is_active: true }
+        : { is_active: true },
+    )
       .then((a) => setTenantActors(a))
       .catch(() => setTenantActors([]));
-  }, []);
+  }, [organizationId]);
 
   async function submit() {
     setSaving(true);
@@ -685,6 +706,10 @@ function AddPersonModal({
           company: newActorCompany.trim() || undefined,
           job_title: newActorJobTitle.trim() || undefined,
           area_id: functionalAreaId || undefined,
+          // BUG-103: nace en la organización del proyecto. Dejarlo global lo
+          // haría asignable en todas, que no es lo que quiere quien da de
+          // alta a una persona desde un proyecto concreto.
+          organization_id: organizationId || undefined,
         } as any);
         aid = created.id;
       }

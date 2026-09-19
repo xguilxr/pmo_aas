@@ -258,7 +258,7 @@ default 100/100):
 
 | Campo | Notas |
 |---|---|
-| `organization_id` | opcional; `NULL` = recurso tenant-global (no atado a una org) |
+| `organization_id` | opcional; `NULL` = recurso tenant-global (no atado a una org). Puesto, **ata** al recurso a esa organización: solo participa en proyectos suyos (BUG-103 / DEC-044) |
 | `resource_type` | `cliente_negocio`\|`cliente_it`\|`e4_pmo`\|`e4_tecnologia`\|`vendor_externo` |
 | `portfolio_function` | `pm`\|`pmo`\|`arquitectura`\|`infraestructura`\|`aplicaciones`\|`datos`\|`seguridad`\|`integraciones`\|`negocio`\|`change`\|`testing`\|`vendor` |
 | `seniority` | `junior`\|`mid`\|`senior`\|`lead` |
@@ -644,6 +644,37 @@ los feriados de México a un equipo en Polonia sería peor que no descontar ning
 **Estado de integración:** DONE (US-215).
 
 ---
+
+## A qué organización sirve un recurso (BUG-103 / DEC-044)
+
+Un recurso vive en una organización o es global del inquilino, y eso decide
+dónde puede trabajar.
+
+| `actors.organization_id` | Dónde participa |
+|---|---|
+| Con una organización | Solo en proyectos de esa organización |
+| `NULL` (global) | En proyectos de cualquier organización del inquilino |
+
+Dónde se aplica:
+
+1. `POST /projects/{id}/participations` rechaza con
+   `ACTOR_DE_OTRA_ORGANIZACION` al recurso que no sirve a la organización del
+   proyecto.
+2. `GET /actors?asignable_en=<org>` devuelve los de esa organización **más**
+   los globales. Es otra pregunta que `organization_id=<org>`, que sigue
+   devolviendo solo los de esa organización y es lo que usa el catálogo de
+   Recursos.
+3. Los selectores de persona del proyecto —agregar al directorio, dueño de
+   una acción de riesgo— piden `asignable_en` con la organización del
+   proyecto, no del header: el proyecto que se está viendo manda.
+4. `eligible-actors` y la cascada de áreas descartan al recurso ajeno aunque
+   entre por un `AreaAssignment` global o por una participación heredada.
+5. Al agregar a un miembro del proyecto, el actor del usuario se busca y se
+   crea en la organización del proyecto. La misma persona puede ser un actor
+   distinto en cada organización (DEC-038).
+
+El mapa de actor hidratado en el directorio **no** se filtra: una fila
+heredada tiene que mostrar su nombre para poder quitarse.
 
 ## Notas
 

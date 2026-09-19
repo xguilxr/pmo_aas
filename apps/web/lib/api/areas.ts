@@ -265,6 +265,10 @@ export function listActors(params?: {
   resource_type?: string;
   discipline?: string;
   organization_id?: string;
+  // BUG-103: «puede trabajar en esta organización» — incluye al recurso
+  // global (sin organización). `organization_id` sigue siendo «es de esta
+  // organización», que es otra pregunta.
+  asignable_en?: string;
 }): Promise<Actor[]> {
   const qs = new URLSearchParams();
   if (params?.team_id) qs.set("team_id", params.team_id);
@@ -275,6 +279,7 @@ export function listActors(params?: {
   if (params?.discipline)
     qs.set("discipline", params.discipline);
   if (params?.organization_id) qs.set("organization_id", params.organization_id);
+  if (params?.asignable_en) qs.set("asignable_en", params.asignable_en);
   const tail = qs.toString();
   return apiFetch<Actor[]>(`/api/v1/actors${tail ? `?${tail}` : ""}`);
 }
