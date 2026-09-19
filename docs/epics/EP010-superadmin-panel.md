@@ -406,3 +406,55 @@ US-061 no tiene endpoints: `/superadmin/settings` (GET/PATCH) no existe.
 - [x] Nuevo componente reutilizable `SuperadminHealthSection`.
 
 **Estado de integración:** DONE (US-026).
+
+---
+
+### US-274 — Vaciar los datos de un inquilino ✅ (2026-09-19)
+
+Desactivar y borrar ya existían. Faltaba la operación de en medio: dejar al
+inquilino como recién aprovisionado —con su gente, su marca y su
+configuración— y sin nada de lo que se cargó dentro. Es lo que hace falta para
+reusar un inquilino de demostración sin volver a crearlo ni a invitar a nadie.
+
+**Endpoints** (los dos exigen super admin):
+
+| Ruta | Qué hace |
+|---|---|
+| `GET /superadmin/tenants/{id}/wipe/preview` | Cuenta las filas por tabla. No toca nada |
+| `POST /superadmin/tenants/{id}/wipe?confirm_slug=` | Borra. Devuelve las filas borradas por tabla |
+
+**Qué sobrevive** (DEC-045): el inquilino, su `settings`, su marca, sus
+usuarios, sus membresías y las sesiones abiertas de esos usuarios. Y
+`audit_log`, que no sobrevive por decisión sino porque AM-08 lo hace de solo
+anexado con disparadores de PostgreSQL (migración 0097): un `DELETE` sobre él
+se rechaza en la base.
+
+**El inventario es declarado, no reflexivo.** Las 50 tablas que se vacían y las
+12 que sobreviven están escritas a mano en `app/services/vaciado.py`, con el
+motivo de cada exclusión. Recorrerlas por reflexión sería más corto y peor: la
+tabla que alguien agregue mañana no aparecería en ninguna revisión, y un
+vaciado incompleto deja un inquilino que **parece** limpio. El error no se ve
+al vaciar; se ve semanas después, en un folio repetido o un reporte huérfano.
+
+El trinquete `tests/test_us274_vaciado_inventario.py` compara lo declarado
+contra el metadata de SQLAlchemy y pone la suite roja ante una tabla nueva sin
+clasificar. Comprueba además que el orden de borrado respeta las claves
+foráneas, que toda tabla sin `tenant_id` declara por qué padre se alcanza, y
+que las dos columnas que se ponen en nulo para romper el ciclo
+`actors` ↔ `areas` siguen siendo nulables.
+
+**Criterios de aceptación:**
+- [x] El preview devuelve el conteo por tabla sin borrar nada, y lista el
+  inventario entero —ceros incluidos—: uno que solo muestre lo que tiene filas
+  se lee como «esto es todo lo que hay».
+- [x] El vaciado exige `confirm_slug` exacto; con el equivocado no ejecuta nada.
+- [x] El inventario está declarado explícitamente, no por reflexión.
+- [x] Un trinquete falla si aparece una tabla con `tenant_id` fuera del
+  inventario.
+- [x] Tras el vaciado sobrevive lo que dice DEC-045 y nada más.
+- [x] La auditoría (`tenant.wipe`) se escribe después de borrar.
+- [x] Vaciar dos veces no es un error: la segunda devuelve cero filas.
+- [x] Vaciar un inquilino no toca a los demás.
+
+**Test cases:** `tests/test_us274_vaciado_inventario.py` (12) y
+`tests/test_us274_vaciado_endpoint.py` (7).

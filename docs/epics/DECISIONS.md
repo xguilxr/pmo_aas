@@ -821,3 +821,29 @@ selectores), BUG-104 (el borrado deja de contar los cruces) y US-273
 (diagnóstico y limpieza). La regla vive en
 `app/services/area_visibility.py::actor_sirve_a_organizacion`, en una sola
 función con su espejo SQL al lado.
+
+---
+
+## DEC-045 — Qué sobrevive al vaciado de un inquilino (EP010, US-274)
+
+**Fecha:** 2026-09-19
+**Decisión:** el vaciado conserva el inquilino, su `settings`, su marca, sus
+usuarios, sus membresías y las sesiones abiertas de esos usuarios. Todo lo
+demás se borra, y el inquilino queda como recién aprovisionado. `audit_log`
+también sobrevive, pero por otro motivo: AM-08 lo hace de solo anexado con
+disparadores de PostgreSQL (migración 0097) y un `DELETE` sobre él se rechaza
+en la base.
+**Rationale:** el owner necesita reusar un inquilino de demostración sin
+volver a crearlo ni a invitar a nadie. Conservar la gente y la marca es la
+diferencia entre vaciar y borrar; si hubiera que reinvitar a todos, daría lo
+mismo usar el borrado permanente que ya existía.
+**Consecuencia aceptada:** el inquilino vaciado arranca sin organizaciones, así
+que cae en el mismo estado que el onboarding del Bloque C tiene que resolver.
+Y la historia de auditoría queda apuntando a entidades que ya no existen: es
+el precio de no poder borrarla, y es el correcto — un registro que se pudiera
+limpiar no serviría para lo que existe.
+**Reversible:** no. El vaciado no tiene papelera; por eso exige el slug escrito
+a mano y un preview antes.
+**Implementación:** US-274 (API + inventario declarado + trinquete) y US-275
+(botón «Vaciar datos» en la ficha del inquilino). El inventario vive en
+`app/services/vaciado.py`, con el motivo de cada exclusión escrito al lado.

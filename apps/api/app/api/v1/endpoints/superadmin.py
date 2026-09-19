@@ -28,6 +28,7 @@ from app.services.audit import write_audit
 from app.services.membresia import conceder, inquilinos_de, revocar
 from app.services.notifications import avisa_cambio_de_credencial
 from app.services.seed import SYSTEM_ROLES
+from app.services.vaciado import SOBREVIVEN, contar, vaciar
 
 router = APIRouter(prefix="/superadmin", tags=["superadmin"])
 
@@ -411,6 +412,103 @@ async def hard_delete_tenant(
     from fastapi.responses import Response
 
     return Response(status_code=204)
+
+
+# ---------------------------------------------------------------------------
+# US-274 — vaciar los datos de un inquilino sin borrarlo
+# ---------------------------------------------------------------------------
+# La operación de en medio entre desactivar y borrar. El inventario de tablas y
+# el porqué de cada exclusión viven en `app/services/vaciado.py`.
+
+
+async def _tenant_o_404(db: AsyncSession, tenant_id: UUID) -> Tenant:
+    t = (
+        await db.execute(select(Tenant).where(Tenant.id == str(tenant_id)))
+    ).scalar_one_or_none()
+    if t is None:
+        raise not_found("Tenant")
+    return t
+
+
+@router.get("/tenants/{tenant_id}/wipe/preview")
+async def wipe_preview(
+    tenant_id: UUID,
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """Qué borraría el vaciado, sin borrarlo.
+
+    Lista el inventario entero, tablas en cero incluidas: un preview que solo
+    muestre lo que tiene filas se lee como «esto es todo lo que hay», y lo que
+    hay que poder comprobar antes de vaciar es que se está mirando el
+    inventario completo.
+    """
+    t = await _tenant_o_404(db, tenant_id)
+    conteo = await contar(db, t.id)
+    return {
+        "tenant": {"id": str(t.id), "slug": t.slug, "name": t.name},
+        "total": sum(conteo.values()),
+        "tablas": [{"tabla": k, "filas": v} for k, v in conteo.items()],
+        "sobreviven": SOBREVIVEN,
+    }
+
+
+@router.post("/tenants/{tenant_id}/wipe")
+async def wipe_tenant(
+    tenant_id: UUID,
+    confirm_slug: str = Query(...),
+    cu: CurrentUser = Depends(get_superadmin),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """Borra los datos del inquilino y lo deja como recién aprovisionado.
+
+    Misma confirmación escrita a mano que el borrado permanente: el slug
+    exacto. Es lo único que separa esta acción de un clic accidental, y aquí
+    no hay papelera detrás.
+    """
+    t = await _tenant_o_404(db, tenant_id)
+    if confirm_slug != t.slug:
+        raise business_rule(
+            mensaje(
+                que="confirm_slug no coincide con el slug del inquilino",
+                porque=(
+                    "El vaciado no tiene vuelta atrás y la confirmación escrita "
+                    "a mano es lo único que lo separa de un clic accidental."
+                ),
+                accion=(
+                    "Escribe el identificador exacto del inquilino tal como "
+                    "aparece en su ficha."
+                ),
+            )
+        )
+    borradas = await vaciar(db, t.id)
+    total = sum(borradas.values())
+    # Después de borrar, no antes (US-274). Hoy da igual —`audit_log` no está
+    # en el inventario porque AM-08 impide borrarlo— pero el día que algo de
+    # esto cambie, el orden correcto ya está escrito.
+    await write_audit(
+        db,
+        action="tenant.wipe",
+        module="superadmin",
+        user_id=cu.id,
+        tenant_id=t.id,
+        entity_type="tenant",
+        entity_id=str(t.id),
+        details={
+            "slug": t.slug,
+            "total": total,
+            # Solo lo que tenía filas: cuarenta ceros en la auditoría esconden
+            # los diez números que importan.
+            "borradas": {k: v for k, v in borradas.items() if v},
+        },
+    )
+    await db.commit()
+    return {
+        "tenant": {"id": str(t.id), "slug": t.slug, "name": t.name},
+        "total": total,
+        "tablas": [{"tabla": k, "filas": v} for k, v in borradas.items()],
+        "sobreviven": SOBREVIVEN,
+    }
 
 
 @router.post("/tenants/{tenant_id}/join-as-admin")
