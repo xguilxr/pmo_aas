@@ -1124,9 +1124,13 @@ async def delete_actor(
     """Soft-delete del actor (marca `deleted_at` + `is_active=False`)."""
     from datetime import UTC, datetime
 
+    from sqlalchemy import update
+
     from app.dominio.proyecto import FASES_TERMINALES
     from app.models.project import Project
     from app.models.project_participation import ProjectParticipation
+    from app.services.area_visibility import actor_sirve_a_organizacion
+    from app.services.audit import write_audit
 
     tenant_id = _tenant(cu)
     a = (
@@ -1151,21 +1155,42 @@ async def delete_actor(
     # eliminado. El mensaje decía "proyectos... abiertos"; el query no lo
     # cumplía. Se acota a proyectos vivos y en fase no terminal, y el
     # mensaje nombra el primero para poder verificarlo sin adivinar.
-    bloqueantes = (
+    #
+    # BUG-104 (owner, 2026-09-19): seguía contando proyectos de OTRA
+    # organización. Un recurso de la organización A quedaba atrapado por una
+    # asignación en un proyecto de la B que DEC-044 ya declara inválida y que
+    # ninguna pantalla de la organización A muestra. Esas no bloquean: se
+    # desactivan aquí mismo y quedan escritas en la auditoría. Dejarlas
+    # activas apuntando a un actor borrado es justo lo que el check evita.
+    abiertas = (
         await db.execute(
-            select(Project.folio, Project.name)
-            .join(ProjectParticipation, ProjectParticipation.project_id == Project.id)
+            select(
+                ProjectParticipation.id,
+                Project.folio,
+                Project.name,
+                Project.organization_id,
+            )
+            .join(Project, ProjectParticipation.project_id == Project.id)
             .where(
                 ProjectParticipation.actor_id == str(actor_id),
                 ProjectParticipation.is_active.is_(True),
                 Project.deleted_at.is_(None),
                 Project.phase.notin_(FASES_TERMINALES),
             )
-            .limit(5)
         )
     ).all()
+    bloqueantes = [
+        (folio, name)
+        for _pid, folio, name, org_id in abiertas
+        if actor_sirve_a_organizacion(a, org_id)
+    ]
+    cruces = [
+        (str(pid), folio, name)
+        for pid, folio, name, org_id in abiertas
+        if not actor_sirve_a_organizacion(a, org_id)
+    ]
     if bloqueantes:
-        listado = ", ".join(f"{folio} — {name}" for folio, name in bloqueantes)
+        listado = ", ".join(f"{folio} — {name}" for folio, name in bloqueantes[:5])
         raise business_rule(
             mensaje(
                 que="El actor tiene participaciones activas en proyectos abiertos",
@@ -1173,8 +1198,32 @@ async def delete_actor(
                 accion=f"Quítalo de estos proyectos primero: {listado}.",
             )
         )
+    if cruces:
+        await db.execute(
+            update(ProjectParticipation)
+            .where(ProjectParticipation.id.in_([pid for pid, _f, _n in cruces]))
+            .values(is_active=False)
+        )
     a.deleted_at = datetime.now(UTC)
     a.is_active = False
+    await write_audit(
+        db,
+        action="actor.delete",
+        module="actors",
+        user_id=cu.id,
+        tenant_id=tenant_id,
+        entity_type="actor",
+        entity_id=str(a.id),
+        details={
+            "actor_organization_id": (
+                str(a.organization_id) if a.organization_id else None
+            ),
+            "participaciones_cruzadas_desactivadas": [
+                {"participation_id": pid, "folio": folio, "proyecto": name}
+                for pid, folio, name in cruces
+            ],
+        },
+    )
     await db.commit()
 
 

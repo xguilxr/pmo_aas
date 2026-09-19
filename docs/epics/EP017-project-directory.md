@@ -676,6 +676,23 @@ Dónde se aplica:
 El mapa de actor hidratado en el directorio **no** se filtra: una fila
 heredada tiene que mostrar su nombre para poder quitarse.
 
+### Retirar un recurso (BUG-104)
+
+`DELETE /actors/{id}` sigue rechazando al recurso con participaciones activas
+en proyectos abiertos **de su propia organización**: quitarlo dejaría esas
+asignaciones apuntando a alguien que ya no existe. Para el recurso global,
+ningún proyecto es ajeno y todos cuentan.
+
+Una participación en un proyecto de otra organización no cuenta. Es un dato
+que DEC-044 declara inválido, ninguna pantalla de la organización del recurso
+lo muestra, y bloquear por algo invisible deja al owner sin nada que quitar.
+Al retirar el recurso esas participaciones se desactivan y quedan escritas en
+`audit_log` bajo `actor.delete`, en
+`details.participaciones_cruzadas_desactivadas`.
+
+La limpieza del resto del inquilino —los cruces de recursos que nadie está
+retirando— va aparte, en US-273.
+
 ## Notas
 
 - IDs de DEC-### a asignar al cierre, mirando el último libre en `DECISIONS.md`.
