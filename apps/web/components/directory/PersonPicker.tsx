@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createActor } from "@/lib/api/areas";
+import { getProject } from "@/lib/api/projects";
 import {
   createParticipation,
   listEligibleActors,
@@ -44,6 +45,11 @@ export function PersonPicker({
   const [newEmail, setNewEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // BUG-107 — la organización del proyecto, para que el alta en línea no
+  // fabrique un recurso global. `eligible-actors` ya filtra la lista desde
+  // BUG-103; lo que faltaba era no crear recursos que sirven a todas las
+  // organizaciones cada vez que alguien usa este atajo.
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -58,6 +64,20 @@ export function PersonPicker({
   }, [projectId]);
 
   useEffect(() => {
+    let vigente = true;
+    getProject(projectId)
+      .then((p) => {
+        if (vigente) setOrganizationId((p as any)?.organization_id ?? null);
+      })
+      .catch(() => {
+        if (vigente) setOrganizationId(null);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [projectId]);
+
+  useEffect(() => {
     refresh();
   }, [refresh]);
 
@@ -69,6 +89,8 @@ export function PersonPicker({
       const actor = await createActor({
         name: newName.trim(),
         email: newEmail.trim() || undefined,
+        // BUG-107: nace en la organización del proyecto desde el que se crea.
+        organization_id: organizationId || undefined,
       } as any);
       await createParticipation(projectId, {
         actor_id: actor.id,
