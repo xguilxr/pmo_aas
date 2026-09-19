@@ -2,7 +2,7 @@
 tipo: gestion
 responsable: propietario
 estado: vigente
-revisado: 2026-09-11
+revisado: 2026-09-19
 revisar_cada: 30d
 ---
 
@@ -31,11 +31,9 @@ transversal con `code-review --comment` (`revamp-v2/FASE-9.md`).
 
 ## ⏳ ESPERANDO al owner
 
-- [ ] **Decisión D7** (logo PMO-aaS, plan §7; D1 cerrada DEC-038, D2 cerrada
-  DEC-036, D3 cerrada DEC-037, D4 cerrada DEC-039, D6 cerrada en W5). No
-  bloquea ninguna fase — mientras, la marca es texto.
-- [ ] **Leer el registro del despliegue** de `0110`, `0111` y `0115`: las
-  migraciones ya corrieron; falta mirar lo que dejaron escrito.
+- [ ] **Decisión D7** (logo PMO-aaS; D1–D6 cerradas en DEC-036…039 y W5). No
+  bloquea: mientras, la marca es texto.
+- [ ] **Leer el registro del despliegue** de `0110`, `0111` y `0115`.
 - [ ] **Cómo se traza un batch.** US-203–222 se mergearon sin issues: o se
   crean al cerrar el lote, o se escribe que el lote se traza por commit.
 
@@ -43,6 +41,8 @@ transversal con `code-review --comment` (`revamp-v2/FASE-9.md`).
 
 ## 📥 INBOX
 
+- [ ] **Batch 2026-09-19** — multi-organización y catálogos: US-273…289 en 7
+  bloques (`drafts/plataforma-multiorg-y-catalogos.md`). Espera OK y D8.
 - [ ] **Glosario de datos** (FASE-9 pasada 2): #613-#619.
 - [ ] **W3 — RLS de Postgres**: #599 (US-240), #600 (US-241), #601 (US-242).
 - [ ] **EP021**: quedan US-223, US-225 y US-226. US-224 entregada.
