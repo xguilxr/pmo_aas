@@ -648,12 +648,20 @@ async def export_organigrama(
         actor_conds.append(Actor.team_id.in_(team_ids))
     if area_ids:
         actor_conds.append(Actor.area_id.in_(area_ids))
+    # ENH-211 — la cascada de áreas no basta: un área global deja ver recursos
+    # de cualquier organización. El XLSX del organigrama del proyecto se acota
+    # a quien sirve a su organización (DEC-044). El organigrama **de inquilino**
+    # (`organigrama.py::export_tenant_organigrama`) sí es tenant-wide a
+    # propósito y no lleva este filtro.
+    from app.services.area_visibility import condicion_actor_de_organizacion
+
     actors = (
         await db.execute(
             select(Actor)
             .where(
                 Actor.tenant_id == tenant_id,
                 Actor.deleted_at.is_(None),
+                condicion_actor_de_organizacion(project.organization_id),
                 or_(*actor_conds),
             )
             .order_by(Actor.name)

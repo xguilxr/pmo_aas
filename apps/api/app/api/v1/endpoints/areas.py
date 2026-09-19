@@ -321,6 +321,9 @@ async def get_areas_tree(
 
     BUG-061: si `organization_id` se pasa, filtra a las áreas de esa
     org (más las globales si `include_global=true`).
+
+    ENH-211: ese mismo filtro alcanza ahora a los recursos, con la regla de
+    DEC-044 — los de la organización más los globales del inquilino.
     """
     tenant_id = _tenant(cu)
 
@@ -337,6 +340,23 @@ async def get_areas_tree(
     actors_q = select(Actor).where(
         Actor.tenant_id == str(tenant_id), Actor.deleted_at.is_(None)
     )
+    # ENH-211 — el filtro por organización se aplicaba solo a las áreas, así
+    # que el árbol seguía listando recursos de otras organizaciones colgando de
+    # un área que sí era de esta. Un usuario ya no puede asignarlos (BUG-103)
+    # pero los veía, que es la mitad del problema que DEC-044 resuelve.
+    if organization_id is not None:
+        if include_global:
+            from app.services.area_visibility import (
+                condicion_actor_de_organizacion,
+            )
+
+            actors_q = actors_q.where(
+                condicion_actor_de_organizacion(organization_id)
+            )
+        else:
+            actors_q = actors_q.where(
+                Actor.organization_id == str(organization_id)
+            )
     if not include_inactive:
         areas_q = areas_q.where(Area.is_active.is_(True))
         teams_q = teams_q.where(Team.is_active.is_(True))
