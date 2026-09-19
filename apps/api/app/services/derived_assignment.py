@@ -40,13 +40,19 @@ async def derived_for_actor(
     actor_id: str | UUID | None,
     project_id: str | UUID | None,
 ) -> DerivedAssignment:
-    """Devuelve dimensiones para (actor, project). Sin participation o
-    sin actor → todos None excepto que el actor tenga functional_area
+    """Devuelve dimensiones para (actor, project). Sin participation **activa**
+    o sin actor → todos None excepto que el actor tenga functional_area
     legacy (`actors.area_id`) — entonces se devuelve eso como fallback."""
     if not actor_id or not project_id:
         return EMPTY
     aid, pid = str(actor_id), str(project_id)
-    # Primary primero; si no hay primary, la primera activa.
+    # ENH-210: solo participaciones activas. Antes `is_active` estaba en el
+    # `order_by` y en ningún `where`, así que una inactiva entraba igual al
+    # `limit(1)` —y si además era `is_primary`, ganaba—. Una asignación
+    # retirada seguía dictando el área funcional y el rol del actor en ese
+    # proyecto, que es justo lo contrario de retirarla.
+    #
+    # Primary primero; si no hay primary, la más reciente.
     rows = (
         await db.execute(
             select(ProjectParticipation)
@@ -54,11 +60,11 @@ async def derived_for_actor(
                 and_(
                     ProjectParticipation.actor_id == aid,
                     ProjectParticipation.project_id == pid,
+                    ProjectParticipation.is_active.is_(True),
                 )
             )
             .order_by(
                 ProjectParticipation.is_primary.desc(),
-                ProjectParticipation.is_active.desc(),
                 ProjectParticipation.created_at.desc(),
             )
             .limit(1)
@@ -107,11 +113,14 @@ async def derived_bulk(
                     and_(
                         ProjectParticipation.project_id == pid,
                         ProjectParticipation.actor_id.in_(actor_ids),
+                        # ENH-210: igual que arriba. Un par sin participación
+                        # activa sale del resultado; que falte la clave es el
+                        # dato correcto —ese actor ya no está en el proyecto—.
+                        ProjectParticipation.is_active.is_(True),
                     )
                 )
                 .order_by(
                     ProjectParticipation.is_primary.desc(),
-                    ProjectParticipation.is_active.desc(),
                     ProjectParticipation.created_at.desc(),
                 )
             )
