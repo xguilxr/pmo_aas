@@ -3,7 +3,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
-from app.models.organization import Portfolio, Program
+from app.models.area import Actor
+from app.models.organization import Organization, Portfolio, Program
+from app.models.project import Project
+from app.models.project_participation import ProjectParticipation
 from app.models.role import Role, UserRole
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -172,3 +175,109 @@ async def create_program(
     db.add(prog)
     await db.flush()
     return prog
+
+
+# ---------------------------------------------------------------------------
+# ENH-212 — organización, proyecto, recurso y participación
+# ---------------------------------------------------------------------------
+# Antes no había factory de ninguno de los cuatro, así que cada suite se
+# inventaba su fixture y ninguna obligaba a que el recurso y el proyecto
+# compartieran organización. Ocho suites pasan hoy porque el actor se crea sin
+# `organization_id` y eso lo vuelve global (DEC-044): verde por accidente, no
+# por diseño. Aquí el default es compartir, y cruzar cuesta escribirlo.
+
+
+async def create_organization(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    name: str = "Organización",
+    **campos: object,
+) -> Organization:
+    org = Organization(tenant_id=str(tenant_id), name=name, **campos)
+    db.add(org)
+    await db.flush()
+    return org
+
+
+async def create_project(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    organization_id: str,
+    name: str = "Proyecto",
+    folio: str = "P-1",
+    **campos: object,
+) -> Project:
+    """Un proyecto de esa organización. `organization_id` es obligatorio porque
+    en el modelo lo es: un proyecto sin organización no existe."""
+    p = Project(
+        tenant_id=str(tenant_id),
+        organization_id=str(organization_id),
+        name=name,
+        folio=folio,
+        **campos,
+    )
+    db.add(p)
+    await db.flush()
+    return p
+
+
+async def create_actor(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    organization_id: str | None,
+    name: str = "Actor",
+    **campos: object,
+) -> Actor:
+    """Un recurso del catálogo.
+
+    `organization_id` se pide **explícito**, sin default, y ese es el punto de
+    esta factory: `None` significa recurso global del inquilino —asignable en
+    todas las organizaciones (DEC-044)— y es una decisión, no un descuido. Con
+    un default implícito volveríamos a la situación que ENH-212 corrige.
+    """
+    a = Actor(
+        tenant_id=str(tenant_id),
+        organization_id=str(organization_id) if organization_id else None,
+        name=name,
+        **campos,
+    )
+    db.add(a)
+    await db.flush()
+    return a
+
+
+async def create_participation(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    project: Project,
+    actor: Actor,
+    **campos: object,
+) -> ProjectParticipation:
+    """La participación de un recurso en un proyecto.
+
+    Toma los objetos y no sus identificadores a propósito: así puede comprobar
+    que comparten organización antes de escribir. Un test que quiera el cruce
+    —para probar los datos heredados— inserta la fila a mano, y al hacerlo
+    declara que está construyendo algo que la API ya no permite.
+    """
+    if actor.organization_id is not None and str(actor.organization_id) != str(
+        project.organization_id
+    ):
+        raise AssertionError(
+            f"El recurso «{actor.name}» es de otra organización que el proyecto "
+            f"«{project.name}» (DEC-044). Si el test necesita ese cruce, inserta "
+            "la fila con db.add(ProjectParticipation(...)) y deja escrito por qué."
+        )
+    part = ProjectParticipation(
+        tenant_id=str(tenant_id),
+        project_id=str(project.id),
+        actor_id=str(actor.id),
+        **campos,
+    )
+    db.add(part)
+    await db.flush()
+    return part
