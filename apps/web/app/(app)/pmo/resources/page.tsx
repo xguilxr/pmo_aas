@@ -420,7 +420,8 @@ function PeopleTable({
     if (
       !confirmarDestructivo({
         objeto: `el recurso «${nombre}»`,
-        consecuencia: "Si tiene proyectos, acciones o riesgos activos asignados, se rechaza.",
+        consecuencia:
+          "Si tiene proyectos abiertos de su organización, se rechaza. Sus asignaciones en proyectos de otras organizaciones se retiran solas.",
         reversibilidad: "recuperable",
       })
     ) {
