@@ -33,9 +33,20 @@ ADMIN_PERMS = {
 async def create_tenant(
     db: AsyncSession, slug: str = "acme", name: str = "Acme", settings: dict | None = None
 ) -> Tenant:
+    """Un inquilino como los que crea la plataforma, con sus catálogos.
+
+    US-286: desde que tipo y fase se validan contra `tenant_catalog_values`, un
+    inquilino sin catálogos no puede dar de alta un proyecto. Sembrarlos aquí
+    no es una comodidad del andamio: es lo que hacen las tres puertas reales
+    —`/superadmin/provision`, el seed inicial y el vaciado—, así que un
+    inquilino de prueba sin ellos sería un estado que en producción no existe.
+    """
     t = Tenant(slug=slug, name=name, is_active=True, settings=settings or {})
     db.add(t)
     await db.flush()
+    from app.services.catalogos import sembrar as _sembrar_catalogos
+
+    await _sembrar_catalogos(db, t.id)
     return t
 
 

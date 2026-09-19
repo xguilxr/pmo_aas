@@ -348,3 +348,42 @@ async def etiquetas(
         v.clave: v.etiqueta
         for v in await listar(db, tenant_id, catalogo, incluir_inactivos=True)
     }
+
+
+async def validar(
+    db: AsyncSession, tenant_id: UUID | str, catalogo: str, clave: str | None
+) -> None:
+    """Lanza si `clave` no es un valor **activo** del catálogo del inquilino.
+
+    US-286. Un nulo pasa: no todos los proyectos declaran su tipo, y exigirlo
+    aquí sería cambiar una regla de negocio de contrabando.
+
+    Se comprueba contra el catálogo y no contra el enum del dominio porque el
+    enum es solo la siembra: lo que vale hoy para este inquilino es lo que él
+    tenga en su tabla, que puede incluir valores propios y excluir los de
+    fábrica que haya desactivado.
+    """
+    if clave is None or not str(clave).strip():
+        return
+    valores = await listar(db, tenant_id, catalogo)
+    if str(clave) in {v.clave for v in valores}:
+        return
+    nombre = {
+        CATALOGO_TIPO_PROYECTO: "tipo de proyecto",
+        CATALOGO_FASE_PROYECTO: "fase de proyecto",
+    }.get(catalogo, catalogo)
+    disponibles = ", ".join(v.clave for v in valores) or "ninguno"
+    raise business_rule(
+        mensaje(
+            que=f"«{clave}» no es un {nombre} de tu catálogo",
+            porque=(
+                "El valor tiene que existir y estar activo en el catálogo del "
+                "inquilino; si no, ninguna pantalla sabría cómo llamarlo."
+            ),
+            accion=(
+                f"Usa uno de los que hay ({disponibles}), o agrégalo en "
+                "Administración → Catálogos."
+            ),
+        ),
+        code="VALOR_FUERA_DE_CATALOGO",
+    )

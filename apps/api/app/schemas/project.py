@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
@@ -21,9 +21,16 @@ from app.dominio.proyecto import FASES_TERMINALES as FASES_TERMINALES_DOMINIO
 #: `dominio.moneda.MONEDAS`.
 ProjectPhase = Literal["preparacion", "ejecucion", "hypercare", "cerrado", "cancelado"]
 
-#: US-202 — el tipo deja de ser texto libre. Cuatro valores; el que necesita un
-#: quinto está describiendo otra cosa (ver `dominio/proyecto.py`).
-ProjectType = Literal["transformacion", "operacion", "innovacion", "bau"]
+#: US-202 — el tipo dejó de ser texto libre. US-286 lo abre otra vez, pero no al
+#: texto libre: a **el catálogo del inquilino** (`tenant_catalog_values`, DEC-040).
+#:
+#: Aquí solo queda la forma, porque `Literal` no puede depender del inquilino que
+#: hace la petición: cada uno tiene su propia lista y Pydantic valida antes de
+#: saber quién llama. Quien comprueba que el valor existe y está activo es
+#: `services/catalogos.py::validar`, desde el endpoint. El enum de
+#: `dominio/proyecto.py` sigue siendo la **siembra** —con qué nace un inquilino—
+#: y `test_us202_vocabulario.py` ata esa siembra, no la lista viva.
+ProjectType = Annotated[str, Field(min_length=1, max_length=64)]
 
 #: Se reexporta para no romper a quien ya lo importaba de aquí. La definición
 #: está en el dominio.

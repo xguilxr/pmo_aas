@@ -9,8 +9,11 @@ Así que aquí no se prueba «que las etiquetas estén bien». Se prueba que las
 **cinco copias** del catálogo digan lo mismo:
 
 1. `dominio/proyecto.py` — la definición.
-2. `schemas/project.py` — el `Literal` que valida Pydantic, que no puede
-   derivarse (`Literal[*FASES]` no es válido) y por tanto se escribe a mano.
+2. `schemas/project.py` — el `Literal` que valida Pydantic **la fase**, que no
+   puede derivarse (`Literal[*FASES]` no es válido) y por tanto se escribe a
+   mano. El tipo ya no es un `Literal`: desde US-286 lo valida el catálogo del
+   inquilino (DEC-040), y lo que se ata aquí es la **siembra** —con qué nace un
+   inquilino— no la lista viva.
 3. `endpoints/projects.py::VALID_TRANSITIONS` — el grafo del ciclo de vida.
 4. `services/analytics/snapshots.py::ACTIVE_PHASES` — lo que cuenta como vivo.
 5. `apps/web/lib/api/projects.ts` — el tipo del frontend.
@@ -61,7 +64,6 @@ from app.schemas.project import (
     PhaseChange,
     ProjectCreate,
     ProjectPhase,
-    ProjectType,
     ProjectUpdate,
 )
 from app.services.analytics.snapshots import ACTIVE_PHASES
@@ -86,8 +88,25 @@ def test_el_literal_de_pydantic_es_el_catalogo_del_dominio() -> None:
     )
 
 
-def test_el_literal_de_tipo_es_el_catalogo_del_dominio() -> None:
-    assert get_args(ProjectType) == TIPOS
+@pytest.mark.asyncio
+async def test_la_siembra_de_tipos_es_el_catalogo_del_dominio(db_session) -> None:
+    """El tipo dejó de ser un `Literal`, así que lo atado cambia de sujeto.
+
+    Antes se comparaba `get_args(ProjectType)` contra `TIPOS`. Desde US-286 el
+    tipo se valida contra `tenant_catalog_values`, que es distinto por
+    inquilino: lo que sigue teniendo que coincidir con el dominio es con qué
+    nace un inquilino, porque de ahí salen las etiquetas y el tipo del
+    frontend.
+    """
+    from app.models.tenant_catalog import CATALOGO_TIPO_PROYECTO
+    from app.services import catalogos
+    from tests.factories import create_tenant
+
+    tenant = await create_tenant(db_session)
+    await db_session.commit()
+    valores = await catalogos.listar(db_session, tenant.id, CATALOGO_TIPO_PROYECTO)
+    assert tuple(v.clave for v in valores) == TIPOS
+    assert [v.etiqueta for v in valores] == [ETIQUETAS_TIPO[t] for t in TIPOS]
 
 
 def test_las_fases_activas_son_exactamente_las_no_terminales() -> None:
@@ -206,12 +225,32 @@ def test_el_tipo_canonico_no_deja_rastro(
     assert caplog.records == []
 
 
-def test_un_tipo_inventado_se_rechaza() -> None:
+@pytest.mark.asyncio
+async def test_un_tipo_inventado_se_rechaza(db_session) -> None:
     """El texto libre de antes de US-202 se **lee** (la columna sigue siendo
     texto), pero no se vuelve a escribir: es la mitad del arreglo que hace que
-    un `GROUP BY type` signifique algo."""
-    with pytest.raises(ValueError):
-        ProjectUpdate(type="Mejora continua")
+    un `GROUP BY type` signifique algo.
+
+    La regla no desapareció con US-286, cambió de sitio: Pydantic ya no puede
+    aplicarla —cada inquilino tiene su lista y valida antes de saber quién
+    llama— así que la aplica `services/catalogos.py::validar` desde el
+    endpoint. Se prueba donde vive.
+    """
+    from app.core.errors import AppError
+    from app.models.tenant_catalog import CATALOGO_TIPO_PROYECTO
+    from app.services import catalogos
+    from tests.factories import create_tenant
+
+    tenant = await create_tenant(db_session)
+    await db_session.commit()
+
+    # La forma sí pasa: es texto.
+    assert ProjectUpdate(type="Mejora continua").type == "Mejora continua"
+    # El catálogo del inquilino no.
+    with pytest.raises(AppError):
+        await catalogos.validar(
+            db_session, tenant.id, CATALOGO_TIPO_PROYECTO, "Mejora continua"
+        )
 
 
 def test_una_fase_inventada_se_rechaza() -> None:

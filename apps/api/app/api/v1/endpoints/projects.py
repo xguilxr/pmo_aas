@@ -17,6 +17,7 @@ from app.models.project import Project
 from app.models.project_charter import ProjectCharter
 from app.models.project_member import ProjectMember
 from app.models.tenant import Tenant
+from app.models.tenant_catalog import CATALOGO_FASE_PROYECTO, CATALOGO_TIPO_PROYECTO
 from app.models.user import User
 from app.schemas.project import (
     ActivityItem,
@@ -33,6 +34,7 @@ from app.schemas.project import (
     normalizar_tipo,
 )
 from app.services.audit import write_audit
+from app.services.catalogos import validar as validar_catalogo
 from app.services.charter_generator import generate_charter_docx
 from app.services.completitud import a_json as completitud_a_json
 from app.services.completitud import completitud_de
@@ -190,6 +192,12 @@ async def create_project(
             porque="La referencia apunta fuera de tu organización y quedaría rota.",
             accion="Elige una organización de tu tenant.",
         ))
+
+    # US-286 — tipo y fase se validan contra el catálogo de **este** inquilino
+    # y no contra el enum del dominio, que desde DEC-040 es solo la siembra.
+    # Pydantic no puede hacerlo: valida antes de saber quién llama.
+    await validar_catalogo(db, tenant_id, CATALOGO_TIPO_PROYECTO, body.type)
+    await validar_catalogo(db, tenant_id, CATALOGO_FASE_PROYECTO, body.phase)
 
     pm = (
         await db.execute(
@@ -490,6 +498,12 @@ async def update_project(
             accion="Reábrelo si de verdad hace falta modificarlo.",
         ))
     data = body.model_dump(exclude_none=True)
+    # US-286 — igual que al crear. `exclude_none` deja fuera lo que no llegó,
+    # así que solo se comprueba lo que de verdad se está cambiando.
+    if "type" in data:
+        await validar_catalogo(db, tenant_id, CATALOGO_TIPO_PROYECTO, data["type"])
+    if "phase" in data:
+        await validar_catalogo(db, tenant_id, CATALOGO_FASE_PROYECTO, data["phase"])
     # US-199 — si el PATCH toca programa o portafolio, se recalcula el par
     # completo. Aplicar solo el campo que llegó dejaría el otro apuntando a
     # donde estaba, que es exactamente el par incoherente que la regla prohíbe.
@@ -826,6 +840,10 @@ async def change_phase(
     ctx_moneda = {"moneda_preferida": await moneda_preferida(db, cu.effective_tenant_id)}
     tenant_id = _tenant(cu)
     p = await proyecto_autorizado(db, project_id, cu)
+    # US-286 — la fase destino tiene que seguir en el catálogo del inquilino.
+    # El grafo de transiciones comprueba otra cosa: que el salto sea legítimo.
+    # Una fase desactivada pasaría el grafo y no debería poder asignarse.
+    await validar_catalogo(db, tenant_id, CATALOGO_FASE_PROYECTO, body.new_phase)
     if body.new_phase not in VALID_TRANSITIONS.get(p.phase, set()):
         raise conflict(
             mensaje(

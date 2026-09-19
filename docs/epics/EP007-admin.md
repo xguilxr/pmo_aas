@@ -430,3 +430,59 @@ GET    /api/v1/superadmin/plan-catalog           (US-221, vocabulario)
   `DEPT_HAS_ACTIVE_CHILDREN` cuando aplica, y sugiere el toggle force.
 
 **Estado de integración:** DONE (US-024) y luego RETIRADA (ADR-037 / US-199); la sustituye US-200.
+
+---
+
+## Catálogos de proyecto por inquilino (US-285, US-286)
+
+Cada inquilino define sus propios **tipos** y **fases** de proyecto. Hasta
+US-202 los dos eran un enum cerrado, igual para todos; desde DEC-040 viven en
+`tenant_catalog_values`, una fila por valor.
+
+### La API
+
+Todo bajo `/api/v1/admin/catalogos/{catalogo}`, con capability `tenant.manage`.
+`catalogo` solo admite `tipo_proyecto` y `fase_proyecto`; cualquier otro es
+`CATALOGO_DESCONOCIDO`.
+
+| Verbo | Ruta | Qué hace |
+|---|---|---|
+| `GET` | `/{catalogo}` | Los valores en su orden. `?incluir_inactivos=true` suma los retirados |
+| `POST` | `/{catalogo}` | Un valor nuevo, al final. La clave se deriva de la etiqueta |
+| `PATCH` | `/{catalogo}/{id}` | Etiqueta, estado activo y metadatos |
+| `PUT` | `/{catalogo}/orden` | Reescribe el orden completo |
+
+**La clave no se edita.** Es lo que se guarda en `projects.type` y
+`projects.phase`; renombrarla dejaría huérfano a todo lo que la referencia, y
+desde el endpoint no hay forma de saber cuántos son. Lo que se cambia es la
+etiqueta, que es el nombre que la gente ve.
+
+**Reordenar pide la lista entera.** Con un «mover arriba» por valor, dos
+pestañas abiertas dejan un orden que ninguna de las dos pidió. Si falta una
+clave o sobra una que no existe, el endpoint lo dice y no adivina.
+
+### Qué valida un proyecto contra el catálogo
+
+`POST /projects`, `PATCH /projects/{id}` y `POST /projects/{id}/phase/change`
+comprueban que el tipo y la fase existan y estén **activos** en el catálogo de
+ese inquilino. Un valor fuera del catálogo devuelve `VALOR_FUERA_DE_CATALOGO`
+con la lista de los que sí valen.
+
+Pydantic no puede hacerlo: valida antes de saber quién llama, y cada inquilino
+tiene su propia lista. Por eso `ProjectType` dejó de ser un `Literal` y la regla
+se mudó a `services/catalogos.py::validar`. `ProjectPhase` sigue siendo un
+`Literal` —las fases todavía son las cinco de fábrica— y además pasa por el
+catálogo, para que una fase desactivada no se pueda asignar.
+
+**Desactivar no rompe lo que ya existe.** Un proyecto con un tipo retirado lo
+sigue mostrando: `catalogos.etiquetas()` incluye los inactivos a propósito.
+Esconder el nombre no cambiaría el dato, solo lo haría ilegible.
+
+### Todavía no se agregan fases
+
+Se renombran, se reordenan y se desactivan, pero no se crea una sexta. Una fase
+no es una etiqueta suelta: el cambio de fase valida contra `TRANSICIONES` y los
+KPIs leen `FASES_ACTIVAS`. Una fase nueva no estaría en ninguno de los dos —
+aceptada al crearla, atrapada al usarla, y el síntoma sin relación aparente con
+la causa. El `POST` sobre `fase_proyecto` responde `FASE_NUEVA_NO_DISPONIBLE` y
+remite a US-289, que la trae con su grafo derivado del orden.

@@ -28,13 +28,16 @@ from tests.factories import create_tenant
 
 @pytest.mark.asyncio
 async def test_us285_la_siembra_deja_el_catalogo_canonico(db_session):
-    """TC-001: los valores que hoy están en el enum, con su etiqueta y su orden."""
-    tenant = await create_tenant(db_session)
+    """TC-001: los valores que hoy están en el enum, con su etiqueta y su orden.
 
-    creados = await catalogos.sembrar(db_session, tenant.id)
+    `create_tenant` ya siembra —desde US-286 un inquilino sin catálogos no puede
+    dar de alta un proyecto, así que un inquilino de prueba sin ellos sería un
+    estado que en producción no existe—. Lo que se comprueba aquí es el
+    contenido; el conteo vive en la prueba de idempotencia.
+    """
+    tenant = await create_tenant(db_session)
     await db_session.commit()
 
-    assert creados == len(TIPOS) + len(FASES)
     tipos = await catalogos.listar(db_session, tenant.id, CATALOGO_TIPO_PROYECTO)
     assert [v.clave for v in tipos] == list(TIPOS)
     assert [v.etiqueta for v in tipos] == [ETIQUETAS_TIPO[t] for t in TIPOS]
@@ -53,7 +56,6 @@ async def test_us285_las_fases_nacen_con_sus_banderas(db_session):
     KPIs.
     """
     tenant = await create_tenant(db_session)
-    await catalogos.sembrar(db_session, tenant.id)
     await db_session.commit()
 
     fases = await catalogos.listar(db_session, tenant.id, CATALOGO_FASE_PROYECTO)
@@ -68,9 +70,10 @@ async def test_us285_las_fases_nacen_con_sus_banderas(db_session):
 async def test_us285_sembrar_dos_veces_no_duplica(db_session):
     """Idempotente: se llama al aprovisionar, tras un vaciado y desde la migración."""
     tenant = await create_tenant(db_session)
-    await catalogos.sembrar(db_session, tenant.id)
     await db_session.commit()
 
+    # `create_tenant` ya sembró, así que la primera llamada explícita ya no
+    # crea nada: es justo la propiedad que importa.
     assert await catalogos.sembrar(db_session, tenant.id) == 0
     await db_session.commit()
     tipos = await catalogos.listar(db_session, tenant.id, CATALOGO_TIPO_PROYECTO)
@@ -123,7 +126,6 @@ async def test_us285_dos_inquilinos_pueden_usar_la_misma_clave(db_session):
 async def test_us285_reordenar_reescribe_el_orden_completo(db_session):
     """TC-003."""
     tenant = await create_tenant(db_session)
-    await catalogos.sembrar(db_session, tenant.id)
     await db_session.commit()
 
     al_reves = list(reversed(TIPOS))
@@ -144,7 +146,6 @@ async def test_us285_reordenar_con_la_lista_incompleta_falla_y_dice_que_falta(
     from app.core.errors import AppError
 
     tenant = await create_tenant(db_session)
-    await catalogos.sembrar(db_session, tenant.id)
     await db_session.commit()
 
     with pytest.raises(AppError) as fallo:
@@ -185,7 +186,6 @@ async def test_us285_crear_rechaza_la_clave_repetida(db_session):
     from app.core.errors import AppError
 
     tenant = await create_tenant(db_session)
-    await catalogos.sembrar(db_session, tenant.id)
     await db_session.commit()
 
     with pytest.raises(AppError):
@@ -212,7 +212,6 @@ async def test_us285_desactivar_lo_saca_del_listado_pero_no_de_las_etiquetas(
 ):
     """Un proyecto con un tipo retirado tiene que seguir mostrando su nombre."""
     tenant = await create_tenant(db_session)
-    await catalogos.sembrar(db_session, tenant.id)
     await db_session.commit()
 
     tipos = await catalogos.listar(db_session, tenant.id, CATALOGO_TIPO_PROYECTO)
@@ -230,7 +229,6 @@ async def test_us285_desactivar_lo_saca_del_listado_pero_no_de_las_etiquetas(
 async def test_us285_editar_cambia_la_etiqueta_y_nunca_la_clave(db_session):
     """Renombrar la clave dejaría huérfano a cada `projects.type` que la tenga."""
     tenant = await create_tenant(db_session)
-    await catalogos.sembrar(db_session, tenant.id)
     await db_session.commit()
 
     tipos = await catalogos.listar(db_session, tenant.id, CATALOGO_TIPO_PROYECTO)

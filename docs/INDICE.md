@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-99 documentos vivos · 70 archivados · 2803 secciones indexadas.
+99 documentos vivos · 70 archivados · 2807 secciones indexadas.
 
 ## gestion
 
@@ -58,7 +58,7 @@ revisar_cada: nunca
 | [`epics/EP004-dashboard.md`](epics/EP004-dashboard.md) | Objetivo de negocio · User Stories · Notas técnicas · Definition of Done | 2026-09-11 | 788 |
 | [`epics/EP005-projects.md`](epics/EP005-projects.md) | Objetivo de negocio · User Stories · Notas técnicas · Definition of Done | 2026-08-29 | 582 |
 | [`epics/EP006-project-modules.md`](epics/EP006-project-modules.md) | Objetivo de negocio · Patrón común (aplica a los 6) · US-031 — Módulo de Riesgos · US-032 — Módulo de Incid… | 2026-08-29 | 461 |
-| [`epics/EP007-admin.md`](epics/EP007-admin.md) | Objetivo de negocio · US-037 — Panel de administración de usuarios · US-038 — Panel de administración de ro… | 2026-08-29 | 433 |
+| [`epics/EP007-admin.md`](epics/EP007-admin.md) | Objetivo de negocio · US-037 — Panel de administración de usuarios · US-038 — Panel de administración de ro… | 2026-08-29 | 489 |
 | [`epics/EP008-ai.md`](epics/EP008-ai.md) | Objetivo de negocio · Modo de IA por tenant (US-057 · DEC-017) · US-043 — Generar minuta desde transcripció… | 2026-08-29 | 577 |
 | [`epics/EP009-ms-project.md`](epics/EP009-ms-project.md) | Objetivo de negocio · Decisiones técnicas · US-047 — Importar archivo MS Project (XML/XLSX) · US-048 — Impo… | 2026-08-29 | 742 |
 | [`epics/EP010-superadmin-panel.md`](epics/EP010-superadmin-panel.md) | Objetivo de negocio · Roles involucrados · Decisiones clave · User Stories | 2026-08-29 | 492 |
