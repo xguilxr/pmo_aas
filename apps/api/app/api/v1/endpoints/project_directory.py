@@ -426,6 +426,50 @@ async def update_participation(
     if not part:
         raise not_found("Participación")
     data = body.model_dump(exclude_unset=True)
+    # BUG-103 — la puerta de atrás. `ParticipationUpdate` no expone `actor_id`,
+    # así que esto no puede mover una participación de actor; lo que sí podía
+    # era **revivir** una cruzada con `is_active=true`, deshaciendo de un PATCH
+    # lo que la limpieza de US-273 acababa de apagar.
+    if data.get("is_active") is True and not part.is_active:
+        actor = (
+            await db.execute(
+                select(Actor).where(Actor.id == str(part.actor_id))
+            )
+        ).scalar_one_or_none()
+        proyecto = (
+            await db.execute(
+                select(Project).where(
+                    and_(
+                        Project.tenant_id == str(_tenant(cu)),
+                        Project.id == str(project_id),
+                    )
+                )
+            )
+        ).scalar_one_or_none()
+        if (
+            actor is not None
+            and proyecto is not None
+            and not actor_sirve_a_organizacion(actor, proyecto.organization_id)
+        ):
+            raise business_rule(
+                mensaje(
+                    que=(
+                        f"«{actor.name}» pertenece a otra organización: su "
+                        "participación en este proyecto no se puede reactivar"
+                    ),
+                    porque=(
+                        "Es una asignación que la plataforma ya no permite "
+                        "crear; reactivarla la devolvería al mismo estado que "
+                        "bloqueaba retirar el recurso."
+                    ),
+                    accion=(
+                        "Usa un recurso de la organización del proyecto, o "
+                        "quítale la organización al recurso para volverlo "
+                        "global."
+                    ),
+                ),
+                code="ACTOR_DE_OTRA_ORGANIZACION",
+            )
     for k, v in data.items():
         if k in {"operational_team_id", "project_role_id", "functional_area_id"}:
             setattr(part, k, str(v) if v else None)

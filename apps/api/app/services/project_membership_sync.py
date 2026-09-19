@@ -167,20 +167,29 @@ async def sync_member_removal(
     db: AsyncSession, project_id: str, user_id: str
 ) -> None:
     """Cuando un project_member se elimina, marcar la participation como
-    inactiva (soft-delete coherente con DELETE de participation)."""
-    actor = (
-        await db.execute(
-            select(Actor).where(Actor.user_id == user_id)
-        )
-    ).scalar_one_or_none()
-    if not actor:
+    inactiva (soft-delete coherente con DELETE de participation).
+
+    BUG-103: se resolvía **un** actor con `scalar_one_or_none()`. Desde que
+    `_ensure_actor_for_user` crea un actor por organización, un usuario que es
+    PM en dos organizaciones tiene dos, y esa línea reventaba con
+    `MultipleResultsFound`. No hay que elegir uno: se retiran las
+    participaciones de todos sus actores en **este** proyecto, que es lo que
+    «quitar a esta persona del proyecto» significa.
+    """
+    actor_ids = [
+        str(x)
+        for x in (
+            await db.execute(select(Actor.id).where(Actor.user_id == user_id))
+        ).scalars().all()
+    ]
+    if not actor_ids:
         return
     rows = (
         await db.execute(
             select(ProjectParticipation).where(
                 and_(
                     ProjectParticipation.project_id == project_id,
-                    ProjectParticipation.actor_id == actor.id,
+                    ProjectParticipation.actor_id.in_(actor_ids),
                 )
             )
         )

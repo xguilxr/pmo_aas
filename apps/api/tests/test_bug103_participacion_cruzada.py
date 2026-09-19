@@ -7,7 +7,9 @@ creaba sin resistencia y después bloqueaba el borrado del recurso en su
 propia organización.
 """
 import pytest
+from sqlalchemy import select
 
+from app.models.project_participation import ProjectParticipation
 from tests.factories import create_admin_role, create_tenant, create_user, login
 
 
@@ -148,8 +150,6 @@ async def test_bug103_eligible_actors_no_ofrece_un_cruce_heredado(client, db_ses
     hoy en producción, y ofrecerlo sería proponer un valor que la propia API
     rechaza al guardarlo.
     """
-    from app.models.project_participation import ProjectParticipation
-
     auth, orgs, proyectos, tenant_id = await _setup(client, db_session)
     actor_a = await _actor(client, auth, "Ana de A", orgs["a"])
     global_ = await _actor(client, auth, "Gabriel Global", None)
@@ -172,3 +172,101 @@ async def test_bug103_eligible_actors_no_ofrece_un_cruce_heredado(client, db_ses
     ids = {fila["id"] for fila in r.json()}
     assert global_ in ids
     assert actor_a not in ids
+
+
+@pytest.mark.asyncio
+async def test_bug103_un_cruce_apagado_no_se_revive_con_un_patch(client, db_session):
+    """TC-006: la puerta de atrás del PATCH.
+
+    `ParticipationUpdate` no expone `actor_id`, así que no se puede mover la
+    participación. Lo que sí se podía era volver a encender con
+    `is_active=true` la que la limpieza acababa de apagar.
+    """
+    auth, orgs, proyectos, tenant_id = await _setup(client, db_session)
+    actor_a = await _actor(client, auth, "Ana de A", orgs["a"])
+    cruce = ProjectParticipation(
+        tenant_id=tenant_id,
+        project_id=proyectos["b"],
+        actor_id=actor_a,
+        is_active=False,
+    )
+    db_session.add(cruce)
+    await db_session.commit()
+
+    r = await client.patch(
+        f"/api/v1/projects/{proyectos['b']}/participations/{cruce.id}",
+        json={"is_active": True},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detail"]["code"] == "ACTOR_DE_OTRA_ORGANIZACION"
+
+
+@pytest.mark.asyncio
+async def test_bug103_una_participacion_legitima_si_se_reactiva(client, db_session):
+    """TC-007: el cierre no estorba a quien sí pertenece."""
+    auth, orgs, proyectos, tenant_id = await _setup(client, db_session)
+    actor_a = await _actor(client, auth, "Ana de A", orgs["a"])
+    suya = ProjectParticipation(
+        tenant_id=tenant_id,
+        project_id=proyectos["a"],
+        actor_id=actor_a,
+        is_active=False,
+    )
+    db_session.add(suya)
+    await db_session.commit()
+
+    r = await client.patch(
+        f"/api/v1/projects/{proyectos['a']}/participations/{suya.id}",
+        json={"is_active": True},
+        headers=auth["_authz"],
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["is_active"] is True
+
+
+@pytest.mark.asyncio
+async def test_bug103_quitar_a_un_miembro_con_actor_en_dos_organizaciones(
+    client, db_session
+):
+    """TC-008: el sincronizador no revienta con dos actores del mismo usuario.
+
+    `_ensure_actor_for_user` crea un actor por organización desde este mismo
+    arreglo. `sync_member_removal` resolvía **uno** con `scalar_one_or_none()`
+    y por tanto se rompía en cuanto existiera el segundo.
+    """
+    from app.models.area import Actor as _Actor
+    from app.services.project_membership_sync import (
+        sync_member_removal,
+        sync_member_to_participation,
+    )
+
+    auth, _orgs, proyectos, tenant_id = await _setup(client, db_session)
+    me = (await client.get("/api/v1/auth/me", headers=auth["_authz"])).json()
+
+    for clave in ("a", "b"):
+        await sync_member_to_participation(
+            db_session, tenant_id, proyectos[clave], me["id"], "pm"
+        )
+    await db_session.commit()
+
+    suyos = (
+        await db_session.execute(
+            select(_Actor).where(_Actor.user_id == me["id"])
+        )
+    ).scalars().all()
+    assert len(suyos) >= 2, "un actor por organización (DEC-038)"
+
+    # No lanza MultipleResultsFound, y retira solo las de este proyecto.
+    await sync_member_removal(db_session, proyectos["a"], me["id"])
+    await db_session.commit()
+
+    vivas = (
+        await db_session.execute(
+            select(ProjectParticipation).where(
+                ProjectParticipation.actor_id.in_([str(x.id) for x in suyos]),
+                ProjectParticipation.is_active.is_(True),
+            )
+        )
+    ).scalars().all()
+    assert {str(p.project_id) for p in vivas} == {proyectos["b"]}
