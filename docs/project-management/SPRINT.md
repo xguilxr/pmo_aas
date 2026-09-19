@@ -17,15 +17,14 @@ revisar_cada: 30d
 
 ## 🔴 IN-PROGRESS
 
-**Revamp v2 — ronda de limpieza.** Sin US activa. Fases 0-8 mergeadas a
-`main` (PR #610). Siguiente: fase 9 — 3 PRs propios de code review
-transversal con `code-review --comment` (`revamp-v2/FASE-9.md`).
+**Batch 2026-09-19 — Bloque 0: recursos cruzados.** Rama
+`claude/inspiring-ramanujan-nltb7k`. Los tres en `fix-committed`, esperando
+verificación del owner. Sigue el Bloque A (#626, #627: vaciado del inquilino).
 
-- [x] Feedback: 14/15 hechos (`REVAMP-V2-FEEDBACK.md`); punto 11 (Plan e
-  IA) es decisión de producto sin cerrar (D5)
-- [x] Fases 0-8 (BUG-095..097, US-248..271, DEC-036..039) → [ ] 9
-  — runbooks en `revamp-v2/FASE-0..9`, wireframes W1–W8 OK
-- [ ] Mobile, sin revisar ninguna pantalla
+- [x] BUG-103 #623 (`06d45ef`) · BUG-104 #624 (`b0b768e`) · US-273 #625
+  (`b31888e`) — regla en `area_visibility.py`, DEC-044
+- [ ] Owner: correr `diagnostico_participaciones_cruzadas.py` (sin `--apply`)
+- [ ] Revamp v2 fase 9 y mobile, en pausa: `revamp-v2/FASE-9.md`
 
 ---
 
