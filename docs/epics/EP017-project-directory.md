@@ -671,7 +671,12 @@ Dónde se aplica:
    entre por un `AreaAssignment` global o por una participación heredada.
 5. Al agregar a un miembro del proyecto, el actor del usuario se busca y se
    crea en la organización del proyecto. La misma persona puede ser un actor
-   distinto en cada organización (DEC-038).
+   distinto en cada organización (DEC-038). Al quitarlo, se retiran las
+   participaciones de **todos** sus actores en ese proyecto: con uno por
+   organización, elegir uno solo dejaría la otra viva.
+6. `PATCH .../participations/{id}` rechaza reactivar (`is_active: true`) una
+   participación cruzada. Sin eso, un PATCH deshacía de un golpe la limpieza
+   de US-273.
 
 El mapa de actor hidratado en el directorio **no** se filtra: una fila
 heredada tiene que mostrar su nombre para poder quitarse.
@@ -686,12 +691,20 @@ ningún proyecto es ajeno y todos cuentan.
 Una participación en un proyecto de otra organización no cuenta. Es un dato
 que DEC-044 declara inválido, ninguna pantalla de la organización del recurso
 lo muestra, y bloquear por algo invisible deja al owner sin nada que quitar.
-Al retirar el recurso esas participaciones se desactivan y quedan escritas en
-`audit_log` bajo `actor.delete`, en
-`details.participaciones_cruzadas_desactivadas`.
+Al retirar el recurso esas participaciones se desactivan —`is_active` y
+`is_primary` a la vez— y quedan escritas en `audit_log` bajo `actor.delete`,
+en `details.participaciones_cruzadas_desactivadas`.
+
+`is_primary` importa tanto como `is_active`: `services/derived_assignment.py`
+ordena por `is_primary.desc(), is_active.desc()` y **no** filtra `is_active`,
+así que una cruzada apagada que siguiera siendo primary le ganaría a la
+participación legítima y seguiría dictando el área funcional del actor en ese
+proyecto. Apagar sin quitar la marca deja la limpieza sin efecto visible.
 
 La limpieza del resto del inquilino —los cruces de recursos que nadie está
-retirando— va aparte, en US-273.
+retirando— va aparte, en US-273, y respeta el mismo corte por fase: un cruce
+en un proyecto `cerrado` o `cancelado` no bloquea aquí y tampoco se apaga
+allá, salvo que se pida con `--incluir-cerrados`.
 
 ## Notas
 
