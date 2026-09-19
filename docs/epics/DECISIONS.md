@@ -847,3 +847,29 @@ a mano y un preview antes.
 **Implementación:** US-274 (API + inventario declarado + trinquete) y US-275
 (botón «Vaciar datos» en la ficha del inquilino). El inventario vive en
 `app/services/vaciado.py`, con el motivo de cada exclusión escrito al lado.
+
+---
+
+## DEC-040 — Los catálogos del inquilino viven en una tabla, no en `settings` (EP007, US-285)
+
+**Fecha:** 2026-09-19
+**Decisión:** los valores de `tipo_proyecto` y `fase_proyecto` que cada
+inquilino define viven en la tabla `tenant_catalog_values`, no en el JSON de
+`tenants.settings`. La tabla nace genérica —`catalogo` es una columna— para que
+un tercer catálogo no obligue a una migración nueva, y eso es todo lo que se
+generaliza: no hay jerarquía de catálogos ni reglas declarativas.
+**Rationale:** `tenants.settings` ya guarda configuración del inquilino, así que
+meter ahí una lista más parece lo barato. No lo es: un catálogo se consulta por
+fila («los tipos activos, en orden»), se ordena, se referencia desde
+`projects.type` y se audita cuando alguien lo cambia. Un JSON no hace ninguna de
+las cuatro cosas sin código que las emule, y ese código acaba siendo una tabla
+mal hecha.
+**Consecuencia aceptada:** una migración y una tabla más, con su siembra para
+los inquilinos que ya existen. Y un trinquete de más: `tenant_catalog_values`
+entra en el inventario de vaciado de US-274, y el vaciado la vuelve a sembrar
+porque «recién aprovisionado» incluye tener catálogos.
+**Reversible:** sí, con migración de bajada. Pierde los valores que cada
+inquilino haya definido, así que deja de serlo en cuanto alguien use la función.
+**Implementación:** US-285 (tabla, migración, siembra y servicio), US-286 (API)
+y US-287 (pantalla). La validación de proyectos contra el catálogo es US-286;
+los tipos y fases configurables de verdad son el bloque F.

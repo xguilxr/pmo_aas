@@ -1436,3 +1436,56 @@ dos organizaciones con el mismo `(tenant_id, email)` — la capacidad nueva ya
 se usó y hay que fusionar antes de poder bajar. Ver DEC-038, "Reversible: no
 del todo".
 
+
+---
+
+## US-285 — `tenant_catalog_values` (migración `20260919_0117`, EP007)
+
+**Qué.** Tabla nueva: los valores de catálogo que cada inquilino define por su
+cuenta. Hoy dos catálogos, `tipo_proyecto` y `fase_proyecto`; hasta ahora los
+dos eran un enum cerrado en `app/dominio/proyecto.py`, igual para todos.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | `String(36)` | UUID texto, como el resto |
+| `tenant_id` | `String(36)` | FK a `tenants`, `ON DELETE CASCADE` |
+| `catalogo` | `String(32)` | `tipo_proyecto` \| `fase_proyecto` |
+| `clave` | `String(64)` | Lo que se guarda en `projects.type` / `projects.phase` |
+| `etiqueta` | `String(120)` | Lo que se lee en pantalla |
+| `orden` | `Integer` | Ordinal: ordena el desplegable, y el ciclo de vida en las fases |
+| `activo` | `Boolean` | Desactivar y no borrar: un valor en uso no se puede quitar |
+| `metadata` | `JSON` | `fase_proyecto` guarda ahí `activa` y `terminal` |
+| `deleted_at` | `DateTime` | Soft-delete, como el resto |
+
+Único por (`tenant_id`, `catalogo`, `clave`): dos inquilinos pueden llamar
+`mantenimiento` a cosas distintas y eso está bien. Índice compuesto por
+(`tenant_id`, `catalogo`), que es como se consulta siempre.
+
+**Por qué una tabla y no `tenants.settings`.** DEC-040. Un catálogo se consulta
+por fila, se ordena, se referencia desde `projects.type` y se audita al
+cambiarlo. Un JSON no hace ninguna de las cuatro sin código que lo emule.
+
+**La siembra va en la migración.** Se crean los valores canónicos actuales para
+**todos** los inquilinos existentes, con `INSERT ... SELECT` desde `tenants` y
+un `id` derivado de `md5(tenant || catálogo || clave)` —que además la hace
+idempotente—. Sin eso, el primer inquilino que abriera `/admin/catalogos` tras
+el despliegue vería dos listas vacías y su alta de proyecto se quedaría sin
+opciones, con proyectos ya guardados apuntando a claves que el catálogo no
+conoce. La tabla y sus datos son la misma unidad de cambio.
+
+Los valores están escritos literales en la migración en vez de importados del
+dominio, a propósito: una migración es una foto de un momento, y si importara
+el enum cambiaría de efecto retroactivamente al agregarse una fase. El
+trinquete de `test_us285_catalogos.py` comprueba que la copia sigue coincidiendo
+con el dominio mientras las dos listas deban ser iguales.
+
+**Sin política RLS, y no por olvido.** El criterio de aceptación la pedía.
+Ninguna tabla de esta base la tiene: ADR-003 la aceptó en diseño y anota desde
+2026-05-23 que no está implementada. Una política en una sola tabla, con la
+aplicación conectándose como dueña —que en PostgreSQL salta RLS salvo
+`FORCE`—, daría protección aparente sin serla. Cuando W3 active RLS, esta tabla
+entra en la misma migración que el resto.
+
+**La bajada** borra la tabla entera. Es reversible sin pérdida mientras nadie
+haya creado valores propios; después de eso, bajar pierde los catálogos que el
+inquilino definió y hay que exportarlos antes.

@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-99 documentos vivos · 70 archivados · 2801 secciones indexadas.
+99 documentos vivos · 70 archivados · 2803 secciones indexadas.
 
 ## gestion
 
@@ -50,8 +50,8 @@ revisar_cada: nunca
 
 | Documento | De qué trata | Revisado | Líneas |
 |---|---|---|---|
-| [`epics/DB-CHANGES.md`](epics/DB-CHANGES.md) | Migraciones aplicadas (v1.0) · EP001 — Auth / usuarios · EP002 — Jerarquía org · EP003 — Solicitudes y Proj… | 2026-08-29 | 1439 |
-| [`epics/DECISIONS.md`](epics/DECISIONS.md) | DEC-001 — Tracking multi-sesión con GitHub Issues + archivos MD · DEC-002 — ❌ SUPERSEDED por DEC-013 · DEC-… | 2026-08-29 | 850 |
+| [`epics/DB-CHANGES.md`](epics/DB-CHANGES.md) | Migraciones aplicadas (v1.0) · EP001 — Auth / usuarios · EP002 — Jerarquía org · EP003 — Solicitudes y Proj… | 2026-08-29 | 1492 |
+| [`epics/DECISIONS.md`](epics/DECISIONS.md) | DEC-001 — Tracking multi-sesión con GitHub Issues + archivos MD · DEC-002 — ❌ SUPERSEDED por DEC-013 · DEC-… | 2026-08-29 | 876 |
 | [`epics/EP001-auth-users.md`](epics/EP001-auth-users.md) | Modelo actual (post-Sprint 6 / DEC-024) · Objetivo de negocio (v1.0, histórico) · Roles involucrados · User… | 2026-08-29 | 628 |
 | [`epics/EP002-org-hierarchy.md`](epics/EP002-org-hierarchy.md) | Objetivo de negocio · Roles involucrados · User Stories existentes · # PENDING — User Stories nuevas | 2026-09-11 | 384 |
 | [`epics/EP003-project-requests.md`](epics/EP003-project-requests.md) | Objetivo de negocio · Roles · User Stories · Notas técnicas | 2026-08-29 | 308 |
@@ -79,7 +79,7 @@ revisar_cada: nunca
 | [`architecture/api-conventions.md`](architecture/api-conventions.md) | 1. Versionado y base URL · 2. Autenticación y tenancy · 3. Métodos y semántica · 4. Convenciones de URL | 2026-08-29 | 361 |
 | [`architecture/database.md`](architecture/database.md) | Principios reales · Diagrama ER · Tabla de tablas · Tablas centrales — schema real | 2026-08-29 | 430 |
 | [`architecture/deployment-railway.md`](architecture/deployment-railway.md) | 1. Servicios Railway · 2. Infra como código · 3. Variables de entorno · 4. Storage de archivos | 2026-08-12 | 349 |
-| [`architecture/er-generado.md`](architecture/er-generado.md) | Diagrama entidad-relación — generado | 2026-08-20 | 200 |
+| [`architecture/er-generado.md`](architecture/er-generado.md) | Diagrama entidad-relación — generado | 2026-09-19 | 201 |
 | [`architecture/mapa-backend.md`](architecture/mapa-backend.md) | Estructura · Modelos por dominio (archivo → tablas clave) · Routers (api/v1/endpoints/) — 1 línea cada uno … | 2026-08-19 | 119 |
 | [`architecture/mapa-frontend.md`](architecture/mapa-frontend.md) | Stack · Tokens (globals.css) — los que se usan al escribir UI · Rutas (grupo `(app)`) · Componentes reutili… | 2026-08-19 | 184 |
 | [`architecture/modelo-amenazas.md`](architecture/modelo-amenazas.md) | 0. Método, y una advertencia sobre él · 1. Arquitectura de la que deriva · 2. Amenazas · 3. Cómo se revisa | 2026-08-29 | 589 |

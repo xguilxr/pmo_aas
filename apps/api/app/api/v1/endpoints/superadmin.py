@@ -25,6 +25,7 @@ from app.schemas.organization import (
     TenantRead,
 )
 from app.services.audit import write_audit
+from app.services.catalogos import sembrar as sembrar_catalogos
 from app.services.membresia import conceder, inquilinos_de, revocar
 from app.services.notifications import avisa_cambio_de_credencial
 from app.services.seed import SYSTEM_ROLES
@@ -61,6 +62,10 @@ async def provision_tenant(
     tenant = Tenant(slug=slug, name=body.name, is_active=True, settings={})
     db.add(tenant)
     await db.flush()
+
+    # US-285 — el inquilino nace con sus catálogos de proyecto. Sin esto, su
+    # formulario de alta de proyecto abriría con dos desplegables vacíos.
+    await sembrar_catalogos(db, tenant.id)
 
     admin_role = None
     for r in SYSTEM_ROLES:
@@ -483,6 +488,10 @@ async def wipe_tenant(
         )
     borradas = await vaciar(db, t.id)
     total = sum(borradas.values())
+    # US-285 — «como recién aprovisionado» (DEC-045) incluye los catálogos: el
+    # vaciado se lleva `tenant_catalog_values` como todo lo demás, y un
+    # inquilino sin tipos ni fases no puede dar de alta un proyecto.
+    await sembrar_catalogos(db, t.id)
     # Después de borrar, no antes (US-274). Hoy da igual —`audit_log` no está
     # en el inventario porque AM-08 impide borrarlo— pero el día que algo de
     # esto cambie, el orden correcto ya está escrito.

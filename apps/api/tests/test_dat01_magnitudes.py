@@ -116,6 +116,9 @@ POR_NOMBRE: dict[str, str] = {
     "ReportBuilderTemplate.level": "ordinal",
     "Document.version": "ordinal",
     "FolioSequence.last_number": "ordinal",
+    # US-285: la posición del valor dentro de su catálogo. Ordena el
+    # desplegable y, en `fase_proyecto`, el ciclo de vida. No mide nada.
+    "TenantCatalogValue.orden": "ordinal",
     # Coordenadas de calendario.
     "ScheduledMinute.day_of_week": "calendario",
     "ScheduledMinute.hour_of_day": "calendario",

@@ -144,6 +144,12 @@ async def _ensure_tenant(db: AsyncSession, *, slug: str, name: str, settings: di
             await db.execute(select(Tenant).where(Tenant.slug == slug))
         ).scalar_one()
         return existing, False
+    # US-285 — los catálogos de proyecto del inquilino, igual que sus roles de
+    # sistema. `sembrar` es idempotente, así que re-ejecutar la siembra inicial
+    # sobre una base ya poblada no duplica nada.
+    from app.services.catalogos import sembrar as sembrar_catalogos
+
+    await sembrar_catalogos(db, tenant.id)
     return tenant, True
 
 

@@ -159,6 +159,12 @@ async def test_us274_vaciar_deja_al_inquilino_como_recien_aprovisionado(
     assert await _cuantos(db_session, Portfolio, tenant.id) == 0
     assert await _cuantos(db_session, Actor, tenant.id) == 0
 
+    # US-285: los catálogos se rehacen, porque «recién aprovisionado» los
+    # incluye. Un inquilino sin tipos ni fases no puede dar de alta un proyecto.
+    from app.models.tenant_catalog import TenantCatalogValue
+
+    assert await _cuantos(db_session, TenantCatalogValue, tenant.id) > 0
+
     # Sobreviven (DEC-045): el inquilino y su gente.
     assert await _cuantos(db_session, User, tenant.id) >= 1
     vivo = (
@@ -170,8 +176,17 @@ async def test_us274_vaciar_deja_al_inquilino_como_recien_aprovisionado(
 
 
 @pytest.mark.asyncio
-async def test_us274_el_segundo_vaciado_no_encuentra_nada(client, db_session):
-    """Idempotente: vaciar dos veces no es un error, es cero filas."""
+async def test_us274_el_segundo_vaciado_solo_encuentra_los_catalogos(
+    client, db_session
+):
+    """Vaciar dos veces no es un error.
+
+    Y no devuelve cero: desde US-285 el vaciado vuelve a sembrar los catálogos
+    de proyecto —«como recién aprovisionado» (DEC-045) los incluye— así que el
+    segundo pasa se lleva exactamente lo que el primero acababa de crear. Que
+    el número no sea cero es el dato correcto: son filas que de verdad se
+    borraron.
+    """
     tenant, _auth = await _inquilino_con_datos(client, db_session)
     root = await _superadmin(client, db_session)
     url = f"/api/v1/superadmin/tenants/{tenant.id}/wipe?confirm_slug={tenant.slug}"
@@ -179,7 +194,10 @@ async def test_us274_el_segundo_vaciado_no_encuentra_nada(client, db_session):
     assert (await client.post(url, headers=root["_authz"])).status_code == 200
     segundo = await client.post(url, headers=root["_authz"])
     assert segundo.status_code == 200, segundo.text
-    assert segundo.json()["total"] == 0
+    con_filas = {
+        f["tabla"]: f["filas"] for f in segundo.json()["tablas"] if f["filas"]
+    }
+    assert set(con_filas) == {"tenant_catalog_values"}
 
 
 @pytest.mark.asyncio

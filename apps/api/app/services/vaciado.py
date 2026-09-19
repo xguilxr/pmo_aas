@@ -97,6 +97,7 @@ TABLAS_A_VACIAR: tuple[str, ...] = (
     "areas",
     "organizations",
     "metric_snapshots",
+    "tenant_catalog_values",
     "folio_sequences",
 )
 

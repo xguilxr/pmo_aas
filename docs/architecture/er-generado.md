@@ -2,7 +2,7 @@
 tipo: referencia
 responsable: propietario
 estado: vigente
-revisado: 2026-08-20
+revisado: 2026-09-19
 revisar_cada: nunca
 ---
 
@@ -19,7 +19,7 @@ revisar_cada: nunca
 La descripción en prosa de cada tabla vive en
 [`database.md`](database.md): eso no está en el modelo y no se puede derivar.
 
-**62 tablas · 170 relaciones declaradas por clave foránea.**
+**63 tablas · 171 relaciones declaradas por clave foránea.**
 
 ```mermaid
 erDiagram
@@ -183,6 +183,7 @@ erDiagram
     AREAS ||--o{ TEAMS : area_id
     USERS |o--o{ TEAMS : created_by
     TENANTS ||--o{ TEAMS : tenant_id
+    TENANTS ||--o{ TENANT_CATALOG_VALUES : tenant_id
     TENANTS ||--o{ TENANT_ROLE_PERMISSION_OVERRIDES : tenant_id
     USERS |o--o{ TENANT_ROLE_PERMISSION_OVERRIDES : updated_by_user_id
     ROLES ||--o{ USER_ROLES : role_id

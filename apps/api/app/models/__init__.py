@@ -54,6 +54,7 @@ from app.models.scheduled_report import ScheduledReport  # noqa: F401
 from app.models.stakeholder import Stakeholder  # noqa: F401
 from app.models.task import Task, TaskDependency  # noqa: F401
 from app.models.tenant import Tenant  # noqa: F401
+from app.models.tenant_catalog import TenantCatalogValue  # noqa: F401
 from app.models.tenant_permission import TenantRolePermissionOverride  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.user_scope_assignment import UserScopeAssignment  # noqa: F401
