@@ -103,7 +103,38 @@ def test_us273_cuenta_recursos_distintos_no_participaciones():
     assert "2 participación(es) cruzada(s) en 1 recurso(s)" in lineas[0]
 
 
-@pytest.mark.parametrize("nombre", ["agrupar", "formatear", "SQL", "main"])
+def test_us273_las_cerradas_se_apartan_del_alcance():
+    """Un cruce en un proyecto cerrado no se apaga: esa persona trabajó ahí.
+
+    Y además no estorba: `delete_actor` (BUG-104) tampoco cuenta las fases
+    terminales al decidir si un recurso se puede retirar. Si la limpieza las
+    apagara, las dos mitades del mismo arreglo se contradirían.
+    """
+    dpc = _cargar()
+    en_curso, cerradas = dpc.partir_por_fase(
+        [
+            _fila(phase="ejecucion"),
+            _fila(phase="cerrado", participation_id="pp2"),
+            _fila(phase="cancelado", participation_id="pp3"),
+            _fila(phase="hypercare", participation_id="pp4"),
+        ]
+    )
+    assert [f["participation_id"] for f in en_curso] == ["pp1", "pp4"]
+    assert [f["participation_id"] for f in cerradas] == ["pp2", "pp3"]
+
+
+def test_us273_las_fases_terminales_son_las_del_dominio():
+    """El script no carga la aplicación, así que repite la lista.
+
+    Este trinquete es lo único que impide que una fase terminal nueva deje al
+    script apagando historia sin que nadie se entere.
+    """
+    from app.dominio.proyecto import FASES_TERMINALES
+
+    assert set(_cargar().FASES_TERMINALES) == set(FASES_TERMINALES)
+
+
+@pytest.mark.parametrize("nombre", ["agrupar", "formatear", "partir_por_fase", "SQL", "main"])
 def test_us273_el_script_expone_lo_que_el_runbook_promete(nombre: str):
     """Renombrar una de estas funciones rompe el reporte sin avisar."""
     assert hasattr(_cargar(), nombre)

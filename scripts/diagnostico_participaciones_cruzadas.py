@@ -16,6 +16,11 @@ Este script las lista por inquilino y por organización, y —solo con
 
 - Las participaciones de un actor global: para él ningún proyecto es ajeno.
 - Las participaciones ya inactivas: no hay nada que apagar.
+- Las de proyectos en fase terminal (`cerrado`, `cancelado`), salvo que se
+  pidan con `--incluir-cerrados`. Apagarlas reescribe historia: esa persona
+  sí trabajó ahí. Y además no estorban — `delete_actor` (BUG-104) tampoco las
+  cuenta al decidir si un recurso se puede retirar. El reporte las lista
+  aparte para que la decisión sea visible.
 - Los proyectos, los actores y las asignaciones de área. Un cruce se
   desactiva; nada se borra. Si la decisión fue la equivocada, se revierte
   poniendo `is_active = true` en las filas que el reporte nombra.
@@ -87,6 +92,20 @@ SQL = text(
     """
 )
 
+#: Las mismas dos de `app.dominio.proyecto.FASES_TERMINALES`. Se repiten aquí
+#: porque el script corre con `sqlalchemy` pelado, sin la aplicación cargada;
+#: si se agrega una tercera fase terminal, esta lista se queda corta y el
+#: script apagaría historia. El trinquete que las ata vive en
+#: `tests/test_us273_participaciones_cruzadas.py`.
+FASES_TERMINALES = ("cerrado", "cancelado")
+
+
+def partir_por_fase(filas: list[dict]) -> tuple[list[dict], list[dict]]:
+    """(en curso, cerradas). La segunda no se toca sin `--incluir-cerrados`."""
+    en_curso = [f for f in filas if f["phase"] not in FASES_TERMINALES]
+    cerradas = [f for f in filas if f["phase"] in FASES_TERMINALES]
+    return en_curso, cerradas
+
 
 def agrupar(filas: list[dict]) -> dict[tuple[str, str], list[dict]]:
     """Las filas por (inquilino, organización del actor).
@@ -128,6 +147,14 @@ def main() -> int:
         action="store_true",
         help="Desactiva las participaciones cruzadas. Sin esto no se toca nada.",
     )
+    parser.add_argument(
+        "--incluir-cerrados",
+        action="store_true",
+        help=(
+            "Incluye las de proyectos cerrados o cancelados. Por default se "
+            "listan aparte y no se tocan: apagarlas reescribe historia."
+        ),
+    )
     args = parser.parse_args()
 
     database_url = os.environ.get("DATABASE_URL")
@@ -145,26 +172,60 @@ def main() -> int:
         print("Sin participaciones cruzadas. Nada que limpiar.")
         return 0
 
-    grupos = agrupar(filas)
+    en_curso, cerradas = partir_por_fase(filas)
+    alcance = filas if args.incluir_cerrados else en_curso
+
+    if cerradas:
+        print(
+            f"Aparte: {len(cerradas)} participación(es) en proyectos cerrados o "
+            "cancelados."
+        )
+        for linea in formatear(agrupar(cerradas)):
+            print(f"  {linea}")
+        print(
+            "  "
+            + (
+                "Incluidas en el alcance por --incluir-cerrados."
+                if args.incluir_cerrados
+                else "No se tocan: esa persona sí trabajó ahí. Usá "
+                "--incluir-cerrados si querés apagarlas igual."
+            )
+        )
+        print()
+
+    if not alcance:
+        print("No queda nada en el alcance. Nada que limpiar.")
+        return 0
+
+    grupos = agrupar(alcance)
     for linea in formatear(grupos):
         print(linea)
-    print(f"\nTotal: {len(filas)} participación(es) en {len(grupos)} organización(es).")
+    print(
+        f"\nTotal en el alcance: {len(alcance)} participación(es) en "
+        f"{len(grupos)} organización(es)."
+    )
 
     if not args.apply:
         print("\n--dry-run (default): no se tocó nada. Repetí con --apply.")
         return 0
 
     por_inquilino: dict[str, list[dict]] = defaultdict(list)
-    for fila in filas:
+    for fila in alcance:
         por_inquilino[fila["tenant_slug"]].append(fila)
 
     with engine.begin() as conn:
         res = conn.execute(
             text(
-                "UPDATE project_participations SET is_active = false "
+                # `is_primary` también: `derived_assignment.py` ordena por
+                # `is_primary.desc(), is_active.desc()` sin filtrar
+                # `is_active`, así que una cruzada apagada que siguiera siendo
+                # primary le ganaría a la participación legítima y la limpieza
+                # no cambiaría nada de lo que el usuario ve.
+                "UPDATE project_participations "
+                "SET is_active = false, is_primary = false "
                 "WHERE id = ANY(:ids)"
             ),
-            {"ids": [f["participation_id"] for f in filas]},
+            {"ids": [f["participation_id"] for f in alcance]},
         )
         for inquilino, suyas in por_inquilino.items():
             conn.execute(
