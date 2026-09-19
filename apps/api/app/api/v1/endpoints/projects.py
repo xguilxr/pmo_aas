@@ -49,7 +49,10 @@ from app.services.project_health import (
     apply_auto_health,
     compute_project_health_detail,
 )
-from app.services.project_membership_sync import sync_member_to_participation
+from app.services.project_membership_sync import (
+    sync_member_removal,
+    sync_member_to_participation,
+)
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -898,6 +901,14 @@ async def add_member(
             role_in_project=body.role_in_project,
         )
     )
+    await db.flush()
+    # BUG-111 — la doble escritura de US-118 solo corría al crear el proyecto.
+    # Quien se agregaba después nunca aparecía en `project_participations`, así
+    # que no salía en el directorio, ni en capacidad, ni en el organigrama. La
+    # sincronización es idempotente: si ya hay participación, actualiza el rol.
+    await sync_member_to_participation(
+        db, str(tenant_id), str(project_id), str(body.user_id), body.role_in_project
+    )
     await write_audit(
         db, action="project.member.add", module="projects",
         user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(project_id),
@@ -928,6 +939,10 @@ async def remove_member(
             ProjectMember.user_id == str(user_id),
         )
     )
+    # BUG-111 — la otra mitad: quien se quitaba seguía con su participación
+    # activa, contando en capacidad y saliendo en el directorio de un proyecto
+    # del que ya no forma parte.
+    await sync_member_removal(db, str(project_id), str(user_id))
     await write_audit(
         db, action="project.member.remove", module="projects",
         user_id=cu.id, tenant_id=tenant_id, entity_type="project", entity_id=str(project_id),
