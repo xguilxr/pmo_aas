@@ -486,3 +486,32 @@ KPIs leen `FASES_ACTIVAS`. Una fase nueva no estaría en ninguno de los dos —
 aceptada al crearla, atrapada al usarla, y el síntoma sin relación aparente con
 la causa. El `POST` sobre `fase_proyecto` responde `FASE_NUEVA_NO_DISPONIBLE` y
 remite a US-289, que la trae con su grafo derivado del orden.
+
+### US-287 — La pantalla `/admin/catalogos`
+
+Dos pestañas, una por catálogo, en el sidebar de Admin entre «Organizaciones y
+portafolios» y «Plan e IA»: es configuración del inquilino, y el vocabulario
+con el que se clasifica todo lo demás va antes que el consumo del plan.
+
+**Lista con los inactivos incluidos.** Es la única pantalla desde donde se
+vuelve a activar un valor retirado; sin ellos, retirar sería irreversible desde
+la interfaz.
+
+**La clave se muestra y no se edita.** Se muestra porque es lo que sale en un
+export y en un filtro de URL, y esconderla haría imposible relacionar lo que se
+ve aquí con lo que se ve allá. No se edita porque es lo que los proyectos
+tienen guardado.
+
+**Reordenar guarda al soltar, sin botón de guardar.** Cada movimiento manda el
+orden completo —que es lo que pide la API— y repinta con lo que devuelve. Un
+«guardar» al final invitaría a cerrar la pestaña con el orden a medias.
+
+**En Fases no hay botón de agregar.** No se deja el botón para explicar el 422
+después: la pestaña dice antes por qué, y qué falta para que llegue.
+
+**Criterios de aceptación:**
+- [x] Ruta `/admin/catalogos` con pestañas «Tipos de proyecto» y «Fases».
+- [x] Entrada en el sidebar de Admin.
+- [x] Listar, agregar (solo tipos), renombrar, reordenar y retirar/reactivar.
+- [x] Retirar avisa de que los proyectos que ya lo usan lo conservan.
+- [x] Un catálogo vacío dice qué implica, en vez de una tabla en blanco.

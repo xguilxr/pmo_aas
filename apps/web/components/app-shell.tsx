@@ -142,6 +142,7 @@ function buildAdminNav(): NavItem {
       p.startsWith("/admin/tenant") ||
       p.startsWith("/admin/plan") ||
       p.startsWith("/admin/organizations") ||
+      p.startsWith("/admin/catalogos") ||
       p.startsWith("/admin/hierarchy"),
     children: [
       {
@@ -169,6 +170,16 @@ function buildAdminNav(): NavItem {
         match: (p) =>
           p.startsWith("/admin/hierarchy") ||
           (p.startsWith("/admin/organizations") && !p.includes("/panel")),
+      },
+      {
+        // US-287 — los catálogos van con la configuración del inquilino, junto
+        // a Branding y antes del Plan: es el vocabulario con el que se
+        // clasifica todo lo demás.
+        id: "catalogos",
+        label: "Catálogos",
+        icono: "list-check",
+        href: "/admin/catalogos",
+        match: (p) => p.startsWith("/admin/catalogos"),
       },
       {
         // US-221 — el plan va antes de Auditoría: es configuración de la

@@ -82,6 +82,7 @@ flowchart TB
         subgraph ADMIN ["/admin — admin tenant"]
             ADM_HOME["/admin"]:::admin
             ADM_TEN["/admin/tenant"]:::admin
+            ADM_CAT["/admin/catalogos<br/>(tabs Tipos · Fases — US-287)"]:::admin
             ADM_PLAN["/admin/plan<br/>(tabs Plan · IA — FASE-7)"]:::admin
             ADM_HIER["/admin/hierarchy<br/>(FASE-7)"]:::admin
             ADM_ORG["/admin/organizations"]:::admin
@@ -202,6 +203,7 @@ flowchart LR
         A1["Branding<br/>/admin/tenant"]
         A4["Usuarios<br/>/admin/users"]
         A3["Organizaciones y portafolios<br/>/admin/organizations"]
+        A3b["Catálogos<br/>/admin/catalogos"]
         A5b["Plan e IA<br/>/admin/plan"]
         A6["Auditoría<br/>/admin/audit-logs"]
     end
@@ -258,7 +260,7 @@ del sidebar admin + un panel adicional para Áreas:
 
 ## 3. Inventario de páginas
 
-Total: **76 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08) + `/admin/plan` (US-221). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano); FASE-4 (revamp v2) borró 2 (`/pmo/board`, `/pmo/imports`, absorbidas como pestañas de `/pmo` con redirect) y agregó 1 (`/pmo/config`).
+Total: **77 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resources` (US-183, 2026-07-08) + `/pmo/projects/[id]/ai-context` (US-185, 2026-07-08) + `/admin/plan` (US-221) + `/admin/catalogos` (US-287). Antes del cleanup eran 78. Se borraron 5 muertos: `/admin/stakeholders`, `/admin/settings`, `/admin/supervision`, `/admin/organizations/[id]/panel`, `/pmo/programs` (listado plano); FASE-4 (revamp v2) borró 2 (`/pmo/board`, `/pmo/imports`, absorbidas como pestañas de `/pmo` con redirect) y agregó 1 (`/pmo/config`).
 
 ### 3.1 Rutas públicas (5)
 
@@ -334,6 +336,7 @@ Total: **76 páginas** (`page.tsx`) — 73 post-cleanup 2026-05-23 + `/pmo/resou
 | `/admin` | Landing con 7 paneles. | Sidebar admin |
 | `/admin/tenant` | Branding, dominio, config, stats (consolidó `/admin/settings` y `/admin/supervision` via tabs). | Sidebar + panel |
 | `/admin/hierarchy` | FASE-7 (US-A): árbol organización → portafolio → programa → proyecto de todo el tenant — mover, crear, borrar (reusa `org-hierarchy-section.tsx`). Reemplaza a `/admin/organizations` en el sidebar. | Sidebar + panel |
+| `/admin/catalogos` | US-287: los tipos y las fases de proyecto del inquilino, en dos pestañas. Renombrar, reordenar y retirar; agregar solo en tipos —una fase nueva no tendría transiciones ni contaría en los KPIs, y eso llega en US-289—. | Sidebar |
 | `/admin/organizations` | CRUD organizaciones (alta/edición); ya no está en el sidebar, se enlaza desde `/admin/hierarchy`. | Panel |
 | `/admin/organizations/new` | Nueva organización. | Botón |
 | `/admin/organizations/[id]` | Panel de la org: portafolios, programas, proyectos y usuarios con rol. | Click en row |
