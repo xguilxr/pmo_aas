@@ -156,8 +156,15 @@ def test_el_tipo_del_frontend_declara_las_mismas_fases_y_tipos() -> None:
 
     Sin esta comprobación, renombrar en el backend deja al frontend mandando un
     valor que la API rechaza —un 422 en el formulario— o pintando un badge en
-    blanco. Se leen los literales del `type` de TypeScript, no las etiquetas: lo
-    que tiene que coincidir es el contrato, no la traducción.
+    blanco. Se leen los literales de TypeScript, no las etiquetas: lo que tiene
+    que coincidir es el contrato, no la traducción.
+
+    **El tipo cambió de sujeto (US-288).** `ProjectType` en el frontend ya es
+    `string`, porque la lista es distinta por inquilino y ese archivo no sabe
+    cuál es. Lo que sigue teniendo que coincidir es `TIPOS_DE_FABRICA`: los
+    cuatro con los que nace un inquilino, que son el respaldo mientras el
+    catálogo carga. Si se separan, un inquilino recién creado vería en el
+    desplegable un valor que su propio catálogo no tiene.
     """
     fuente = TIPOS_WEB.read_text(encoding="utf-8")
 
@@ -165,9 +172,30 @@ def test_el_tipo_del_frontend_declara_las_mismas_fases_y_tipos() -> None:
     assert bloque_fase, "No encontré `ProjectPhase` en `lib/api/projects.ts`."
     assert set(re.findall(r'"([a-z]+)"', bloque_fase.group(1))) == set(FASES)
 
-    bloque_tipo = re.search(r"export type ProjectType\s*=([^;]+);", fuente)
-    assert bloque_tipo, "No encontré `ProjectType` en `lib/api/projects.ts`."
+    bloque_tipo = re.search(
+        r"export const TIPOS_DE_FABRICA\s*=\s*\[([^\]]+)\]", fuente
+    )
+    assert bloque_tipo, (
+        "No encontré `TIPOS_DE_FABRICA` en `lib/api/projects.ts`. Desde US-288 "
+        "el tipo del frontend es `string` y lo que se ata es la siembra."
+    )
     assert set(re.findall(r'"([a-z]+)"', bloque_tipo.group(1))) == set(TIPOS)
+
+
+def test_el_tipo_del_frontend_ya_no_es_una_lista_cerrada() -> None:
+    """US-288: volver a cerrarlo dejaría fuera los tipos propios del inquilino.
+
+    Es el error fácil de cometer al «arreglar» un `any`: devolverle el union a
+    `ProjectType` y no enterarse de que el desplegable deja de aceptar lo que
+    el catálogo sí acepta.
+    """
+    fuente = TIPOS_WEB.read_text(encoding="utf-8")
+    bloque = re.search(r"export type ProjectType\s*=([^;]+);", fuente)
+    assert bloque, "No encontré `ProjectType` en `lib/api/projects.ts`."
+    assert bloque.group(1).strip() == "string", (
+        "`ProjectType` volvió a ser una lista cerrada. Desde US-288 los tipos "
+        "salen del catálogo del inquilino y la lista es distinta en cada uno."
+    )
 
 
 # ---------------------------------------------------------------------------

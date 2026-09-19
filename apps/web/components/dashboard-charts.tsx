@@ -316,6 +316,25 @@ export function serieColor(i: number): string {
   return PALETTE.series[i] ?? PALETTE.neutral;
 }
 
+/**
+ * US-288 — el mismo color, para series de **arity abierta**.
+ *
+ * `serieColor` se queda como está: en un gráfico de cuatro categorías fijas, un
+ * quinto color sería un error y el gris lo delata. Pero desde que el tipo de
+ * proyecto sale del catálogo del inquilino, puede haber siete, y ahí el gris no
+ * delata nada: pinta tres categorías distintas del mismo gris y las vuelve
+ * indistinguibles sin decirlo.
+ *
+ * Esto cicla. Con más de cuatro categorías los colores se repiten, y repetirse
+ * en ciclo es ambiguo **de forma legible** —dos barras del mismo azul, cada una
+ * con su etiqueta— en vez de tres barras grises que parecen la misma cosa. Los
+ * cuatro tonos y su orden no cambian: es ADR-023 aplicado a una lista que ya no
+ * tiene cuatro elementos garantizados.
+ */
+export function serieColorCiclica(i: number): string {
+  return PALETTE.series[i % PALETTE.series.length];
+}
+
 // ===========================================================================
 // US-153 — Primitivos para dashboards N1/N2 (Gauge, TrendLines, RiskMatrix,
 // Heatmap, Treemap). Todos render-only y consumen tokens del design-system.

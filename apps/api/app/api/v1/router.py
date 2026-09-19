@@ -55,6 +55,7 @@ api_router.include_router(admin_panel.router)
 api_router.include_router(admin_ai.router)
 api_router.include_router(branding.router)
 api_router.include_router(catalogos.router)
+api_router.include_router(catalogos.router_lectura)
 api_router.include_router(organizations.router)
 api_router.include_router(organizations.programs_router)
 # US-199 — `business_units_router` y `departments_router` retirados (ADR-037).

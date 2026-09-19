@@ -68,3 +68,19 @@ export function reordenarCatalogo(
     body: { claves },
   });
 }
+
+/**
+ * US-288 — el catálogo para las pantallas que lo consumen, sin capability de
+ * admin.
+ *
+ * Trae el catálogo **completo**, retirados incluidos, con `activo` en cada
+ * valor. Quien llama hace dos cosas distintas con esta lista: ofrecer valores
+ * —y ahí filtra por `activo`— y nombrar el que un proyecto ya tiene. Sin los
+ * retirados, un proyecto con un tipo que se dejó de usar se pintaría con su
+ * clave cruda.
+ */
+export function listarCatalogoVigente(
+  catalogo: Catalogo,
+): Promise<ValorDeCatalogo[]> {
+  return apiFetch<ValorDeCatalogo[]>(`/api/v1/catalogos/${catalogo}`);
+}

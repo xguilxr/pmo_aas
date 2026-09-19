@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_capability
+from app.api.deps import CurrentUser, require_authenticated, require_capability
 from app.core.errors import business_rule, forbidden, mensaje
 from app.db.session import get_db
 from app.models.tenant_catalog import (
@@ -36,6 +36,13 @@ from app.services import catalogos as svc
 from app.services.audit import write_audit
 
 router = APIRouter(prefix="/admin/catalogos", tags=["catalogos"])
+
+#: US-288 — el mismo catálogo, en solo lectura y sin capability de admin.
+#:
+#: Leer con qué palabras clasifica tu inquilino no es administrar nada: lo
+#: necesita cualquiera que abra el formulario de alta de un proyecto, y esa
+#: pantalla la usa un PM.
+router_lectura = APIRouter(prefix="/catalogos", tags=["catalogos"])
 
 
 def _tenant(cu: CurrentUser) -> UUID:
@@ -246,4 +253,23 @@ async def reordenar_valores(
         details={"catalogo": catalogo, "orden": body.claves},
     )
     await db.commit()
+    return [_leer(v) for v in valores]
+
+
+@router_lectura.get("/{catalogo}", response_model=list[ValorRead])
+async def listar_para_leer(
+    catalogo: str,
+    cu: CurrentUser = Depends(require_authenticated()),
+    db: AsyncSession = Depends(get_db),
+) -> list[ValorRead]:
+    """El catálogo completo, en su orden, con `activo` en cada valor.
+
+    Incluye los retirados a propósito. Quien llama hace dos cosas distintas con
+    esta lista: **ofrecer** valores —y ahí filtra por `activo`— y **nombrar** el
+    que un proyecto ya tiene. Si los retirados no vinieran, un proyecto con un
+    tipo que se dejó de usar se pintaría con su clave cruda en vez de con su
+    nombre, y esconder el nombre no cambia el dato: solo lo hace ilegible.
+    """
+    _validar_catalogo(catalogo)
+    valores = await svc.listar(db, _tenant(cu), catalogo, incluir_inactivos=True)
     return [_leer(v) for v in valores]

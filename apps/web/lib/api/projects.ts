@@ -14,9 +14,22 @@ export type ProjectPhase =
   | "hypercare"
   | "cerrado"
   | "cancelado";
-// US-202: el tipo deja de ser texto libre. Cuatro valores, y `bau` se queda en
-// la sigla porque es como lo dice quien lo pide.
-export type ProjectType = "transformacion" | "operacion" | "innovacion" | "bau";
+// US-202: el tipo dejó de ser texto libre. US-288 lo abre otra vez, pero no al
+// texto libre: al catálogo del inquilino (`/api/v1/catalogos/tipo_proyecto`).
+// Por eso aquí es `string` — la lista es distinta por inquilino y este archivo
+// no sabe cuál es. Quien pinta un desplegable usa `useCatalogo`.
+export type ProjectType = string;
+
+// Los cuatro con los que nace un inquilino. Siguen aquí por dos motivos: son
+// el respaldo mientras el catálogo carga, y son lo que el trinquete de
+// `test_us202_vocabulario.py` compara contra el dominio del backend. No son
+// «los tipos válidos»: eso lo decide el catálogo.
+export const TIPOS_DE_FABRICA = [
+  "transformacion",
+  "operacion",
+  "innovacion",
+  "bau",
+] as const;
 export type ProjectHealth = "green" | "yellow" | "red";
 // US-180: fuente del semáforo único — 'auto' (motor de reglas) o
 // 'manual' (declarado por el PM con razón).
@@ -367,7 +380,8 @@ export const PHASE_BADGE_TONE: Record<
   cancelado: "danger",
 };
 
-export const TYPE_LABEL: Record<ProjectType, string> = {
+/** Las etiquetas de fábrica. Para el nombre real usa `useCatalogo`. */
+export const TYPE_LABEL: Record<(typeof TIPOS_DE_FABRICA)[number], string> = {
   transformacion: "Transformación",
   operacion: "Operación",
   innovacion: "Innovación",

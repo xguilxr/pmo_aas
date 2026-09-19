@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-99 documentos vivos · 70 archivados · 2808 secciones indexadas.
+99 documentos vivos · 70 archivados · 2812 secciones indexadas.
 
 ## gestion
 
@@ -56,7 +56,7 @@ revisar_cada: nunca
 | [`epics/EP002-org-hierarchy.md`](epics/EP002-org-hierarchy.md) | Objetivo de negocio · Roles involucrados · User Stories existentes · # PENDING — User Stories nuevas | 2026-09-11 | 384 |
 | [`epics/EP003-project-requests.md`](epics/EP003-project-requests.md) | Objetivo de negocio · Roles · User Stories · Notas técnicas | 2026-08-29 | 308 |
 | [`epics/EP004-dashboard.md`](epics/EP004-dashboard.md) | Objetivo de negocio · User Stories · Notas técnicas · Definition of Done | 2026-09-11 | 788 |
-| [`epics/EP005-projects.md`](epics/EP005-projects.md) | Objetivo de negocio · User Stories · Notas técnicas · Definition of Done | 2026-08-29 | 582 |
+| [`epics/EP005-projects.md`](epics/EP005-projects.md) | Objetivo de negocio · User Stories · Notas técnicas · Definition of Done | 2026-08-29 | 649 |
 | [`epics/EP006-project-modules.md`](epics/EP006-project-modules.md) | Objetivo de negocio · Patrón común (aplica a los 6) · US-031 — Módulo de Riesgos · US-032 — Módulo de Incid… | 2026-08-29 | 461 |
 | [`epics/EP007-admin.md`](epics/EP007-admin.md) | Objetivo de negocio · US-037 — Panel de administración de usuarios · US-038 — Panel de administración de ro… | 2026-08-29 | 518 |
 | [`epics/EP008-ai.md`](epics/EP008-ai.md) | Objetivo de negocio · Modo de IA por tenant (US-057 · DEC-017) · US-043 — Generar minuta desde transcripció… | 2026-08-29 | 577 |

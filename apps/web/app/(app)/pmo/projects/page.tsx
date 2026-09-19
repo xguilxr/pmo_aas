@@ -28,7 +28,6 @@ import {
   PHASE_BADGE_TONE,
   PHASE_LABEL,
   PHASE_ORDER,
-  TYPE_LABEL,
   listProjects,
   type Project,
   type ProjectHealth,
@@ -38,10 +37,13 @@ import {
 import { cn } from "@/lib/cn";
 import { useSortableRows } from "@/lib/hooks/use-sortable-rows";
 import { SortableTh } from "@/components/ui/sortable-th";
+import { useCatalogo } from "@/lib/hooks/use-catalogo";
 
 // US-202 — el orden canónico vive en `lib/api/projects.ts::PHASE_ORDER`.
 const ALL_PHASES: ProjectPhase[] = [...PHASE_ORDER];
-const ALL_TYPES: ProjectType[] = ["transformacion", "operacion", "innovacion", "bau"];
+// US-288 — el filtro ya no declara los tipos: los lee del catálogo del
+// inquilino. Lo que queda aquí es la validación de lo que viene en la URL, que
+// se resuelve contra ese mismo catálogo una vez cargado.
 const ALL_HEALTH: ProjectHealth[] = ["green", "yellow", "red"];
 
 function useDebounced<T>(value: T, delayMs = 300): T {
@@ -66,6 +68,8 @@ function formatImporte(n: string | number | null, moneda: string): string {
 }
 
 export default function ProjectsListPage() {
+  // US-288 — las opciones del filtro salen del catálogo del inquilino.
+  const tipos = useCatalogo("tipo_proyecto");
   const router = useRouter();
   const { canCreate } = useMyPermissions();
   const permsCanCreate = canCreate("projects");
@@ -77,7 +81,10 @@ export default function ProjectsListPage() {
     return v.length ? v : [];
   }, [search]);
   const initialTypes = useMemo(() => {
-    const v = search.getAll("type").filter((t): t is ProjectType => (ALL_TYPES as string[]).includes(t));
+    // Sin lista cerrada contra la que filtrar: un tipo que este inquilino no
+    // tenga simplemente no traerá resultados, que es la respuesta correcta a
+    // un filtro copiado de otra organización.
+    const v = search.getAll("type");
     return v;
   }, [search]);
   const initialHealth = useMemo(() => {
@@ -359,7 +366,10 @@ export default function ProjectsListPage() {
           />
           <FiltroMultiple
             label="Tipo"
-            opciones={ALL_TYPES.map((t) => ({ value: t, label: TYPE_LABEL[t] }))}
+            opciones={tipos.activos.map((t) => ({
+              value: t.clave,
+              label: t.etiqueta,
+            }))}
             seleccion={types}
             onChange={(v) => setTypes(v as ProjectType[])}
           />

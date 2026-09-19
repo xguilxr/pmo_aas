@@ -46,6 +46,7 @@ import {
   type ValorDeCatalogo,
 } from "@/lib/api/catalogos";
 import { cn } from "@/lib/cn";
+import { invalidarCatalogo } from "@/lib/hooks/use-catalogo";
 
 export default function CatalogosPage() {
   const [tab, setTab] = useState<Catalogo>("tipo_proyecto");
@@ -111,6 +112,11 @@ function PanelDeCatalogo({ catalogo }: { catalogo: Catalogo }) {
 
   const refrescar = useCallback(async () => {
     setError(null);
+    // US-288 — el resto de las pantallas lee este catálogo desde una caché de
+    // módulo. Esta es la única que lo escribe, así que es la única que tiene
+    // que tirarla: sin esto, el formulario de alta seguiría ofreciendo un tipo
+    // que acaban de retirar hasta la siguiente recarga completa.
+    invalidarCatalogo(catalogo);
     try {
       // Con los inactivos: esta es la pantalla donde se vuelven a activar, y
       // sin ellos un valor retirado desaparecería sin forma de recuperarlo.

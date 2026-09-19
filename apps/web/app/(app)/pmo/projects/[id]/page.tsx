@@ -28,7 +28,6 @@ import {
   HEALTH_LABEL,
   PHASE_BADGE_TONE,
   PHASE_LABEL,
-  TYPE_LABEL,
   changePhase,
   declareHealth,
   getHealthDetail,
@@ -42,6 +41,7 @@ import {
 } from "@/lib/api/projects";
 import { cn } from "@/lib/cn";
 import { esSinDato, SIN_DATO, SIN_DATO_ETIQUETA } from "@/lib/sin-dato";
+import { useCatalogo } from "@/lib/hooks/use-catalogo";
 
 // US-202 — espejo de `dominio/proyecto.py::TRANSICIONES`. La API vuelve a
 // validarlo: esto es para no ofrecer un botón que va a devolver 409.
@@ -92,6 +92,8 @@ function formatDate(s: string | null): string {
 }
 
 export default function ProjectDetailPage() {
+  // US-288 — el nombre del tipo, del catálogo del inquilino.
+  const tipos = useCatalogo("tipo_proyecto");
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const search = useSearchParams();
@@ -313,7 +315,9 @@ export default function ProjectDetailPage() {
                 {project.name}
               </h1>
               <PhaseBadge phase={project.phase} />
-              {project.type ? <Badge>{TYPE_LABEL[project.type]}</Badge> : null}
+              {/* US-288: del catálogo del inquilino. Un tipo retirado sigue
+                  mostrando su nombre, que es el dato que el proyecto tiene. */}
+              {project.type ? <Badge>{tipos.etiqueta(project.type)}</Badge> : null}
             </div>
             <p className="mt-1.5 text-[12px] tracking-[0.01em] text-[var(--text-faint)]">
               {project.folio}

@@ -19,17 +19,16 @@ import {
   type Program,
 } from "@/lib/api/organizations";
 import { useOrganizacionActiva } from "@/components/organizacion-activa";
+import { useCatalogo } from "@/lib/hooks/use-catalogo";
 import { MONEDAS } from "@/lib/moneda";
 import { useMonedaPreferida } from "@/lib/moneda-tenant";
 import {
   PHASE_LABEL,
-  TYPE_LABEL,
   createProject,
   updateProject,
   type Project,
   type ProjectCreateBody,
   type ProjectPhase,
-  type ProjectType,
 } from "@/lib/api/projects";
 
 type Props = {
@@ -44,7 +43,16 @@ export function ProjectForm({ mode, initial }: Props) {
 
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [type, setType] = useState<ProjectType>((initial?.type as ProjectType) ?? "transformacion");
+  // US-288 — el tipo sale del catálogo del inquilino, no de un enum fijo.
+  // Arranca vacío y se rellena con el primero activo cuando el catálogo llega:
+  // preseleccionar «transformacion» a ciegas escribiría un tipo que este
+  // inquilino puede haber retirado.
+  const tipos = useCatalogo("tipo_proyecto");
+  const [type, setType] = useState<string>(initial?.type ?? "");
+  useEffect(() => {
+    if (type || tipos.cargando || tipos.activos.length === 0) return;
+    setType(tipos.activos[0].clave);
+  }, [type, tipos.cargando, tipos.activos]);
   const [priority, setPriority] = useState(String(initial?.priority ?? 3));
   const [phase, setPhase] = useState<ProjectPhase>(initial?.phase ?? "preparacion");
   // US-205 — la organización sigue siendo un **campo** del proyecto y no un
@@ -227,13 +235,39 @@ export function ProjectForm({ mode, initial }: Props) {
           />
         </Field>
         <Field label="Tipo">
-          <Select value={type} onChange={(e) => setType(e.target.value as ProjectType)}>
-            {(Object.keys(TYPE_LABEL) as ProjectType[]).map((k) => (
-              <option key={k} value={k}>
-                {TYPE_LABEL[k]}
-              </option>
-            ))}
-          </Select>
+          {!tipos.cargando && tipos.activos.length === 0 ? (
+            // Un desplegable vacío deja a quien lo mira sin saber si falla la
+            // pantalla o falta configurar algo. Esto lo dice y lleva allí.
+            <Banner variant="warning">
+              Tu organización no tiene ningún tipo de proyecto activo. Defínelos
+              en{" "}
+              <Link
+                href="/admin/catalogos"
+                className="underline underline-offset-2"
+              >
+                Administración › Catálogos
+              </Link>{" "}
+              y vuelve a esta pantalla.
+            </Banner>
+          ) : (
+            <Select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              disabled={tipos.cargando}
+            >
+              {/* El tipo que ya tenía el proyecto, aunque se haya retirado del
+                  catálogo: sin esta opción, abrir la edición lo cambiaría solo
+                  por el primero de la lista. */}
+              {type && !tipos.activos.some((v) => v.clave === type) ? (
+                <option value={type}>{tipos.etiqueta(type)} (retirado)</option>
+              ) : null}
+              {tipos.activos.map((v) => (
+                <option key={v.clave} value={v.clave}>
+                  {v.etiqueta}
+                </option>
+              ))}
+            </Select>
+          )}
         </Field>
         <Field label="Prioridad (1–5)">
           <Select

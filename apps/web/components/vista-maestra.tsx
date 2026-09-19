@@ -53,12 +53,12 @@ import {
   PHASE_BADGE_TONE,
   PHASE_LABEL,
   PHASE_ORDER,
-  TYPE_LABEL,
   etiquetaSalud,
   type ProjectHealth,
   type ProjectPhase,
 } from "@/lib/api/projects";
 import { useSortableRows, type SortableCtrl } from "@/lib/hooks/use-sortable-rows";
+import { useCatalogo } from "@/lib/hooks/use-catalogo";
 
 const CLAVE_COLUMNAS = "pmoaas:vista-maestra:columnas";
 
@@ -174,7 +174,15 @@ function colorDeCompletitud(pct: number): string {
   return "var(--color-danger-fg)";
 }
 
-function columnas(): Columna[] {
+/**
+ * US-288 — `etiquetaTipo` entra por parámetro y no se importa.
+ *
+ * El nombre del tipo sale del catálogo del inquilino, que es un hook, y esto
+ * es una función pura que arma la tabla. Pasarlo es lo que la deja pura: leer
+ * el catálogo aquí dentro obligaría a convertirla en componente y a recalcular
+ * dieciséis columnas en cada render.
+ */
+function columnas(etiquetaTipo: (clave: string | null | undefined) => string): Columna[] {
   const cols: Columna[] = [
     {
       clave: "name",
@@ -240,11 +248,9 @@ function columnas(): Columna[] {
       etiqueta: "Tipo",
       ancho: 18,
       orden: (r) => r.type,
-      texto: (r) => (r.type ? (TYPE_LABEL[r.type as keyof typeof TYPE_LABEL] ?? r.type) : "—"),
+      texto: (r) => etiquetaTipo(r.type),
       celda: (r) => (
-        <span className="whitespace-nowrap">
-          {r.type ? (TYPE_LABEL[r.type as keyof typeof TYPE_LABEL] ?? r.type) : "—"}
-        </span>
+        <span className="whitespace-nowrap">{etiquetaTipo(r.type)}</span>
       ),
     },
     {
@@ -572,7 +578,8 @@ export function VistaMaestra({
   onPrioridad?: (projectId: string, prioridad: number) => void;
   onDesglose?: (projectId: string, nombre: string) => void;
 }) {
-  const todas = useMemo(() => columnas(), []);
+  const tipos = useCatalogo("tipo_proyecto");
+  const todas = useMemo(() => columnas(tipos.etiqueta), [tipos.etiqueta]);
   const [visibles, setVisibles] = useState<Set<string>>(
     () => new Set([...VISIBLES_POR_DEFECTO, ...(siempreVisibles ?? [])]),
   );

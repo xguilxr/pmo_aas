@@ -579,3 +579,70 @@ cuenta en la plataforma)
 - `test_areas_multitenant_isolation` ✅
 
 **Estado de integración:** DONE (US-018).
+
+---
+
+## US-288 — Los tipos de proyecto son del inquilino ✅ (2026-09-19)
+
+Desde DEC-040 los tipos viven en `tenant_catalog_values` y no en el enum de
+`dominio/proyecto.py`. Esta US es la mitad que se ve: que el inquilino los
+gestione y que las pantallas los consuman.
+
+**Sin valores de sistema** (D9, owner 2026-09-19). Los cuatro sembrados se
+renombran, se reordenan y se retiran como cualquier otro. No hay bandera
+«es_sistema» y no debe haberla: lo que la plataforma protege es lo que está en
+uso, no lo que vino de fábrica.
+
+**Se retira, no se borra.** No es una validación que se pueda saltar: la ruta
+de borrado no existe. Un tipo retirado desaparece de los desplegables y los
+proyectos que lo tienen lo siguen mostrando.
+
+### La lectura no es una acción de admin
+
+`GET /api/v1/catalogos/{catalogo}` devuelve el catálogo a cualquier persona
+autenticada. El formulario de alta de un proyecto lo abre un PM, y leer con qué
+palabras clasifica tu inquilino no es administrar nada. La ruta
+`/admin/catalogos` sigue exigiendo `tenant.manage` para escribir.
+
+Devuelve el catálogo **completo**, retirados incluidos, con `activo` en cada
+valor. Quien llama hace dos cosas distintas con esa lista: **ofrecer** valores
+—y ahí filtra por `activo`— y **nombrar** el que un proyecto ya tiene. Sin los
+retirados, un proyecto con un tipo que se dejó de usar se pintaría con su clave
+cruda.
+
+### Dónde se consume
+
+| Pantalla | Qué hace con el catálogo |
+|---|---|
+| `project-form.tsx` | El desplegable. Sin tipos activos pinta un aviso con enlace a `/admin/catalogos`, no un desplegable vacío. Al editar conserva el tipo retirado que el proyecto ya tenía, marcado |
+| `/pmo/projects` | Las opciones del filtro |
+| `/pmo/projects/[id]` | La insignia del tipo |
+| `vista-maestra.tsx` | La columna «Tipo» |
+| `/dashboard` | Las etiquetas de «presupuesto por tipo» |
+
+Todas por `lib/hooks/use-catalogo.ts`, con caché de módulo: cinco pantallas
+pidiendo la misma lista corta en cada navegación son cuatro peticiones de más.
+La pantalla de configuración la invalida al escribir, que es el único sitio
+donde el catálogo cambia.
+
+### El color de los gráficos
+
+ADR-023 fija cuatro colores categóricos en orden. Con el catálogo abierto puede
+haber siete tipos, y `serieColor()` devolvía gris a partir del quinto: tres
+categorías del mismo gris, indistinguibles sin decirlo.
+
+`serieColorCiclica()` cicla sobre los mismos cuatro tonos, en el mismo orden.
+Repetirse en ciclo también es ambiguo, pero de forma legible —dos barras del
+mismo azul, cada una con su etiqueta—. `serieColor()` no cambia: en un gráfico
+de arity fija, un quinto color sería un error y el gris lo delata.
+
+**Criterios de aceptación:**
+- [x] Alta, edición y baja de tipos desde `/admin/catalogos`.
+- [x] Ningún tipo marcado como de sistema (D9).
+- [x] Un tipo en uso se desactiva, nunca se borra.
+- [x] El catálogo se usa en formularios, filtros y gráficos.
+- [x] Sin tipos activos, el alta avisa y enlaza al catálogo.
+
+**Test cases:** `tests/test_us288_tipos_configurables.py` (6) más los 12 de
+`test_us286_api_catalogos.py`, que cubren el recorrido de punta a punta.
+

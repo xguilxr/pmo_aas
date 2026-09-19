@@ -59,10 +59,8 @@ import { useOrganizacionActiva } from "@/components/organizacion-activa";
 import {
   PHASE_LABEL,
   PHASE_ORDER,
-  TYPE_LABEL,
   etiquetaSalud,
   type ProjectPhase,
-  type ProjectType,
 } from "@/lib/api/projects";
 import { getStoredUser } from "@/lib/auth-storage";
 import { cn } from "@/lib/cn";
@@ -70,6 +68,7 @@ import { MarcaDeDatos, useLectura } from "@/components/ui/marca-de-datos";
 import { formatearDesglose, formatearImporte, monedaUnica } from "@/lib/moneda";
 import { useMonedaPreferida } from "@/lib/moneda-tenant";
 import { etiquetaDeCadencia, useCadenciaDeReporte } from "@/lib/cadencia-tenant";
+import { useCatalogo } from "@/lib/hooks/use-catalogo";
 
 // ADR-023: la fase es ORDINAL —preparación → ejecución → hypercare → cerrado
 // es una secuencia—, así que va con la rampa de un solo tono, no con cuatro
@@ -102,11 +101,11 @@ function colorFase(clave: string): string {
   return PHASE_COLOR[clave as ProjectPhase] ?? PALETTE.accent;
 }
 
-/** `budget_by_type` agrupa los proyectos sin tipo bajo `unspecified`, que no es
- *  uno de los cuatro del enum: la API lo sintetiza para no perder el importe. */
-function etiquetaTipo(clave: string): string {
+/** `budget_by_type` agrupa los proyectos sin tipo bajo `unspecified`, que no
+ *  sale del catálogo: la API lo sintetiza para no perder el importe. */
+function etiquetaTipo(clave: string, delCatalogo: (c: string) => string): string {
   if (clave === "unspecified") return "Sin especificar";
-  return TYPE_LABEL[clave as ProjectType] ?? clave;
+  return delCatalogo(clave);
 }
 
 export default function DashboardPage() {
@@ -131,6 +130,8 @@ function DashboardSkeleton() {
 }
 
 function DashboardInner() {
+  // US-288 — los nombres de tipo salen del catálogo del inquilino.
+  const tipos = useCatalogo("tipo_proyecto");
   // BUG-092 — para lo que NO cuelga de un proyecto: gráficos de cartera y
   // filas agregadas. Un importe de proyecto trae la suya, ya resuelta.
   const monedaDeCartera = useMonedaPreferida();
@@ -411,11 +412,12 @@ function DashboardInner() {
   const budgetData = useMemo(() => {
     const entries = charts ? toEntries(charts.budget_by_type) : [];
     return entries.map(([k, v]) => ({
-      label: etiquetaTipo(k),
+      // US-288: el nombre sale del catálogo del inquilino, no de un enum fijo.
+      label: etiquetaTipo(k, tipos.etiqueta),
       value: Number(v) || 0,
       color: PALETTE.accent,
     }));
-  }, [charts]);
+  }, [charts, tipos.etiqueta]);
 
   // US-206 — las dos distribuciones nuevas. La clave vacía que manda la API es
   // «sin programa» / «sin sponsor», y se rotula aquí: el contrato no lleva
