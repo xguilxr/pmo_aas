@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-99 documentos vivos · 70 archivados · 2797 secciones indexadas.
+99 documentos vivos · 70 archivados · 2798 secciones indexadas.
 
 ## gestion
 
@@ -61,7 +61,7 @@ revisar_cada: nunca
 | [`epics/EP007-admin.md`](epics/EP007-admin.md) | Objetivo de negocio · US-037 — Panel de administración de usuarios · US-038 — Panel de administración de ro… | 2026-08-29 | 433 |
 | [`epics/EP008-ai.md`](epics/EP008-ai.md) | Objetivo de negocio · Modo de IA por tenant (US-057 · DEC-017) · US-043 — Generar minuta desde transcripció… | 2026-08-29 | 577 |
 | [`epics/EP009-ms-project.md`](epics/EP009-ms-project.md) | Objetivo de negocio · Decisiones técnicas · US-047 — Importar archivo MS Project (XML/XLSX) · US-048 — Impo… | 2026-08-29 | 742 |
-| [`epics/EP010-superadmin-panel.md`](epics/EP010-superadmin-panel.md) | Objetivo de negocio · Roles involucrados · Decisiones clave · User Stories | 2026-08-29 | 461 |
+| [`epics/EP010-superadmin-panel.md`](epics/EP010-superadmin-panel.md) | Objetivo de negocio · Roles involucrados · Decisiones clave · User Stories | 2026-08-29 | 492 |
 | [`epics/EP017-project-directory.md`](epics/EP017-project-directory.md) | Objetivo de negocio · Modelo conceptual · DEC a registrar en DECISIONS.md al cierre del bloque · Bloques | 2026-08-29 | 729 |
 | [`epics/EP018-documents-artifacts.md`](epics/EP018-documents-artifacts.md) | Objetivo de negocio · Decisiones arquitectónicas asociadas (a registrar en DECISIONS.md) · US iniciales (Sp… | 2026-08-29 | 57 |
 | [`epics/EP019-changes-approval.md`](epics/EP019-changes-approval.md) | Objetivo de negocio · Decisiones arquitectónicas asociadas · US iniciales · Migraciones Alembic aplicadas | 2026-08-29 | 51 |

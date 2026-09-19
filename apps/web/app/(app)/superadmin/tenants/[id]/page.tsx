@@ -20,9 +20,12 @@ import {
   getTenantDetail,
   hardDeleteTenant,
   joinAsAdmin,
+  previewWipeTenant,
   softDeleteTenant,
   updateUserRoleType,
+  wipeTenant,
   type TenantDetail,
+  type VaciadoDeInquilino,
 } from "@/lib/api/superadmin";
 import {
   freezeTenant,
@@ -49,6 +52,13 @@ export default function TenantDetailPage() {
   const [confirmSoft, setConfirmSoft] = useState(false);
   const [confirmHard, setConfirmHard] = useState(false);
   const [hardSlug, setHardSlug] = useState("");
+  // US-274 — vaciado. El preview se pide al abrir el modal, no antes: contar
+  // 50 tablas en cada carga de la ficha para un botón que casi nunca se pulsa
+  // es trabajo que nadie pidió.
+  const [confirmWipe, setConfirmWipe] = useState(false);
+  const [wipeSlug, setWipeSlug] = useState("");
+  const [wipePreview, setWipePreview] = useState<VaciadoDeInquilino | null>(null);
+  const [wipeCargando, setWipeCargando] = useState(false);
   const [busy, setBusy] = useState(false);
   const [joining, setJoining] = useState(false);
 
@@ -132,6 +142,46 @@ export default function TenantDetailPage() {
       router.replace("/superadmin/tenants");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo borrar el tenant");
+      setBusy(false);
+    }
+  }
+
+  async function abrirVaciado() {
+    if (!data) return;
+    setConfirmWipe(true);
+    setWipeSlug("");
+    setWipePreview(null);
+    setWipeCargando(true);
+    try {
+      setWipePreview(await previewWipeTenant(data.tenant.id));
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo contar lo que se borraría",
+      );
+      setConfirmWipe(false);
+    } finally {
+      setWipeCargando(false);
+    }
+  }
+
+  async function handleWipe() {
+    if (!data) return;
+    if (wipeSlug !== data.tenant.slug) return;
+    setBusy(true);
+    try {
+      const hecho = await wipeTenant(data.tenant.id, wipeSlug);
+      setConfirmWipe(false);
+      setWipeSlug("");
+      setWipePreview(null);
+      setNotice(
+        hecho.total === 0
+          ? "El tenant ya estaba vacío: no había nada que borrar."
+          : `Tenant vaciado: ${hecho.total} fila(s) borradas. Usuarios y marca intactos.`,
+      );
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo vaciar el tenant");
+    } finally {
       setBusy(false);
     }
   }
@@ -220,6 +270,10 @@ export default function TenantDetailPage() {
               Desactivar
             </Button>
           ) : null}
+          <Button variant="danger" onClick={abrirVaciado} disabled={busy}>
+            <Icono nombre="bin" size={15} />
+            Vaciar datos
+          </Button>
           <Button variant="danger" onClick={() => setConfirmHard(true)}>
             <Icono nombre="triangle-alert" size={15} />
             Borrar permanente
@@ -394,6 +448,97 @@ export default function TenantDetailPage() {
         <p className="text-sm text-[var(--color-secondary)]">
           ¿Confirmas desactivar <strong>{tenant.name}</strong>?
         </p>
+      </Modal>
+
+      <Modal
+        open={confirmWipe}
+        onClose={() => {
+          setConfirmWipe(false);
+          setWipeSlug("");
+          setWipePreview(null);
+        }}
+        title="Vaciar datos del tenant"
+        description="Borra el contenido y conserva el tenant, su marca, sus usuarios y sus membresías. No tiene vuelta atrás."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setConfirmWipe(false);
+                setWipeSlug("");
+                setWipePreview(null);
+              }}
+              disabled={busy}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleWipe}
+              loading={busy}
+              disabled={wipeSlug !== tenant.slug || wipeCargando}
+            >
+              Vaciar datos
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          {wipeCargando ? (
+            <Skeleton className="h-40 w-full" />
+          ) : wipePreview ? (
+            <>
+              <p className="text-sm text-[var(--color-secondary)]">
+                Se borrarán <strong>{wipePreview.total}</strong> fila(s) en{" "}
+                {wipePreview.tablas.filter((f) => f.filas > 0).length} tabla(s).
+              </p>
+              {wipePreview.total === 0 ? (
+                <p className="text-sm text-[var(--text-tertiary)]">
+                  No hay nada que borrar: el tenant ya está vacío.
+                </p>
+              ) : (
+                // Solo las que tienen filas. Las 50 del inventario, con
+                // cuarenta ceros, esconden los diez números que importan.
+                <div className="max-h-56 overflow-auto rounded-[var(--radius-md)] border border-[var(--border-default)]">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {wipePreview.tablas
+                        .filter((f) => f.filas > 0)
+                        .map((f) => (
+                          <tr
+                            key={f.tabla}
+                            className="border-b border-[var(--border-default)] last:border-0"
+                          >
+                            <td className="px-3 py-1.5 font-mono text-[12px]">
+                              {f.tabla}
+                            </td>
+                            <td className="px-3 py-1.5 text-right tabular-nums">
+                              {f.filas}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="text-sm text-[var(--text-tertiary)]">
+                Sobreviven el tenant, su configuración, su marca, sus usuarios y
+                sus membresías. El registro de auditoría tampoco se borra.
+              </p>
+              <p className="text-sm text-[var(--color-secondary)]">
+                Para confirmar, escribe el slug exacto:{" "}
+                <code className="font-mono">{tenant.slug}</code>
+              </p>
+              <Input
+                value={wipeSlug}
+                onChange={(e) => setWipeSlug(e.target.value)}
+                invalid={wipeSlug.length > 0 && wipeSlug !== tenant.slug}
+                placeholder={tenant.slug}
+                autoFocus
+              />
+            </>
+          ) : null}
+        </div>
       </Modal>
 
       <Modal

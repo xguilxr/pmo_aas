@@ -94,6 +94,35 @@ export function hardDeleteTenant(id: string, confirmSlug: string): Promise<void>
   );
 }
 
+// US-274 — vaciado de datos del inquilino. Ni desactivar ni borrar: deja al
+// inquilino con su gente y su marca, y sin nada de lo que se cargó dentro.
+export type FilaDeVaciado = { tabla: string; filas: number };
+
+export type VaciadoDeInquilino = {
+  tenant: { id: string; slug: string; name: string };
+  total: number;
+  /** El inventario entero, tablas en cero incluidas. */
+  tablas: FilaDeVaciado[];
+  /** Tabla → por qué no se toca. */
+  sobreviven: Record<string, string>;
+};
+
+export function previewWipeTenant(id: string): Promise<VaciadoDeInquilino> {
+  return apiFetch<VaciadoDeInquilino>(
+    `/api/v1/superadmin/tenants/${id}/wipe/preview`,
+  );
+}
+
+export function wipeTenant(
+  id: string,
+  confirmSlug: string,
+): Promise<VaciadoDeInquilino> {
+  return apiFetch<VaciadoDeInquilino>(
+    `/api/v1/superadmin/tenants/${id}/wipe${qs({ confirm_slug: confirmSlug })}`,
+    { method: "POST" },
+  );
+}
+
 export function joinAsAdmin(id: string): Promise<JoinAsAdminResponse> {
   return apiFetch<JoinAsAdminResponse>(`/api/v1/superadmin/tenants/${id}/join-as-admin`, {
     method: "POST",

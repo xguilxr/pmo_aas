@@ -458,3 +458,34 @@ que las dos columnas que se ponen en nulo para romper el ciclo
 
 **Test cases:** `tests/test_us274_vaciado_inventario.py` (12) y
 `tests/test_us274_vaciado_endpoint.py` (7).
+
+---
+
+### US-275 — Botón «Vaciar datos» en la ficha del inquilino ✅ (2026-09-19)
+
+La API de US-274 sin pantalla no existe (CLAUDE.md §13). El botón vive en la
+cabecera de `/superadmin/tenants/[id]`, entre «Desactivar» y «Borrar
+permanente», que es donde se busca una acción sobre el ciclo de vida del
+inquilino.
+
+**El preview se pide al abrir el modal, no al cargar la ficha.** Contar 50
+tablas en cada visita para un botón que casi nunca se pulsa es trabajo que
+nadie pidió.
+
+**El modal lista solo las tablas con filas.** El inventario completo viaja en
+la respuesta —hace falta para comprobar que se está mirando entero— pero
+pintar cuarenta ceros esconde los diez números que importan. Debajo, en una
+línea, qué sobrevive: el inquilino, su configuración, su marca, sus usuarios,
+sus membresías y la auditoría.
+
+Confirmación por slug exacto, igual que el borrado permanente: el botón está
+deshabilitado hasta que coincide. Con el inquilino ya vacío el modal lo dice
+en vez de ofrecer borrar cero filas.
+
+**Criterios de aceptación:**
+- [x] Botón «Vaciar datos» junto a «Desactivar» y «Borrar permanente».
+- [x] El modal muestra el conteo por tabla antes de confirmar.
+- [x] Exige escribir el slug exacto para habilitar la acción.
+- [x] Al terminar, un aviso con el total de filas borradas y la ficha
+  recargada.
+- [x] Un inquilino ya vacío lo dice, en vez de ofrecer borrar nada.
