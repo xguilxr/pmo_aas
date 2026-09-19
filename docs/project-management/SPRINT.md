@@ -41,16 +41,15 @@ transversal con `code-review --comment` (`revamp-v2/FASE-9.md`).
 
 ## 📥 INBOX
 
-- [ ] **Batch 2026-09-19** — multi-organización y catálogos: US-273…289 en 7
-  bloques (`drafts/plataforma-multiorg-y-catalogos.md`). Espera OK y D8.
+- [ ] **Batch 2026-09-19** — multi-organización y catálogos: BUG-103/104 +
+  US-273…289 en 7 bloques, scope aprobado y D8–D11 cerradas. Issues por crear
+  · `drafts/plataforma-multiorg-y-catalogos.md`
 - [ ] **Glosario de datos** (FASE-9 pasada 2): #613-#619.
 - [ ] **W3 — RLS de Postgres**: #599 (US-240), #600 (US-241), #601 (US-242).
 - [ ] **EP021**: quedan US-223, US-225 y US-226. US-224 entregada.
 - [ ] **US-239** — clave de proyecto estilo Jira en la URL (mig. 0120).
-- [ ] **Hueco de compat**: `GET /projects` no normaliza `phase`/`type`.
-  Ver `core/compatibilidad.py`.
-- [ ] **Pantalla del catálogo de IA** en `/admin/plan?tab=ia` — US-224 solo
-  tiene API.
+- [ ] **Hueco de compat**: `GET /projects` no normaliza `phase` (`core/compatibilidad.py`).
+- [ ] **Pantalla del catálogo de IA** en `/admin/plan?tab=ia`: US-224 solo tiene API.
 
 ---
 
