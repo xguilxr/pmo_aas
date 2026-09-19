@@ -73,6 +73,7 @@ async def test_bug104_un_cruce_no_bloquea_y_se_desactiva(client, db_session):
             project_id=proyectos["b"],
             actor_id=actor_a,
             is_active=True,
+            is_primary=True,
         )
     )
     await db_session.commit()
@@ -94,6 +95,11 @@ async def test_bug104_un_cruce_no_bloquea_y_se_desactiva(client, db_session):
         )
     ).scalar_one()
     assert cruce.is_active is False, "el cruce no puede quedar apuntando a un borrado"
+    # `derived_assignment.py` ordena por `is_primary.desc(), is_active.desc()`
+    # y no filtra `is_active`: una cruzada apagada que siguiera siendo primary
+    # le ganaría a la participación legítima y seguiría dictando el área
+    # funcional del actor. Apagar sin quitar la marca no se nota en pantalla.
+    assert cruce.is_primary is False, "apagada y además sin la marca de primary"
 
 
 @pytest.mark.asyncio

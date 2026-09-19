@@ -1199,10 +1199,15 @@ async def delete_actor(
             )
         )
     if cruces:
+        # `is_primary` también, igual que `delete_participation`. No es
+        # cosmético: `derived_assignment.py` ordena por `is_primary.desc(),
+        # is_active.desc()` y **no** filtra `is_active`, así que una cruzada
+        # apagada que siguiera siendo primary le ganaría a la participación
+        # legítima y seguiría dictando el área funcional del actor.
         await db.execute(
             update(ProjectParticipation)
             .where(ProjectParticipation.id.in_([pid for pid, _f, _n in cruces]))
-            .values(is_active=False)
+            .values(is_active=False, is_primary=False)
         )
     a.deleted_at = datetime.now(UTC)
     a.is_active = False
