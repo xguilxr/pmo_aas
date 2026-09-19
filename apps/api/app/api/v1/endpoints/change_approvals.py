@@ -36,6 +36,7 @@ from app.models.area import Actor
 from app.models.change_approval import ApprovalToken, ChangeApprover
 from app.models.modules import ChangeRequest
 from app.models.project import Project
+from app.services.area_visibility import actor_sirve_a_organizacion
 from app.services.audit import write_audit
 
 logger = logging.getLogger("pmoaas.change_approvals")
@@ -180,6 +181,40 @@ async def add_approver(
     ).scalar_one_or_none()
     if actor is None:
         raise not_found("Actor")
+    # BUG-105 / DEC-044 — el aprobador tiene que servir a la organización del
+    # proyecto del cambio. Hasta aquí solo se comprobaba el inquilino, y este
+    # flujo no se queda dentro del producto: al enviar a aprobación, US-113
+    # manda el contenido del cambio al correo del aprobador. Un actor de otra
+    # organización lo recibía en su buzón.
+    proyecto = (
+        await db.execute(
+            select(Project).where(
+                Project.id == str(change.project_id),
+                Project.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if proyecto is not None and not actor_sirve_a_organizacion(
+        actor, proyecto.organization_id
+    ):
+        raise business_rule(
+            mensaje(
+                que=(
+                    f"«{actor.name}» pertenece a otra organización y no puede "
+                    "aprobar este cambio"
+                ),
+                porque=(
+                    "La solicitud de aprobación viaja por correo con el "
+                    "contenido del cambio; mandarla fuera de la organización "
+                    "del proyecto lo saca del producto."
+                ),
+                accion=(
+                    "Elige un aprobador de la organización del proyecto, o "
+                    "quítale la organización al recurso para volverlo global."
+                ),
+            ),
+            code="ACTOR_DE_OTRA_ORGANIZACION",
+        )
     # CA5: email es requerido para enviar el email de US-113.
     if not actor.email:
         raise business_rule(
