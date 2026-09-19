@@ -18,11 +18,13 @@ revisar_cada: 30d
 ## 🔴 IN-PROGRESS
 
 **Batch 2026-09-19 — Bloque 0: recursos cruzados.** Rama
-`claude/inspiring-ramanujan-nltb7k`. Los tres en `fix-committed`, esperando
-verificación del owner. Sigue el Bloque A (#626, #627: vaciado del inquilino).
+`claude/inspiring-ramanujan-nltb7k`. Los tres en `fix-committed` y corregidos
+tras mapear el radio de impacto. Sigue el Bloque A (#626, #627).
 
-- [x] BUG-103 #623 (`06d45ef`) · BUG-104 #624 (`b0b768e`) · US-273 #625
-  (`b31888e`) — regla en `area_visibility.py`, DEC-044
+- [x] BUG-103 #623 · BUG-104 #624 · US-273 #625 — regla en
+  `area_visibility.py`, DEC-044. Corrección: `c4dfc11`, `f4b4558`, `e530486`
+- [ ] **Bloque 0b** — #642…#651 en `status:triage`. #642 es el serio: un
+  aprobador de otra organización recibe el correo del cambio
 - [ ] Owner: correr `diagnostico_participaciones_cruzadas.py` (sin `--apply`)
 - [ ] Revamp v2 fase 9 y mobile, en pausa: `revamp-v2/FASE-9.md`
 
