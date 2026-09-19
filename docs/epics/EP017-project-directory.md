@@ -669,14 +669,56 @@ Dónde se aplica:
    proyecto, no del header: el proyecto que se está viendo manda.
 4. `eligible-actors` y la cascada de áreas descartan al recurso ajeno aunque
    entre por un `AreaAssignment` global o por una participación heredada.
-5. Al agregar a un miembro del proyecto, el actor del usuario se busca y se
-   crea en la organización del proyecto. La misma persona puede ser un actor
+5. Al agregar o quitar a un miembro del proyecto, el actor del usuario se
+   busca y se crea en la organización del proyecto, y su participación se
+   sincroniza en las dos direcciones (BUG-111: `add_member` y `remove_member`
+   no lo hacían; solo el alta del proyecto). La misma persona puede ser un actor
    distinto en cada organización (DEC-038). Al quitarlo, se retiran las
    participaciones de **todos** sus actores en ese proyecto: con uno por
    organización, elegir uno solo dejaría la otra viva.
 6. `PATCH .../participations/{id}` rechaza reactivar (`is_active: true`) una
    participación cruzada. Sin eso, un PATCH deshacía de un golpe la limpieza
    de US-273.
+
+### Las otras rutas que asignan a una persona (bloque 0b)
+
+`create_participation` no es la única puerta. Estas tampoco pasan por ella y
+aplican la misma regla desde el bloque 0b:
+
+| Ruta | Qué asigna | Issue |
+|---|---|---|
+| `POST /change-requests/{id}/approvers` | Aprobador de un cambio | BUG-105 |
+| `POST /risks/{id}/actions` y su `PATCH` | Responsables de una acción de mitigación | BUG-106 |
+| Confirmación de importación de plan (`tasks.py`) | `assignee_actor_id` por matcher difuso | BUG-106 |
+| `POST /organizations/{id}/portfolios` y su `PATCH` | Dueño del portafolio | BUG-106 |
+
+La de aprobadores es la que más pesa: el flujo manda el contenido del cambio al
+correo del aprobador, así que un cruce ahí saca información del producto. La de
+importación es la más difícil de ver, porque nadie elige — empareja un
+algoritmo con umbral 0,85 y el homónimo de otra organización quedaba asignado
+sin decisión humana.
+
+### Lo que se lee, no solo lo que se escribe
+
+Cerrar la escritura y dejar la lectura abierta resuelve la mitad: el recurso
+ajeno ya no se puede asignar, pero se sigue viendo. Desde ENH-211, el árbol de
+`/areas/tree` acota también sus recursos cuando recibe `organization_id`, y el
+XLSX del organigrama **de proyecto** se acota a la organización del proyecto.
+
+El organigrama **de inquilino** (`organigrama.py::export_tenant_organigrama`)
+no lleva ese filtro y no debe llevarlo: es tenant-wide a propósito, y ahí ver
+todas las organizaciones es lo correcto.
+
+### De qué participación se derivan el área y el rol
+
+`services/derived_assignment.py` resuelve el área funcional, el equipo y el rol
+de un actor en un proyecto a partir de su participación: la `is_primary` si
+existe, si no la más reciente. Desde ENH-210 solo mira las **activas**.
+
+Antes `is_active` estaba en el `order_by` y en ningún `where`, así que una
+participación retirada entraba igual al `limit(1)` —y ganaba si era primary—.
+Por eso BUG-104 y US-273 apagan `is_primary` junto con `is_active` al limpiar
+un cruce: mitigaban este mismo defecto desde el otro lado.
 
 El mapa de actor hidratado en el directorio **no** se filtra: una fila
 heredada tiene que mostrar su nombre para poder quitarse.
