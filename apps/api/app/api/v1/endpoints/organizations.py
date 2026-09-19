@@ -850,28 +850,47 @@ async def _portafolio_o_404(db: AsyncSession, tenant_id: UUID, portfolio_id: UUI
 
 
 async def _validar_actor_dueno(
-    db: AsyncSession, tenant_id: UUID, owner_actor_id: str | UUID | None
+    db: AsyncSession,
+    tenant_id: UUID,
+    owner_actor_id: str | UUID | None,
+    organization_id: str | UUID | None = None,
 ) -> None:
-    """El dueño del portafolio tiene que ser un actor del propio inquilino.
+    """El dueño del portafolio tiene que ser un actor que sirva a su organización.
 
     Sin esta comprobación, el identificador de un actor ajeno se guardaría tal
     cual y el nombre del sponsor de otra empresa aparecería en la ficha.
+
+    BUG-106 / DEC-044: comprobar solo el inquilino dejaba pasar a un recurso de
+    otra organización del mismo inquilino, que es un cruce igual de real y más
+    fácil de cometer —las dos organizaciones se ven en el mismo desplegable—.
+    El recurso global (sin organización) sigue siendo dueño válido de cualquier
+    portafolio.
     """
     if owner_actor_id is None:
         return
+    from app.services.area_visibility import condicion_actor_de_organizacion
+
+    condiciones = [
+        Actor.id == str(owner_actor_id),
+        Actor.tenant_id == tenant_id,
+    ]
+    if organization_id is not None:
+        condiciones.append(condicion_actor_de_organizacion(organization_id))
     existe = (
-        await db.execute(
-            select(Actor.id).where(
-                Actor.id == str(owner_actor_id), Actor.tenant_id == tenant_id
-            )
-        )
+        await db.execute(select(Actor.id).where(*condiciones))
     ).scalar_one_or_none()
     if existe is None:
         raise business_rule(
             mensaje(
                 que="La persona indicada como dueña del portafolio no está en tu catálogo",
-                porque="La referencia apunta fuera de tu inquilino y quedaría rota.",
-                accion="Elige a alguien del directorio de personas de tu inquilino.",
+                porque=(
+                    "La referencia apunta fuera del catálogo de esa "
+                    "organización y quedaría rota."
+                ),
+                accion=(
+                    "Elige a alguien de la organización del portafolio, o a un "
+                    "recurso global del inquilino."
+                ),
             )
         )
 
@@ -955,7 +974,7 @@ async def create_portfolio(
             porque="Dos portafolios con el mismo nombre serían indistinguibles al clasificar.",
             accion="Elige otro nombre, o edita el que ya existe.",
         ))
-    await _validar_actor_dueno(db, tenant_id, body.owner_actor_id)
+    await _validar_actor_dueno(db, tenant_id, body.owner_actor_id, org.id)
     datos = body.model_dump()
     if datos.get("owner_actor_id") is not None:
         datos["owner_actor_id"] = str(datos["owner_actor_id"])
@@ -1047,7 +1066,9 @@ async def update_portfolio(
                 accion="Elige otro nombre, o edita el que ya existe.",
             ))
     if body.owner_actor_id is not None:
-        await _validar_actor_dueno(db, tenant_id, body.owner_actor_id)
+        await _validar_actor_dueno(
+            db, tenant_id, body.owner_actor_id, pf.organization_id
+        )
     for campo, valor in body.model_dump(exclude_none=True).items():
         setattr(pf, campo, str(valor) if campo == "owner_actor_id" else valor)
     await write_audit(

@@ -19,11 +19,13 @@ from app.core.errors import forbidden, mensaje, not_found
 from app.db.session import get_db
 from app.models.area import Actor
 from app.models.modules import Risk
+from app.models.project import Project
 from app.models.risk_action import (
     RISK_ACTION_STATUS,
     RiskAction,
     RiskActionAssignee,
 )
+from app.services.area_visibility import condicion_actor_de_organizacion
 from app.services.audit import write_audit
 
 router = APIRouter(tags=["risk_actions"])
@@ -67,12 +69,37 @@ async def _get_action(
     return a
 
 
+async def _organizacion_del_riesgo(
+    db: AsyncSession, risk: Risk, tenant_id: UUID
+) -> str | None:
+    """La organización del proyecto al que pertenece el riesgo."""
+    org = (
+        await db.execute(
+            select(Project.organization_id).where(
+                Project.id == str(risk.project_id),
+                Project.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    return str(org) if org is not None else None
+
+
 async def _validate_actors(
-    db: AsyncSession, actor_ids: list[UUID], tenant_id: UUID
+    db: AsyncSession,
+    actor_ids: list[UUID],
+    tenant_id: UUID,
+    organization_id: str | None,
 ) -> list[str]:
     """Devuelve la lista de actor_ids válidos del tenant. Filtra silently
     los que no existan/no sean del tenant — el caller decide si es error
-    o si solo persiste los válidos."""
+    o si solo persiste los válidos.
+
+    BUG-106 / DEC-044: además del inquilino, se acota a quien sirva a la
+    organización del proyecto del riesgo. El selector de la pantalla ya lo
+    hacía desde BUG-103, pero un filtro que solo vive en el cliente no es un
+    filtro: por API directa el actor ajeno entraba como responsable de una
+    acción de mitigación.
+    """
     if not actor_ids:
         return []
     rows = (
@@ -81,6 +108,7 @@ async def _validate_actors(
                 Actor.id.in_([str(a) for a in actor_ids]),
                 Actor.tenant_id == str(tenant_id),
                 Actor.deleted_at.is_(None),
+                condicion_actor_de_organizacion(organization_id),
             )
         )
     ).scalars().all()
@@ -196,7 +224,12 @@ async def create_risk_action(
     tenant_id = _tenant(cu)
     risk = await _get_risk(db, risk_id, tenant_id)
     _validate_status(body.status)
-    valid_actors = await _validate_actors(db, body.assignee_actor_ids, tenant_id)
+    valid_actors = await _validate_actors(
+        db,
+        body.assignee_actor_ids,
+        tenant_id,
+        await _organizacion_del_riesgo(db, risk, tenant_id),
+    )
     action = RiskAction(
         tenant_id=str(tenant_id),
         risk_id=str(risk.id),
@@ -250,8 +283,12 @@ async def update_risk_action(
         action.due_date = data["due_date"]
 
     if "assignee_actor_ids" in data:
+        riesgo = await _get_risk(db, action.risk_id, tenant_id)
         valid_actors = await _validate_actors(
-            db, body.assignee_actor_ids or [], tenant_id
+            db,
+            body.assignee_actor_ids or [],
+            tenant_id,
+            await _organizacion_del_riesgo(db, riesgo, tenant_id),
         )
         await db.execute(
             delete(RiskActionAssignee).where(

@@ -1773,10 +1773,20 @@ async def import_confirm(
     from difflib import SequenceMatcher
 
     from app.models.area import Actor as _Actor
+    from app.services.area_visibility import condicion_actor_de_organizacion
 
+    # BUG-106 / DEC-044 — el pool se acota a la organización del proyecto.
+    # Este matcher es difuso (≥ 0.85) y nadie elige a mano lo que empareja: con
+    # todo el inquilino dentro, un homónimo de otra organización se quedaba
+    # asignado a la tarea sin que ninguna persona lo hubiera decidido. Es la vía
+    # de alta de `assignee_actor_id` que no pasa por `create_participation`, así
+    # que BUG-103 no la cubría.
     _actor_rows = (
         await db.execute(
-            select(_Actor).where(_Actor.tenant_id == str(tenant_id))
+            select(_Actor).where(
+                _Actor.tenant_id == str(tenant_id),
+                condicion_actor_de_organizacion(p.organization_id),
+            )
         )
     ).scalars().all()
 
