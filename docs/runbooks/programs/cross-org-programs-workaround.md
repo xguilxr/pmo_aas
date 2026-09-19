@@ -178,9 +178,32 @@ se da vía membership.
 
 ---
 
+## Los recursos del programa umbrella (DEC-044)
+
+Desde BUG-103, un recurso con `organization_id` puesto solo participa en
+proyectos de esa organización. Los proyectos de este workaround viven en la
+org umbrella, así que sus recursos tienen que ser una de dos cosas:
+
+1. **Recursos de la org umbrella** — el caso normal. Se dan de alta con
+   `Grupo XYZ` como organización.
+2. **Recursos globales del inquilino** (`organization_id` nulo) — para quien
+   trabaja en varias empresas del grupo.
+
+Un recurso dado de alta en `Empresa A` **no** se puede asignar a un proyecto
+de `Grupo XYZ`. El paso 5 falla con `ACTOR_DE_OTRA_ORGANIZACION` y el
+selector de personas ni siquiera lo ofrece. La salida es volverlo global o
+darlo de alta también en la umbrella; la identidad por organización ya la
+decidió DEC-038.
+
+Las Áreas del paso 3 no cambian: un área con `organization_id` nulo sigue
+siendo global y visible desde cualquier organización.
+
+---
+
 ## Referencias
 
 - [ADR-016](../../adr/README.md#adr-016--programas-cross-empresa-diferir-hasta-criterio-de-demanda)
 - ENH-043 (#180) — issue de origen.
 - US-062 — Áreas/Recursos.
+- DEC-044 / BUG-103 — a qué organización sirve un recurso.
 - US-007 — Charter MVP.

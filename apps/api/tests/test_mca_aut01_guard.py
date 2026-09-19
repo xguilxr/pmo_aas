@@ -54,6 +54,9 @@ DENEGADOS = [
     "git reset --hard HEAD~1",
     "git clean -fd",
     "git branch -D claude/x",
+    # US-273: los scripts de reparación escriben con `--apply`.
+    "DATABASE_URL=x python scripts/fusionar_actores_duplicados.py --apply",
+    "python scripts/diagnostico_participaciones_cruzadas.py --tenant acme --apply",
 ]
 
 PREGUNTADOS = [
@@ -69,6 +72,9 @@ LIBRES = [
     "gh issue view 554",
     "git push origin claude/mi-rama",
     "rm apps/web/basura.txt",  # borrado simple, sin -r ni -f
+    # El mismo script sin `--apply` es solo lectura: es lo que hay que correr.
+    "python scripts/diagnostico_participaciones_cruzadas.py --tenant acme",
+    "terraform apply",  # no es un script de este repo; el patrón no lo atrapa
 ]
 
 

@@ -12,7 +12,7 @@ revisar_cada: nunca
 > Se abre bajo demanda para saber qué documento abrir; para ir a la
 > sección exacta, `python scripts/indexar.py buscar "<términos>"`.
 
-99 documentos vivos · 70 archivados · 2794 secciones indexadas.
+99 documentos vivos · 70 archivados · 2795 secciones indexadas.
 
 ## gestion
 
@@ -130,7 +130,7 @@ revisar_cada: nunca
 | [`runbooks/infra/mpp-import.md`](runbooks/infra/mpp-import.md) | 0. Arquitectura (US-069) · 1. Pre-requisitos · 2. Build local + smoke test · 3. Smoke con un archivo .mpp real | 2026-08-12 | 226 |
 | [`runbooks/infra/respaldo-restauracion.md`](runbooks/infra/respaldo-restauracion.md) | 1. Qué corre, cuándo, y dónde acaba · 2. Requisitos que deben estar puestos · 3. Comprobar que la copia de … | 2026-08-12 | 147 |
 | [`runbooks/infra/uploads-storage.md`](runbooks/infra/uploads-storage.md) | 0. Por qué NO usamos Railway Volumes · 1. Pre-requisitos · 2. Crear bucket R2 · 3. Crear API token con perm… | 2026-08-12 | 348 |
-| [`runbooks/programs/cross-org-programs-workaround.md`](runbooks/programs/cross-org-programs-workaround.md) | Limitación actual · Workaround: programa en la org "umbrella" · Limitaciones del workaround · Cuándo migrar… | 2026-08-19 | 187 |
+| [`runbooks/programs/cross-org-programs-workaround.md`](runbooks/programs/cross-org-programs-workaround.md) | Limitación actual · Workaround: programa en la org "umbrella" · Limitaciones del workaround · Cuándo migrar… | 2026-08-19 | 210 |
 | [`runbooks/railway/DEPLOYMENT.md`](runbooks/railway/DEPLOYMENT.md) | 1. Servicios Railway · 2. Archivos de configuración (railway.json y railway.toml) · 3. Migraciones de base … | 2026-08-29 | 394 |
 | [`runbooks/railway/SETUP.md`](runbooks/railway/SETUP.md) | 1. Crear proyecto y servicios en Railway · 2. Plugins: Postgres + Redis · 3. Variables de entorno por servi… | 2026-08-29 | 335 |
 

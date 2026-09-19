@@ -85,6 +85,18 @@ DENEGAR: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"\bgit\b.*\bbranch\b.*\s-D\b"),
         "Borra una branch sin comprobar que esté mergeada. Usá `-d`, que sí comprueba.",
     ),
+    (
+        # US-273. Los scripts de reparación de datos (`fusionar_actores_
+        # duplicados.py`, `diagnostico_participaciones_cruzadas.py`) son
+        # `--dry-run` por default y escriben con `--apply`. Sus docstrings ya
+        # decían que el guard frenaba el `--apply`; no era cierto, y una
+        # promesa de control que no se ejecuta es peor que ninguna
+        # (MCA-CORE §6.1). El patrón se acota a los scripts de este repo para
+        # no atrapar `terraform apply` ni `kubectl apply`.
+        re.compile(r"\bscripts/[\w./-]+\.py\b.*\s--apply\b"),
+        "Escribe sobre datos de clientes en masa. Corré primero sin `--apply` "
+        "(el default), leé el reporte, y dejá el `--apply` al owner.",
+    ),
 ]
 
 # ── Reversible con esfuerzo: se pide confirmación ────────────────────────────
