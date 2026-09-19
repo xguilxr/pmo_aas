@@ -22,7 +22,10 @@ activo:
 
 1. Conserva el que tenga más `project_participations` con `status = 'activa'`
    (empate: el más antiguo, por `created_at`).
-2. Reasigna las `project_participations` de los demás al que se conserva.
+2. Reasigna al que se conserva las `project_participations` de los demás
+   **cuyo proyecto él sirva** (DEC-044: su organización, o cualquiera si es un
+   recurso global). Las que no, se apagan: moverlas fabricaría un cruce nuevo
+   que ni siquiera pasó por la API, y desharía la limpieza de US-273.
 3. Marca los demás `is_active = False`. **No los borra** — es una fusión,
    no una limpieza: si la decisión fue la equivocada, se revierte a mano
    reactivando y reasignando de vuelta.
@@ -103,6 +106,37 @@ def _elegir_sobreviviente(actores: list) -> dict:
     )[0]
 
 
+#: BUG-109 — «sirve al sobreviviente» es la regla de DEC-044: el proyecto es de
+#: su organización, o el sobreviviente es global (sin organización) y entonces
+#: sirve a cualquiera.
+SQL_MOVER = text(
+    """
+    UPDATE project_participations pp
+       SET actor_id = :sobreviviente
+     WHERE pp.actor_id = :perdedor
+       AND EXISTS (
+           SELECT 1
+             FROM projects p, actors s
+            WHERE p.id = pp.project_id
+              AND s.id = :sobreviviente
+              AND (s.organization_id IS NULL
+                   OR p.organization_id = s.organization_id)
+       )
+    """
+)
+
+#: Lo que quedó del perdedor después de mover: participaciones en proyectos que
+#: el sobreviviente no sirve. Se apagan en vez de reasignarse.
+SQL_APAGAR_RESTO = text(
+    """
+    UPDATE project_participations
+       SET is_active = false, is_primary = false
+     WHERE actor_id = :perdedor
+       AND is_active = true
+    """
+)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tenant", default=None, help="Filtra por slug de un solo tenant.")
@@ -148,21 +182,33 @@ def main() -> int:
         print("\n--dry-run (default): nada se tocó. Corre con --apply para ejecutar.")
         return 0
 
+    movidas = 0
+    apagadas = 0
     with engine.begin() as conn:
         for _tenant_id, sobreviviente_id, _email, perdedores in plan:
             for perdedor_id in perdedores:
-                conn.execute(
-                    text(
-                        "UPDATE project_participations SET actor_id = :sobreviviente "
-                        "WHERE actor_id = :perdedor"
-                    ),
-                    {"sobreviviente": sobreviviente_id, "perdedor": perdedor_id},
-                )
+                # BUG-109 / DEC-044 — solo se mueven las participaciones cuyo
+                # proyecto sirva al sobreviviente. El UPDATE de antes movía
+                # todas, incluidas las de otra organización: correr este script
+                # después de la limpieza de US-273 fabricaba cruces nuevos que
+                # ni siquiera pasaron por la API.
+                res = conn.execute(SQL_MOVER, {
+                    "sobreviviente": sobreviviente_id, "perdedor": perdedor_id,
+                })
+                movidas += res.rowcount or 0
+                # Lo que no se pudo mover era un cruce: se apaga, no se
+                # reasigna. `is_primary` también, o seguiría dictando el área
+                # funcional derivada aunque esté inactiva.
+                res = conn.execute(SQL_APAGAR_RESTO, {"perdedor": perdedor_id})
+                apagadas += res.rowcount or 0
                 conn.execute(
                     text("UPDATE actors SET is_active = false WHERE id = :perdedor"),
                     {"perdedor": perdedor_id},
                 )
-    print("\nAplicado.")
+    print(
+        f"\nAplicado: {movidas} participación(es) movida(s) al sobreviviente, "
+        f"{apagadas} cruzada(s) apagada(s)."
+    )
     return 0
 
 
