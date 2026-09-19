@@ -58,7 +58,10 @@ export function PortfolioForm({
 
   useEffect(() => {
     if (!open) return;
-    listActors({ organization_id: organizationId, is_active: true })
+    // BUG-108: `asignable_en` y no `organization_id`. La igualdad estricta
+    // dejaba fuera al recurso global (sin organización), que por DEC-044 sí
+    // puede ser responsable de cualquier portafolio del inquilino.
+    listActors({ asignable_en: organizationId, is_active: true })
       .then(setActores)
       .catch(() => setActores([]));
   }, [open, organizationId]);
